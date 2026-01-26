@@ -61,7 +61,14 @@ exports.register = async (req, res) => {
 
         // Role-based table insertion
         if (role === 'farmer') {
-            const { landSize, location, experience, cropType } = req.body;
+            const {
+  landSize,
+  location,
+  experience,
+  cropType,
+  latitude,
+  longitude
+} = req.body;
 
             if (!req.file) {
                 await client.query('ROLLBACK');
@@ -72,14 +79,42 @@ exports.register = async (req, res) => {
             const fileName = `land-documents/${Date.now()}-${req.file.originalname}`;
             const backblazeUrl = await uploadToBackblaze(fileName, fileBuffer, req.file.mimetype);
 
-            const insertFarmerQuery = `
-                INSERT INTO farmer_profiles (user_id, farm_location, land_size, crop_type, experience, land_document_url)
-                VALUES ($1, $2, $3, $4, $5, $6)
-            `;
-            await client.query(insertFarmerQuery, [userId, location, landSize, cropType, experience, backblazeUrl]);
+         const insertFarmerQuery = `
+  INSERT INTO farmer_profiles
+  (
+    user_id,
+    farm_location,
+    latitude,
+    longitude,
+    land_size,
+    crop_type,
+    experience,
+    land_document_url
+  )
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+`;
+await client.query(insertFarmerQuery, [
+  userId,
+  location,
+  Number(latitude),
+  Number(longitude),
+  landSize,
+  cropType,
+  experience,
+  backblazeUrl
+]);
+
 
         } else if (role === 'admin') {
             const { employeeId, adminArea, accessLevel } = req.body;
+
+
+            if (!latitude || !longitude) {
+  await client.query("ROLLBACK");
+  return res.status(400).json({
+    message: "Farmer latitude and longitude are required"
+  });
+}
 
             const insertAdminQuery = `
                 INSERT INTO admin_profiles (user_id, employee_id, admin_area, access_level)

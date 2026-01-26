@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect,useRef } from "react";
 import "./Dashboard.css";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
 import {
   Thermometer,
   Droplets,
@@ -54,7 +57,9 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   const [selectedGrid, setSelectedGrid] = useState(null);
   const [openCases, setOpenCases] = useState({});
   const [mapError, setMapError] = useState(null);
-  const apiKey = "890b927c2d4d2642a7179eca68750ce4"; // MapmyIndia API Key
+  const apiKey = "ploikagbfmtisxflsxfuwhszpqmbwkdlzvtg"; // MapmyIndia API Key
+  const mapRef = useRef(null);
+
 
   // Fallback to translations["en"] if translatedText is missing
   const fallbackText = translations[currentLanguage] || translations["en"];
@@ -88,101 +93,75 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
   const [gridData, setGridData] = useState(generateGridData());
 
-  useEffect(() => {
+useEffect(() => {
+  let map;
+
+  const API_URL =
+    import.meta.env.MODE === "production"
+      ? "https://frontend-k-backend.onrender.com"
+      : "http://localhost:5000";
+
   const token = localStorage.getItem("token");
 
-  const fetchLocationAndLoadMap = async () => {
+  const initMap = async () => {
     try {
-      const res = await fetch("https://frontend-k-backend.onrender.com/api/farmer/location", {
+      /* 1️⃣ Fetch farmer coordinates */
+      const res = await fetch(`${API_URL}/api/farmer/location`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      if (!res.ok) {
+        throw new Error("Failed to fetch farmer location");
+      }
+
       const data = await res.json();
+      const latitude = Number(data.latitude);
+      const longitude = Number(data.longitude);
 
-      if (!data.latitude || !data.longitude) {
-        console.error("Location data not found");
-        return;
+      if (!latitude || !longitude) {
+        throw new Error("Invalid coordinates received");
       }
 
-      const lat = parseFloat(data.latitude);
-      const lng = parseFloat(data.longitude);
+      if (!mapRef.current) return;
 
-      if (document.getElementById("mapmyindia-script")) {
-        if (!window.mapInstance && document.getElementById("map")) {
-          window.mapInstance = new window.MapmyIndia.Map("map", {
-            center: [lat, lng],
-            zoom: 14,
-          });
-          window.L.marker([lat, lng])
-            .addTo(window.mapInstance)
-            .bindPopup("Your Farm Location")
-            .openPopup();
-        }
-        return;
-      }
+      /* 2️⃣ Initialize Leaflet map */
+      map = L.map(mapRef.current).setView(
+        [latitude, longitude],
+        14
+      );
 
-      const script = document.createElement("script");
-      script.id = "mapmyindia-script";
-      script.src = `https://apis.mapmyindia.com/advancedmaps/v1/${apiKey}/map_load?v=1.5`;
-      script.async = true;
-      script.onload = () => {
-  setTimeout(() => {
-    if (
-      window.MapmyIndia &&
-      window.MapmyIndia.Map &&
-      !window.mapInstance &&
-      document.getElementById("map")
-    ) {
-      window.mapInstance = new window.MapmyIndia.Map("map", {
-        center: [lat, lng],
-        zoom: 14,
-      });
-      window.L.marker([lat, lng])
-        .addTo(window.mapInstance)
-        .bindPopup("Your Farm Location")
+      /* 3️⃣ Add OpenStreetMap tiles */
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map);
+
+      /* 4️⃣ Add marker */
+      L.marker([latitude, longitude])
+        .addTo(map)
+        .bindPopup("Farm Location")
         .openPopup();
-    } else {
-      console.error("MapmyIndia SDK not loaded properly or map already initialized");
-    }
-  }, 100);
-};
-
-      script.onerror = () => {
-        console.error("Failed to load MapmyIndia script");
-      };
-      document.body.appendChild(script);
     } catch (err) {
-      console.error("Error loading location and map:", err);
+      console.error("Leaflet map error:", err);
+      
     }
   };
 
-  fetchLocationAndLoadMap();
+  initMap();
+
+  return () => {
+    if (map) {
+      map.remove(); // cleanup on unmount
+    }
+  };
 }, []);
 
 
-  useEffect(() => {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
 
-        await fetch("https://frontend-k-backend.onrender.com/api/farmer/location", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({ latitude, longitude }),
-        });
-      },
-      (error) => console.error("Location permission denied:", error)
-    );
-  } else {
-    alert("Geolocation not supported in your browser");
-  }
-}, []);
+
+
+
 
   useEffect(() => {
     const generateData = () => {
@@ -335,14 +314,16 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 {mapError && (
                   <div className="map-error">{mapError}</div>
                 )}
-                <div
-                  id="map"
-                  style={{
-                    height: "100%",
-                    width: "100%",
-                    borderRadius: "12px",
-                  }}
-                ></div>
+               <div
+  ref={mapRef}
+  id="map"
+  style={{
+    height: "100%",
+    width: "100%",
+    borderRadius: "12px",
+  }}
+></div>
+
               </div>
             </div>
           </div>

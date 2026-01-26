@@ -3,28 +3,40 @@ const pool = require('../config/db');
 // POST: Save farmer's location
 exports.saveLocation = async (req, res) => {
   try {
-    // ✅ Correct user ID from authMiddleware
     const userId = req.user.user_id;
-
     if (!userId) {
-      return res.status(401).json({ message: 'Unauthorized: User ID missing' });
+      return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { latitude, longitude } = req.body;
 
-    const result = await pool.query(
-      'UPDATE farmer_profiles SET latitude = $1, longitude = $2 WHERE user_id = $3',
-      [latitude, longitude, userId]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'Farmer profile not found' });
+    if (
+      typeof latitude !== 'number' ||
+      typeof longitude !== 'number' ||
+      isNaN(latitude) ||
+      isNaN(longitude)
+    ) {
+      return res.status(400).json({
+        message: 'Invalid or missing latitude/longitude',
+      });
     }
 
-    return res.status(200).json({ message: 'Location saved successfully' });
+    await pool.query(
+      `
+      INSERT INTO farmer_profiles (user_id, latitude, longitude)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude
+      `,
+      [userId, latitude, longitude]
+    );
+
+    res.status(200).json({ message: 'Location saved successfully' });
   } catch (error) {
     console.error('Error saving farmer location:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
