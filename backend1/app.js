@@ -15,7 +15,7 @@ const blogRoutes = require('./routes/blogRoutes');
 const app = express();
 
 app.use(cors({
-    origin:  ["https://frontend-k-frontend.onrender.com", "http://localhost:5173"],
+    origin:  ["https://agri1-frontend.onrender.com",, "http://localhost:5173"],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
 }));
