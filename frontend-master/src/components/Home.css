@@ -114,20 +114,19 @@
   gap: 5px;
 }
 
-.smart {
-  background: linear-gradient(135deg, #059669, #10b981);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-right: 2px;
+#smart {
+  color: #8B5A2B;                 /* same as navbar logo */
+  background: none;
+  -webkit-text-fill-color: #8B5A2B;
+  margin-right: 4px;
 }
 
-.farm {
-  background: linear-gradient(135deg, #047857, #059669);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+#farm {
+  color: #8B5A2B;                 /* same as navbar logo */
+  background: none;
+  -webkit-text-fill-color: #8B5A2B;
 }
+
 
 .number {
   background: linear-gradient(135deg, #16a34a, #22c55e);

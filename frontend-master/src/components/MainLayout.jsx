@@ -3,14 +3,14 @@ import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import "./MainLayout.css";
-import smartFarm_logo from "/src/assets/smartFarm_logo.png"
+import smartFarm_logo from "/src/assets/MaatiAI.jpg";
 
 const baseText = {
   home: "Home",
   aboutUs: "About Us",
   dashboard: "Dashboard",
   language: "Language",
-  history: "History",
+  history: "Issue Log",
   login: "Login",
   logout: "Logout",
   blog: "Blog",
@@ -27,9 +27,6 @@ const baseText = {
 const languageLabels = {
   en: "English",
   hi: "हिन्दी",
-  ta: "தமிழ்",
-  te: "తెలుగు",
-  bn: "বাংলা",
 };
 
 const MainLayout = ({
@@ -55,16 +52,20 @@ const MainLayout = ({
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const translateUI = async (targetLang) => {
     try {
-      const res = await axios.post("https://frontend-k-backend.onrender.com/translations", {
-        q: Object.values(baseText),
-        source: "en",
-        target: targetLang,
-      });
+      const res = await axios.post(
+        "https://frontend-k-backend.onrender.com/translations",
+        {
+          q: Object.values(baseText),
+          source: "en",
+          target: targetLang,
+        },
+      );
 
       const translated = {};
       Object.keys(baseText).forEach((key, idx) => {
@@ -96,47 +97,30 @@ const MainLayout = ({
     <div className="main-layout">
       <nav className="navbar">
         <div className="nav-left">
-
-          <span className="product-name">
-            <img src={smartFarm_logo} alt="" className="logo" /><h3 id="smart_name">Maati AI</h3>
-
-          </span>
+          <div className="product-name">
+            <img src={smartFarm_logo} alt="Maati AI Logo" className="logo" />
+            <h3 id="smart_name">Maati AI</h3>
+          </div>
         </div>
 
         <div className="nav-right">
-          <Link
-            to="/"
-            className={
-              location.pathname === "/" ? "nav-link active" : "nav-link"
-            }
-          >
+          <Link to="/" className={location.pathname === "/" ? "nav-link active" : "nav-link"}>
             {t.home}
           </Link>
-          <Link
-            to="/dashboard"
-            className={
-              location.pathname === "/dashboard"
-                ? "nav-link active"
-                : "nav-link"
-            }
-          >
+          <Link to="/dashboard" className={location.pathname === "/dashboard" ? "nav-link active" : "nav-link"}>
             {t.dashboard}
           </Link>
-          <Link
-            to="/blog"
-            className={
-              location.pathname === "/blog" ? "nav-link active" : "nav-link"
-            }
-          >
+          <Link to="/blog" className={location.pathname === "/blog" ? "nav-link active" : "nav-link"}>
             {t.blog}
           </Link>
+
           <button
             type="button"
             className="language-dropdown"
             onClick={toggleLangMenu}
             ref={langRef}
           >
-            🌐 {languageLabels[currentLanguage] || currentLanguage} ▾
+            🌐 {languageLabels[currentLanguage]} ▾
             {showLangMenu && (
               <div className="dropdown-menu">
                 {Object.entries(languageLabels).map(([code, name]) => (
@@ -151,31 +135,22 @@ const MainLayout = ({
               </div>
             )}
           </button>
-          <Link
-            to="/history"
-            className={
-              location.pathname === "/history" ? "nav-link active" : "nav-link"
-            }
-          >
+
+          <Link to="/history" className={location.pathname === "/history" ? "nav-link active" : "nav-link"}>
             {t.history}
           </Link>
+
           {!isAuthenticated ? (
             <Link to="/login" className="nav-link login-btn">
               {t.login}
             </Link>
           ) : (
             <div className="profile-section">
-              <div className="profile-circle" onClick={toggleProfileMenu}>
-                👤
-              </div>
+              <div className="profile-circle" onClick={toggleProfileMenu}>👤</div>
               {showProfileMenu && (
                 <div className="profile-menu">
-                  <Link to="/profile" className="profile-menu-item">
-                    {t.accountInfo}
-                  </Link>
-                  <Link to="/help" className="profile-menu-item">
-                    {t.help}
-                  </Link>
+                  <Link to="/profile" className="profile-menu-item">{t.accountInfo}</Link>
+                  <Link to="/help" className="profile-menu-item">{t.help}</Link>
                   <div className="profile-menu-item-logout" onClick={onLogout}>
                     {t.logout}
                   </div>
@@ -196,9 +171,7 @@ const MainLayout = ({
           </div>
           <div className="footer-section">
             <h4>{t.aboutUs}</h4>
-            <Link to="/about" className="footer-link">
-              {t.aboutUs}
-            </Link>
+            <Link to="/about" className="footer-link">{t.aboutUs}</Link>
           </div>
           <div className="footer-section">
             <h4>{t.contactUs}</h4>

@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useEffect,useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./Dashboard.css";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -55,11 +53,17 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     cases: [],
   });
   const [selectedGrid, setSelectedGrid] = useState(null);
-  const [openCases, setOpenCases] = useState({});
+  const [activeGridPopup, setActiveGridPopup] = useState(null);
+  // 🌾 Farmer-declared land size (hectares) – later fetch from backend
+  const landSizeHectares = 6;
+
+  const [activeCase, setActiveCase] = useState(null);
+
   const [mapError, setMapError] = useState(null);
-  const apiKey = "ploikagbfmtisxflsxfuwhszpqmbwkdlzvtg"; // MapmyIndia API Key
+  // const apiKey = "ploikagbfmtisxflsxfuwhszpqmbwkdlzvtg"; // MapmyIndia API Key
   const mapRef = useRef(null);
 
+  const leafletMapRef = useRef(null); //new
 
   // Fallback to translations["en"] if translatedText is missing
   const fallbackText = translations[currentLanguage] || translations["en"];
@@ -84,86 +88,186 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           status === "high"
             ? "Immediate irrigation needed, check drainage system"
             : status === "moderate"
-            ? "Monitor closely, consider fertilizer application"
-            : "Maintain current conditions, regular monitoring",
+              ? "Monitor closely, consider fertilizer application"
+              : "Maintain current conditions, regular monitoring",
       });
     }
     return grids;
   };
 
   const [gridData, setGridData] = useState(generateGridData());
+  // Convert meters to latitude degrees
+  const metersToLat = (m) => m / 111320;
 
-useEffect(() => {
-  let map;
-
-  const API_URL =
-    import.meta.env.MODE === "production"
-      ? "https://frontend-k-backend.onrender.com"
-      : "http://localhost:5000";
-
-  const token = localStorage.getItem("token");
-
-  const initMap = async () => {
-    try {
-      /* 1️⃣ Fetch farmer coordinates */
-      const res = await fetch(`${API_URL}/api/farmer/location`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch farmer location");
-      }
-
-      const data = await res.json();
-      const latitude = Number(data.latitude);
-      const longitude = Number(data.longitude);
-
-      if (!latitude || !longitude) {
-        throw new Error("Invalid coordinates received");
-      }
-
-      if (!mapRef.current) return;
-
-      /* 2️⃣ Initialize Leaflet map */
-      map = L.map(mapRef.current).setView(
-        [latitude, longitude],
-        14
-      );
-
-      /* 3️⃣ Add OpenStreetMap tiles */
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(map);
-
-      /* 4️⃣ Add marker */
-      L.marker([latitude, longitude])
-        .addTo(map)
-        .bindPopup("Farm Location")
-        .openPopup();
-    } catch (err) {
-      console.error("Leaflet map error:", err);
-      
-    }
-  };
-
-  initMap();
-
-  return () => {
-    if (map) {
-      map.remove(); // cleanup on unmount
-    }
-  };
-}, []);
-
-
-
-
-
-
+  // Convert meters to longitude degrees (latitude dependent)
+  const metersToLng = (m, lat) =>
+    m / (111320 * Math.cos((lat * Math.PI) / 180));
 
   useEffect(() => {
+    const API_URL =
+      import.meta.env.MODE === "production"
+        ? "https://frontend-k-backend.onrender.com"
+        : "http://localhost:5000";
+
+    const token = localStorage.getItem("token");
+
+    const initMap = async () => {
+      try {
+        /* 1️⃣ Fetch farmer coordinates */
+        const res = await fetch(`${API_URL}/api/farmer/location`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch farmer location");
+        }
+
+        const data = await res.json();
+
+        const latitude = Number(data.latitude);
+        const longitude = Number(data.longitude);
+
+        if (!latitude || !longitude) {
+          throw new Error("Invalid coordinates received");
+        }
+
+        // 🌾 Visual offset to show nearby farmland (UI only)
+        const FARMLAND_OFFSET_LAT = 0.0025; // ~250m
+        const FARMLAND_OFFSET_LNG = 0.0025; // ~250m
+
+        const visualLat = latitude + FARMLAND_OFFSET_LAT;
+        const visualLng = longitude + FARMLAND_OFFSET_LNG;
+
+        if (!latitude || !longitude) {
+          throw new Error("Invalid coordinates received");
+        }
+
+        if (!mapRef.current || leafletMapRef.current) return;
+
+        /* 2️⃣ Initialize Leaflet map */
+        const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
+
+        leafletMapRef.current = map;
+
+        /* 3️⃣ Add OpenStreetMap tiles */
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(map);
+
+        /* 4️⃣ Add farm marker */
+        L.marker([visualLat, visualLng])
+
+          .addTo(map)
+          .bindPopup("Farm Location")
+          .openPopup();
+
+        /* 5️⃣ DRAW FARM AREA (based on land size) + GRIDS INSIDE */
+
+        // 🌾 Farmer-declared land size (hectares) – later fetch from backend
+        const landSizeHectares = 6;
+
+        // 📐 Area calculations
+        const areaSqMeters = landSizeHectares * 10000;
+        const sideMeters = Math.sqrt(areaSqMeters);
+
+        // 🔄 Helpers
+        // const metersToLat = (m) => m / 111320;
+        // const metersToLng = (m, lat) =>
+        //   m / (111320 * Math.cos((lat * Math.PI) / 180));
+
+        const halfLat = metersToLat(sideMeters / 2);
+        const halfLng = metersToLng(sideMeters / 2, visualLat);
+
+        // 🌿 Farm boundary (dashed, dark, legal-safe)
+        const farmBounds = [
+          [visualLat - halfLat, visualLng - halfLng],
+          [visualLat - halfLat, visualLng + halfLng],
+          [visualLat + halfLat, visualLng + halfLng],
+          [visualLat + halfLat, visualLng - halfLng],
+        ];
+
+        L.polygon(farmBounds, {
+          color: "#14532d",
+          weight: 2,
+          dashArray: "6,6",
+          fillColor: "#16a34a",
+          fillOpacity: 0.15,
+        })
+          .addTo(map)
+          .bindPopup(
+            `<strong>Operational Farm Area</strong><br/>
+     ${landSizeHectares} hectares<br/>
+     <small>Farmer-declared • Advisory use only</small>`,
+          );
+
+        // 🧩 Draw grids INSIDE the farm boundary
+        const gridRows = 5;
+        const gridCols = 5;
+        let index = 0;
+
+        const latStep = (halfLat * 2) / gridRows;
+        const lngStep = (halfLng * 2) / gridCols;
+
+        for (let row = 0; row < gridRows; row++) {
+          for (let col = 0; col < gridCols; col++) {
+            if (!gridData[index]) continue;
+
+            const grid = gridData[index++];
+
+            const startLat = visualLat - halfLat + row * latStep;
+            const startLng = visualLng - halfLng + col * lngStep;
+
+            const bounds = [
+              [startLat, startLng],
+              [startLat + latStep, startLng + lngStep],
+            ];
+
+            const color =
+              grid.status === "high"
+                ? "#ef4444"
+                : grid.status === "moderate"
+                  ? "#f59e0b"
+                  : "#10b981";
+
+            const rectangle = L.rectangle(bounds, {
+              color,
+              weight: 1,
+              fillOpacity: 0.35,
+            }).addTo(map);
+
+            rectangle.on("click", () => {
+              // 🔍 Smooth zoom animation to selected grid
+              map.flyToBounds(bounds, {
+                padding: [50, 50],
+                duration: 0.8,
+              });
+
+              // 📊 Existing grid popup logic (unchanged)
+              setSelectedGrid(grid);
+              setActiveGridPopup(grid);
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Leaflet map error:", err);
+        setMapError("Unable to load map");
+      }
+    };
+
+    initMap();
+
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+    };
+  }, [gridData]);
+
+  useEffect(() => {
+    if (activeCase) return;
     const generateData = () => {
       const newData = {
         temperature: Math.floor(Math.random() * 15) + 20,
@@ -174,14 +278,14 @@ useEffect(() => {
             caseId: `CASE-${Math.floor(Math.random() * 10000)}`,
             gridId: `GRID-${Math.floor(Math.random() * 24) + 1}`.padStart(
               7,
-              "GRID-00"
+              "GRID-00",
             ),
             urgency:
               Math.random() > 0.7
                 ? "high"
                 : Math.random() > 0.4
-                ? "moderate"
-                : "low",
+                  ? "moderate"
+                  : "low",
             problem: "Leaf Blight Detected",
             recommendations: "Apply fungicide spray, improve drainage",
             location: { lat: 12.9716, lng: 77.5946 },
@@ -191,14 +295,14 @@ useEffect(() => {
             caseId: `CASE-${Math.floor(Math.random() * 10000)}`,
             gridId: `GRID-${Math.floor(Math.random() * 24) + 1}`.padStart(
               7,
-              "GRID-00"
+              "GRID-00",
             ),
             urgency:
               Math.random() > 0.7
                 ? "high"
                 : Math.random() > 0.4
-                ? "moderate"
-                : "low",
+                  ? "moderate"
+                  : "low",
             problem: "Pest Infestation",
             recommendations: "Use organic pesticide, monitor closely",
             location: { lat: 12.9716, lng: 77.5946 },
@@ -208,14 +312,14 @@ useEffect(() => {
             caseId: `CASE-${Math.floor(Math.random() * 10000)}`,
             gridId: `GRID-${Math.floor(Math.random() * 24) + 1}`.padStart(
               7,
-              "GRID-00"
+              "GRID-00",
             ),
             urgency:
               Math.random() > 0.7
                 ? "high"
                 : Math.random() > 0.4
-                ? "moderate"
-                : "low",
+                  ? "moderate"
+                  : "low",
             problem: "Nutrient Deficiency",
             recommendations:
               "Apply balanced fertilizer, soil testing recommended",
@@ -230,7 +334,7 @@ useEffect(() => {
     generateData();
     const interval = setInterval(generateData, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeCase]);
 
   const getRiskLevel = (value, type) => {
     if (type === "temperature") {
@@ -287,6 +391,7 @@ useEffect(() => {
 
   const handleGridClick = (grid) => {
     setSelectedGrid(grid);
+    setActiveGridPopup(grid);
   };
 
   return (
@@ -311,19 +416,27 @@ useEffect(() => {
                 )}
               </div>
               <div className="map-placeholder">
-                {mapError && (
-                  <div className="map-error">{mapError}</div>
-                )}
-               <div
-  ref={mapRef}
-  id="map"
-  style={{
-    height: "100%",
-    width: "100%",
-    borderRadius: "12px",
-  }}
-></div>
+                {mapError && <div className="map-error">{mapError}</div>}
 
+                {/* MAP – full space */}
+                <div
+                  ref={mapRef}
+                  id="map"
+                  style={{
+                    height: "100%",
+                    width: "100%",
+                    borderRadius: "12px",
+                  }}
+                ></div>
+
+                {/* 🛡️ Land declaration disclaimer – BELOW map */}
+                <div className="map-disclaimer-inline">
+                  <strong>Operational Farm Area</strong>
+                  <span>
+                    Boundary shown is farmer-declared for advisory & monitoring
+                    purposes only.
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -441,62 +554,6 @@ useEffect(() => {
                       className={`status-indicator ${grid.status}-indicator`}
                     ></div>
                   </div>
-                  {selectedGrid?.id === grid.id && (
-                    <div className="grid-details-panel">
-                      <div className="grid-details-header">
-                        <h4 className="grid-details-title">
-                          {grid.id} Details
-                        </h4>
-                      </div>
-                      <div className="grid-details">
-                        <div className="grid-metrics">
-                          {[
-                            {
-                              key: "waterLevel",
-                              label: t.waterLevel,
-                              unit: "%",
-                            },
-                            {
-                              key: "moisture",
-                              label: t.moisture,
-                              unit: "%",
-                            },
-                            {
-                              key: "soilContent",
-                              label: t.soilContent,
-                              unit: "%",
-                            },
-                            {
-                              key: "nutrition",
-                              label: t.nutrition,
-                              unit: "%",
-                            },
-                          ].map((metric) => (
-                            <div key={metric.key} className="grid-metric">
-                              <div className="grid-metric-header">
-                                {getGridIcon(metric.key)}
-                                <span className="grid-metric-label">
-                                  {metric.label}
-                                </span>
-                              </div>
-                              <div className="grid-metric-value">
-                                {grid[metric.key]}
-                                {metric.unit}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="grid-recommendations">
-                          <h5 className="grid-rec-title">
-                            {t.recommendations}
-                          </h5>
-                          <p className="grid-rec-text">
-                            {grid.recommendations}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -524,7 +581,7 @@ useEffect(() => {
                 <div key={index} className={`case-item ${case_.urgency}-risk`}>
                   <div
                     className="case-item-header"
-                    onClick={() => toggleCase(case_.caseId)}
+                    onClick={() => setActiveCase(case_)}
                   >
                     <div className="case-info">
                       <div
@@ -546,59 +603,104 @@ useEffect(() => {
                       >
                         {t[case_.urgency]}
                       </div>
-                      <div className="dropdown-toggle">
-                        {openCases[case_.caseId] ? (
-                          <ChevronUp />
-                        ) : (
-                          <ChevronDown />
-                        )}
-                      </div>
                     </div>
                   </div>
-                  {openCases[case_.caseId] && (
-                    <div className="case-content">
-                      <div className="case-grid-info">
-                        <div className="info-item">
-                          <p className="info-label">{t.gridId}</p>
-                          <p className="info-value">{case_.gridId}</p>
-                        </div>
-                        <div className="info-item">
-                          <p className="info-label">Status</p>
-                          <p className="info-value">{case_.status}</p>
-                        </div>
-                      </div>
-                      <div className="problem-section">
-                        <p className="problem-label">{t.problem}</p>
-                        <p className="problem-value">{case_.problem}</p>
-                      </div>
-                      <div className="recommendations-section">
-                        <p className="recommendations-label">
-                          {t.recommendations}
-                        </p>
-                        <p className="recommendations-value">
-                          {case_.recommendations}
-                        </p>
-                      </div>
-                      <button
-                        className="view-location-btn"
-                        onClick={() => {
-                          const grid = gridData.find(
-                            (g) => g.id === case_.gridId
-                          );
-                          if (grid) handleGridClick(grid);
-                        }}
-                      >
-                        <Eye className="view-icon" />
-                        View on Grid
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      {activeGridPopup && (
+        <div
+          className="grid-popup-overlay"
+          onClick={() => setActiveGridPopup(null)}
+        >
+          <div className="grid-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="grid-popup-header">
+              <h3>{activeGridPopup.id} Details</h3>
+              <button
+                className="popup-close"
+                onClick={() => setActiveGridPopup(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid-metrics">
+              <div className="grid-metric">
+                <span>Water Level</span>
+                <strong>{activeGridPopup.waterLevel}%</strong>
+              </div>
+              <div className="grid-metric">
+                <span>Soil Moisture</span>
+                <strong>{activeGridPopup.moisture}%</strong>
+              </div>
+              <div className="grid-metric">
+                <span>Soil Content</span>
+                <strong>{activeGridPopup.soilContent}%</strong>
+              </div>
+              <div className="grid-metric">
+                <span>Nutrition</span>
+                <strong>{activeGridPopup.nutrition}%</strong>
+              </div>
+            </div>
+
+            <div className="grid-recommendations">
+              <h4>Recommendations</h4>
+              <p>{activeGridPopup.recommendations}</p>
+            </div>
+
+            <button className="resolve-btn">Resolve</button>
+          </div>
+        </div>
+      )}
+
+      {activeCase && (
+        <div className="case-modal-overlay" onClick={() => setActiveCase(null)}>
+          <div className="case-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="case-modal-header">
+              <h3>{activeCase.caseId}</h3>
+              <button
+                className="popup-close"
+                onClick={() => setActiveCase(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="case-modal-body">
+              <div className="modal-row">
+                <span>Grid ID</span>
+                <strong>{activeCase.gridId}</strong>
+              </div>
+
+              <div className="modal-row">
+                <span>Status</span>
+                <strong>{activeCase.status}</strong>
+              </div>
+
+              <div className="modal-section problem">
+                <h4>Problem</h4>
+                <p>{activeCase.problem}</p>
+              </div>
+
+              <div className="modal-section recommendation">
+                <h4>Recommendations</h4>
+                <p>{activeCase.recommendations}</p>
+              </div>
+
+              <button
+                className="resolve-btn"
+                onClick={() => setActiveCase(null)}
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

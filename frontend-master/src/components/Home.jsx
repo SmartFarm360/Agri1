@@ -26,8 +26,8 @@ const Home = ({ currentLanguage }) => {
 
 
           <h1 className="hero-title">
-            <span className="smart">Maati</span>
-            <span className="farm">AI</span>
+            <span id="smart">Maati</span>
+            <span id="farm">AI</span>
       
           </h1>
 

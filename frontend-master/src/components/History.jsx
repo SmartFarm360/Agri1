@@ -1,4 +1,3 @@
-"use client";
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -54,6 +53,14 @@ const History = ({ currentLanguage = "en" }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedGrid, setSelectedGrid] = useState(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  //newly add
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
+  const [actionTaken, setActionTaken] = useState("");
+  const [adminStatus, setAdminStatus] = useState("");
+  const [showResponseBox, setShowResponseBox] = useState(false);
 
   const t = translations?.[currentLanguage] || translations["en"];
 
@@ -68,6 +75,26 @@ const History = ({ currentLanguage = "en" }) => {
     shadowSize: [41, 41],
   });
 
+  const problemDescriptions = {
+    "Leaf Blight":
+      "Leaf blight is a fungal disease that causes brown or yellow patches on leaves. If untreated, it reduces photosynthesis and lowers crop yield. Past records show it often spreads during humid conditions.",
+
+    "Pest Infestation":
+      "Pest infestation occurs when insects attack crops, feeding on leaves, stems, or roots. Historical data indicates rapid spread during warm temperatures and delayed intervention.",
+
+    "Nutrient Deficiency":
+      "Nutrient deficiency happens when essential elements like nitrogen, phosphorus, or potassium are insufficient in the soil. Past cases resulted in poor plant growth and discoloration.",
+
+    "Water Stress":
+      "Water stress arises due to irregular irrigation or drought conditions. Previous incidents show wilting, reduced growth, and long-term soil degradation if ignored.",
+
+    "Soil Erosion":
+      "Soil erosion is the loss of fertile topsoil due to wind or water runoff. Past farm data links this issue to heavy rainfall and lack of ground cover.",
+
+    "Disease Outbreak":
+      "Disease outbreaks spread quickly across grids when early symptoms are missed. Historical trends show higher risk during seasonal transitions.",
+  };
+
   useEffect(() => {
     // Simulated API call for history data
     const statuses = ["solved", "pending", "in-progress"];
@@ -80,24 +107,27 @@ const History = ({ currentLanguage = "en" }) => {
       "Disease Outbreak",
     ];
 
-    const data = Array.from({ length: 25 }, (_, index) => ({
-      id: index + 1,
-      gridId: `GRID-${String(Math.floor(Math.random() * 100) + 1).padStart(
-        3,
-        "0"
-      )}`,
-      problem: problems[Math.floor(Math.random() * problems.length)],
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      createdDate: new Date(
-        Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000
-      ),
-      severity:
-        Math.random() > 0.7 ? "high" : Math.random() > 0.4 ? "moderate" : "low",
-      resolvedDate:
-        Math.random() > 0.5
-          ? new Date(Date.now() - Math.random() * 10 * 24 * 60 * 60 * 1000)
-          : null,
-    }));
+    const data = Array.from({ length: 25 }, (_, index) => {
+      const problem = problems[Math.floor(Math.random() * problems.length)];
+
+      return {
+        id: index + 1,
+        gridId: `GRID-${String(Math.floor(Math.random() * 100) + 1).padStart(3, "0")}`,
+        problem,
+        description: problemDescriptions[problem], // ✅ ADD THIS LINE
+        status: statuses[Math.floor(Math.random() * statuses.length)],
+        createdDate: new Date(
+          Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
+        ),
+        severity:
+          Math.random() > 0.7
+            ? "high"
+            : Math.random() > 0.4
+              ? "moderate"
+              : "low",
+        resolvedDate: Math.random() > 0.5 ? new Date() : null,
+      };
+    });
 
     setHistoryData(data);
     setFilteredData(data);
@@ -131,7 +161,7 @@ const History = ({ currentLanguage = "en" }) => {
       filtered = filtered.filter(
         (item) =>
           item.gridId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.problem.toLowerCase().includes(searchTerm.toLowerCase())
+          item.problem.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
@@ -187,13 +217,13 @@ const History = ({ currentLanguage = "en" }) => {
   };
 
   const solvedCount = historyData.filter(
-    (item) => item.status === "solved"
+    (item) => item.status === "solved",
   ).length;
   const pendingCount = historyData.filter(
-    (item) => item.status === "pending"
+    (item) => item.status === "pending",
   ).length;
   const inProgressCount = historyData.filter(
-    (item) => item.status === "in-progress"
+    (item) => item.status === "in-progress",
   ).length;
   const totalIssues = historyData.length;
   const avgResolutionTime = Math.floor(Math.random() * 10) + 5; // Mock average
@@ -404,7 +434,7 @@ const History = ({ currentLanguage = "en" }) => {
               </div>
               <div className="table-controls">
                 <div className="search-container">
-                  <Search className="search-icon" />
+                  {/* <Search className="search-icon" /> */}
                   <input
                     type="text"
                     placeholder={
@@ -499,10 +529,8 @@ const History = ({ currentLanguage = "en" }) => {
                         <button
                           className="action-btn view-btn"
                           onClick={() => {
-                            const grid = gridData.find(
-                              (g) => g.id === item.gridId
-                            );
-                            if (grid) handleGridClick(grid);
+                            setSelectedHistoryItem(item);
+                            setShowDetailsModal(true);
                           }}
                         >
                           <Eye className="btn-icon" />
@@ -517,6 +545,149 @@ const History = ({ currentLanguage = "en" }) => {
           </div>
         </div>
       </div>
+
+      {showDetailsModal && selectedHistoryItem && (
+        <div className="details-modal-overlay">
+          <div className="details-modal">
+            {/* Close Button */}
+            <button
+              className="modal-back-btn"
+              onClick={() => {
+                setShowDetailsModal(false);
+                setShowResponseBox(false);
+                setActionTaken("");
+                setIsSubmitted(false);
+              }}
+            >
+              ← Back
+            </button>
+
+            {/* GRID STATUS */}
+            {/* MODAL HEADER */}
+            {/* GRID HEADER (COMPACT) */}
+            <div className="modal-header">
+              <div
+                className={`grid-header-box ${selectedHistoryItem.severity}`}
+              >
+                <span className="grid-id">{selectedHistoryItem.gridId}</span>
+                <span className="grid-risk">
+                  {selectedHistoryItem.severity.toUpperCase()} RISK
+                </span>
+              </div>
+            </div>
+
+            {/* GRID DETAILS */}
+            <div className="modal-section grid-details-box">
+              <div className="grid-detail-item">
+                <strong>Grid Area:</strong> Athagarh , Cuttack
+              </div>
+                <div className="grid-detail-item">
+                <strong>Owner:</strong> Ravi Behera
+              </div>
+              <div className="grid-detail-item">
+                <strong>Latitude:</strong> 20.52
+              </div>
+              <div className="grid-detail-item">
+                <strong>Longitude:</strong> 85.63
+              </div>
+          
+              <div className="grid-detail-item">
+                <strong>Area:</strong>3 Acres
+              </div>
+            </div>
+
+            {/* PROBLEM DESCRIPTION */}
+            <div className="modal-section problem-box">
+              <h4>Problem Description</h4>
+              <p>{selectedHistoryItem.description}</p>
+            </div>
+
+            {/* ENVIRONMENT DATA */}
+            <div className="modal-flex">
+              <div className="env-box">
+                <p>
+                  <strong>Temperature:</strong> 32°C
+                </p>
+                <p>
+                  <strong>Pressure:</strong> 1012 hPa
+                </p>
+                <p>
+                  <strong>Humidity:</strong> 68%
+                </p>
+              </div>
+
+              <div className="recommend-box">
+                <h4>Recommendation</h4>
+                <p>
+                  Maintain proper irrigation and monitor crop stress regularly.
+                  Early action can prevent escalation.
+                </p>
+              </div>
+            </div>
+
+            {/* ACTION TAKEN */}
+            <div className="modal-section">
+              <h4>Action Taken</h4>
+              <textarea
+                placeholder="Enter action taken..."
+                value={actionTaken}
+                disabled={isSubmitted}
+                onChange={(e) => setActionTaken(e.target.value)}
+              />
+
+              <button
+                className={`submit-action-btn ${isSubmitted ? "submitted" : ""}`}
+                disabled={isSubmitted}
+                onClick={() => {
+                  if (!actionTaken.trim()) return;
+                  setIsSubmitted(true);
+                  setShowResponseBox(true);
+                }}
+              >
+                {isSubmitted ? "Submitted" : "Submit"}
+              </button>
+            </div>
+
+            {/* RESPONSE MESSAGE */}
+            {showResponseBox && (
+              <div className="response-box">
+                <p>
+                  ✅ <strong>Action Submitted Successfully</strong>
+                  <br />
+                  <br />
+                  Your issue is of{" "}
+                  <strong>
+                    {selectedHistoryItem.severity.toUpperCase()} RISK
+                  </strong>
+                  .
+                  <br />
+                  {selectedHistoryItem.severity === "low" &&
+                    "Evaluation will be done within 3–4 days."}
+                  {selectedHistoryItem.severity === "moderate" &&
+                    "Evaluation will be done on alternate days."}
+                  {selectedHistoryItem.severity === "high" &&
+                    "Daily evaluation is required."}
+                </p>
+
+                <div className={`status-pill ${selectedHistoryItem.status}`}>
+                  {selectedHistoryItem.status.toUpperCase()}
+                </div>
+
+                <button
+                  className="back-btn"
+                  onClick={() => {
+                    setShowResponseBox(false);
+                    setIsSubmitted(false);
+                    setActionTaken("");
+                  }}
+                >
+                  Back
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

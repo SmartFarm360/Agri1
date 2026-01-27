@@ -14,6 +14,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* 🔒 keeps navbar stable */
   border-radius: 0 0 20px 20px;
   box-shadow: 0 4px 20px rgba(0, 80, 20, 0.1);
   position: sticky;
@@ -22,29 +23,53 @@
   flex-wrap: wrap;
   gap: 1rem;
   border-bottom: 2px solid #cce7cc;
+  min-height: 72px;
 }
 
 .nav-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
 }
 
 .logo {
-  font-size: 2rem;
-  margin-right: 0.5rem;
+  height: 42px;
+  width: 42px;
+  min-height: 42px;
+  /* 🔒 prevents resize jitter */
+  min-width: 42px;
+  object-fit: contain;
+  display: inline-flex;
+  /* 🔒 removes baseline behavior */
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  flex-shrink: 0;
+  /* 🔒 prevents flex reflow */
 }
 
+
+
+#smart_name {
+  color: #8B5A2B;
+}
+
+/* 🔧 FIX: lock logo + text alignment */
 .product-name {
+  display: flex;
+  align-items: center;
+  /* 🔒 vertical lock */
+  gap: 8px;
   font-size: 1.7rem;
   font-weight: 800;
-  color: #27632a;
+  color: #8B5A2B;
   white-space: nowrap;
   font-family: 'Segoe UI', sans-serif;
   text-shadow: 1px 1px 1px #d8f5d1;
   letter-spacing: 0.5px;
-  display:flex;
+  line-height: 1;
+  /* 🔒 stops font-based shift */
 }
+
 
 .nav-right {
   display: flex;
@@ -144,6 +169,15 @@
   color: #2e7d32;
 }
 
+.profile-menu-item-logout {
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: red;
+  text-decoration: none;
+  display: block;
+}
+
 .main-content {
   flex-grow: 1;
   padding: 2rem;
@@ -151,15 +185,6 @@
   width: 100%;
   min-height: calc(100vh - 200px);
   box-sizing: border-box;
-}
-
-.profile-menu-item-logout{
-   padding: 10px 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: red;
-  text-decoration: none;
-  display: block;
 }
 
 .footer {
@@ -198,6 +223,7 @@
   opacity: 0.8;
 }
 
+/* 🔧 RESPONSIVE FIXES */
 @media (max-width: 768px) {
   .navbar {
     flex-direction: column;
@@ -210,11 +236,13 @@
     flex-wrap: wrap;
   }
 
-  
-
   .product-name {
     font-size: 1.3rem;
-    margin-left: 5px;
+  }
+
+  .logo {
+    height: 36px;
+    width: 36px;
   }
 }
 
