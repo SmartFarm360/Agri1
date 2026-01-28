@@ -29,7 +29,7 @@ app.use(
       return callback(new Error("CORS blocked: " + origin));
     },
     credentials: true,
-  })
+  }),
 );
 
 app.options("*", cors());
@@ -39,38 +39,40 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ================= LOCATION SEARCH ================= */
+/* ================= LOCATION SEARCH (FIXED & SAFE) ================= */
 app.get("/api/location/search", async (req, res) => {
   try {
     const query = req.query.q;
-    if (!query) return res.json([]);
+    if (!query || query.length < 3) {
+      return res.status(200).json([]);
+    }
 
     const response = await axios.get(
       "https://nominatim.openstreetmap.org/search",
       {
         params: {
-          format: "json",
           q: query,
+          format: "json",
           addressdetails: 1,
           limit: 5,
         },
         headers: {
-          "User-Agent": "MaatiAI/1.0 (contact@maati.ai)",
+          // ⚠️ REQUIRED BY NOMINATIM
+          "User-Agent": "MaatiAI/1.0 (support@maati.ai)",
           "Accept-Language": "en",
         },
-        timeout: 5000,
-      }
+        timeout: 8000,
+      },
     );
 
     return res.status(200).json(response.data);
   } catch (err) {
-    console.error(
-      "Nominatim error:",
-      err.response?.status,
-      err.response?.data || err.message
-    );
+    // 🔥 SAFE ERROR HANDLING (THIS FIXES YOUR CRASH)
+    console.error("Nominatim error:", err.message);
 
     return res.status(500).json({
       message: "Location fetch failed",
+      error: err.message,
     });
   }
 });
