@@ -16,7 +16,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 const allowedOrigins = [
-  "https://agri1-frontend.onrender.com",
+  "https://agri1-1.onrender.com",
   "http://localhost:5173",
   "http://localhost:5174",
 ];
