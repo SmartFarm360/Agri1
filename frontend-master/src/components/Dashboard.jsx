@@ -104,10 +104,12 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     m / (111320 * Math.cos((lat * Math.PI) / 180));
 
   useEffect(() => {
-    const API_URL =
-      import.meta.env.MODE === "production"
-        ? "https://agri1-32qq.onrender.com"
-        : "http://localhost:5000";
+    const API_URL = "https://agri1-32qq.onrender.com";
+
+    // const API_URL =
+    //   import.meta.env.MODE === "production"
+    //     ? "https://agri1-32qq.onrender.com"
+    //     : "http://localhost:5000";
 
     const token = localStorage.getItem("token");
 
