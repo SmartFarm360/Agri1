@@ -41,12 +41,13 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 /* ================= LOCATION SEARCH ================= */
 /* ================= LOCATION SEARCH (FIXED & SAFE) ================= */
 app.get("/api/location/search", async (req, res) => {
-  try {
-    const query = req.query.q;
-    if (!query || query.length < 3) {
-      return res.status(200).json([]);
-    }
+  const query = req.query.q;
 
+  if (!query || query.length < 3) {
+    return res.status(200).json([]);
+  }
+
+  try {
     const response = await axios.get(
       "https://nominatim.openstreetmap.org/search",
       {
@@ -57,8 +58,7 @@ app.get("/api/location/search", async (req, res) => {
           limit: 5,
         },
         headers: {
-          // ⚠️ REQUIRED BY NOMINATIM
-          "User-Agent": "MaatiAI/1.0 (support@maati.ai)",
+          "User-Agent": "MaatiAI/1.0 (contact@maati.ai)",
           "Accept-Language": "en",
         },
         timeout: 8000,
@@ -67,13 +67,10 @@ app.get("/api/location/search", async (req, res) => {
 
     return res.status(200).json(response.data);
   } catch (err) {
-    // 🔥 SAFE ERROR HANDLING (THIS FIXES YOUR CRASH)
     console.error("Nominatim error:", err.message);
 
-    return res.status(500).json({
-      message: "Location fetch failed",
-      error: err.message,
-    });
+    // 🔥 THIS LINE IS NON-NEGOTIABLE
+    return res.status(200).json([]);
   }
 });
 
