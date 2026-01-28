@@ -55,7 +55,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   const [selectedGrid, setSelectedGrid] = useState(null);
   const [activeGridPopup, setActiveGridPopup] = useState(null);
   // 🌾 Farmer-declared land size (hectares) – later fetch from backend
-  const landSizeHectares = 6;
+  
 
   const [activeCase, setActiveCase] = useState(null);
 
@@ -106,27 +106,25 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   useEffect(() => {
     const API_URL =
       import.meta.env.MODE === "production"
-        ? "https://frontend-k-backend.onrender.com"
+        ? "https://agri1-32qq.onrender.com"
         : "http://localhost:5000";
 
     const token = localStorage.getItem("token");
 
     const initMap = async () => {
       try {
-        /* 1️⃣ Fetch farmer coordinates */
-        const API_URL = "https://agri1-32qq.onrender.com";
+        if (!mapRef.current || leafletMapRef.current) return;
+
         const res = await fetch(`${API_URL}/api/farmer/location`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-
         if (!res.ok) {
           throw new Error("Failed to fetch farmer location");
         }
 
         const data = await res.json();
-
         const latitude = Number(data.latitude);
         const longitude = Number(data.longitude);
 
@@ -141,11 +139,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         const visualLat = latitude + FARMLAND_OFFSET_LAT;
         const visualLng = longitude + FARMLAND_OFFSET_LNG;
 
-        if (!latitude || !longitude) {
-          throw new Error("Invalid coordinates received");
-        }
-
-        if (!mapRef.current || leafletMapRef.current) return;
+      
 
         /* 2️⃣ Initialize Leaflet map */
         const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
