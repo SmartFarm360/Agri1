@@ -47,22 +47,21 @@ const Register = ({ currentLanguage, onRegister }) => {
         return;
       }
 
-    locationTimeoutRef.current = setTimeout(async () => {
-  try {
-    const res = await fetch(
-      `https://agri1-32qq.onrender.com/api/location/search?q=${encodeURIComponent(value)}`
-    );
+      locationTimeoutRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch(
+            `https://agri1-32qq.onrender.com/api/location/search?q=${encodeURIComponent(value)}`,
+          );
 
-    if (!res.ok) throw new Error("Location fetch failed");
+          if (!res.ok) throw new Error("Location fetch failed");
 
-    const data = await res.json();
-    setLocationSuggestions(data);
-  } catch (err) {
-    console.error("Location fetch error:", err);
-    setLocationSuggestions([]);
-  }
-}, 500);
-
+          const data = await res.json();
+          setLocationSuggestions(data);
+        } catch (err) {
+          console.error("Location fetch error:", err);
+          setLocationSuggestions([]);
+        }
+      }, 500);
     }
   };
 
@@ -247,11 +246,12 @@ const Register = ({ currentLanguage, onRegister }) => {
               </label>
               <input
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
+                accept=".pdf"
                 onChange={(e) => setLandDocument(e.target.files[0])}
                 className="file-input"
                 required
               />
+
               {errors.landDocument && (
                 <span className="error">{errors.landDocument}</span>
               )}
