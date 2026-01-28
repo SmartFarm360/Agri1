@@ -35,64 +35,67 @@ function AppRoutes() {
     setAppLoaded(true);
   }, []);
 
- const handleLogin = async (credentials) => {
-  const API_URL =
-    import.meta.env.MODE === "production"
-      ? "https://frontend-k-backend.onrender.com"
-      : "http://localhost:5000";
-
-  const response = await axios.post(
-    `${API_URL}/api/auth/login`,
-    credentials
-  );
-
-  if (response.data?.token && response.data?.role) {
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", response.data.role);
-    localStorage.setItem("token", response.data.token);
-
-    setIsAuthenticated(true);
-    setUserRole(response.data.role);
-
-    if (response.data.role === "farmer") {
-      navigate("/dashboard");
-    } else if (response.data.role === "drone_controller") {
-      navigate("/drone-dashboard");
-    } else {
-      navigate("/");
-    }
-  } else {
-    throw new Error("Invalid login response");
-  }
-};
-
-
-  const handleRegister = async (formData) => {
-  try {
-    const API_URL =
-      import.meta.env.MODE === "production"
-        ? "https://frontend-k-backend.onrender.com"
-        : "http://localhost:5000";
+  const handleLogin = async (credentials) => {
+    const API_URL = import.meta.env.VITE_API_URL;
 
     const response = await axios.post(
-      `${API_URL}/api/auth/register`,
-      formData
+      `${API_URL}/api/auth/login`,
+      credentials,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
     );
 
-    if (response.data?.message) {
-      alert("Registration successful. You can now login.");
+    if (response.data?.token && response.data?.role) {
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("userRole", response.data.role);
+      localStorage.setItem("token", response.data.token);
+
+      setIsAuthenticated(true);
+      setUserRole(response.data.role);
+
+      if (response.data.role === "farmer") {
+        navigate("/dashboard");
+      } else if (response.data.role === "drone_controller") {
+        navigate("/drone-dashboard");
+      } else {
+        navigate("/");
+      }
     } else {
-      alert("Registration failed: Invalid response from server.");
+      throw new Error("Invalid login response");
     }
-  } catch (error) {
-    console.error("Registration error:", error);
-    alert(
-      "Registration failed: " +
-        (error.response?.data?.message || "Server error")
-    );
-  }
-};
+  };
 
+  const handleRegister = async (formData) => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL;
+
+      const response = await axios.post(
+        `${API_URL}/api/auth/register`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.data?.message) {
+        alert("Registration successful. You can now login.");
+        navigate("/login");
+      } else {
+        alert("Registration failed: Invalid response from server.");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      alert(
+        "Registration failed: " +
+          (error.response?.data?.message || "Server error"),
+      );
+    }
+  };
 
   const handleLogout = () => {
     setIsAuthenticated(false);

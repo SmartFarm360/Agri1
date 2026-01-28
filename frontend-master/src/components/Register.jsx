@@ -47,22 +47,22 @@ const Register = ({ currentLanguage, onRegister }) => {
         return;
       }
 
-      locationTimeoutRef.current = setTimeout(async () => {
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}`,
-            {
-              headers: {
-                "Accept-Language": "en",
-              },
-            },
-          );
-          const data = await res.json();
-          setLocationSuggestions(data.slice(0, 5));
-        } catch (err) {
-          console.error("Location fetch error:", err);
-        }
-      }, 500); // ⏱️ waits 500ms after typing stops
+    locationTimeoutRef.current = setTimeout(async () => {
+  try {
+    const res = await fetch(
+      `https://agri1-32qq.onrender.com/api/location/search?q=${encodeURIComponent(value)}`
+    );
+
+    if (!res.ok) throw new Error("Location fetch failed");
+
+    const data = await res.json();
+    setLocationSuggestions(data);
+  } catch (err) {
+    console.error("Location fetch error:", err);
+    setLocationSuggestions([]);
+  }
+}, 500);
+
     }
   };
 
@@ -128,10 +128,7 @@ const Register = ({ currentLanguage, onRegister }) => {
         submissionData.append("flightExperience", formData.flight_experience);
       }
 
-      const API_URL =
-        import.meta.env.MODE === "production"
-          ? "https://frontend-k-backend.onrender.com"
-          : "http://localhost:5000";
+      const API_URL = "https://agri1-32qq.onrender.com";
 
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",

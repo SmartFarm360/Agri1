@@ -1,31 +1,30 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const authMiddleware = require('../middleware/authMiddleware');
-const { 
-  register, 
-  login, 
-  logout, 
-  sendOTP, 
-  verifyOTP, 
-  getProfile,
-  updateProfile
-} = require('../controllers/authController');
-const { cropImageUpload, landDocumentUpload } = require('../middleware/backBlazeUpload');
+const authMiddleware = require("../middleware/authMiddleware");
 
-// Register Route
-router.post('/register', landDocumentUpload.single('landDocument'), register);
+// ✅ FIX 1: Import controller as OBJECT (prevents undefined)
+const authController = require("../controllers/authController");
 
-// Login/Logout Routes
-router.post('/login', login);
-router.post('/logout', authMiddleware, logout);
+// ✅ FIX 2: Proper destructuring from backBlazeUpload
+const { landDocumentUpload } = require("../middleware/backBlazeUpload");
 
-// OTP Routes
-router.post('/send-otp', sendOTP);
-router.post('/verify-otp', verifyOTP);
+// ================= REGISTER =================
+router.post(
+  "/register",
+  landDocumentUpload.single("landDocument"),
+  authController.register
+);
 
-//  Protected Route to Get Profile
-router.get("/profile", authMiddleware, getProfile);
-router.put("/profile", authMiddleware, updateProfile);
+// ================= LOGIN / LOGOUT =================
+router.post("/login", authController.login);
+router.post("/logout", authMiddleware, authController.logout);
 
+// ================= OTP =================
+router.post("/send-otp", authController.sendOTP);
+router.post("/verify-otp", authController.verifyOTP);
+
+// ================= PROFILE =================
+router.get("/profile", authMiddleware, authController.getProfile);
+router.put("/profile", authMiddleware, authController.updateProfile);
 
 module.exports = router;

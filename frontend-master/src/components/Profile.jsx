@@ -20,7 +20,7 @@ const Profile = ({ currentLanguage }) => {
         
         const API_URL =
           import.meta.env.MODE === "production"
-            ? "https://frontend-k-backend.onrender.com"
+            ? "https://agri1-32qq.onrender.com"
             : "http://localhost:5000";
       const res = await axios.get(
         `${API_URL}/api/auth/profile`,
@@ -50,9 +50,7 @@ const Profile = ({ currentLanguage }) => {
 const handleSave = async () => {
   try {
     const API_URL =
-      import.meta.env.MODE === "production"
-        ? "https://frontend-k-backend.onrender.com"
-        : "http://localhost:5000";
+     "http://localhost:5000";
 
     // Build payload safely
     const payload = {
