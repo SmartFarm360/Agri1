@@ -19,7 +19,7 @@ module.exports = async function (req, res, next) {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         // console.log('Decoded token:', decoded); // Debugging log
 
-        const userResult = await pool.query('SELECT * FROM users WHERE user_id = $1', [decoded.user.id]);
+        const userResult = await pool.query('SELECT * FROM users WHERE user_id = $1', [decoded.user_id]);
 
         if (userResult.rows.length === 0) {
             return res.status(401).json({ message: 'User not found' });
