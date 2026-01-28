@@ -26,10 +26,10 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error("CORS blocked: " + origin));
+      return callback(new Error("CORS blocked: " + origin));
     },
     credentials: true,
-  }),
+  })
 );
 
 app.options("*", cors());
@@ -38,44 +38,40 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-/* ================= LOCATION SEARCH (FIXED) ================= */
+/* ================= LOCATION SEARCH ================= */
 app.get("/api/location/search", async (req, res) => {
   try {
     const query = req.query.q;
     if (!query) return res.json([]);
 
-    const axios = require("axios");
-
-    app.get("/api/location/search", async (req, res) => {
-      try {
-        const query = req.query.q;
-        if (!query) return res.json([]);
-
-        const response = await axios.get(
-          "https://nominatim.openstreetmap.org/search",
-          {
-            params: {
-              format: "json",
-              q: query,
-            },
-            headers: {
-              "User-Agent": "MaatiAI/1.0 (contact@maati.ai)",
-            },
-            timeout: 5000,
-          },
-        );
-
-        res.json(response.data.slice(0, 5));
-      } catch (err) {
-        console.error("Nominatim error:", err.message);
-        res.status(500).json({ message: "Location fetch failed" });
+    const response = await axios.get(
+      "https://nominatim.openstreetmap.org/search",
+      {
+        params: {
+          format: "json",
+          q: query,
+          addressdetails: 1,
+          limit: 5,
+        },
+        headers: {
+          "User-Agent": "MaatiAI/1.0 (contact@maati.ai)",
+          "Accept-Language": "en",
+        },
+        timeout: 5000,
       }
-    });
+    );
 
-    res.json(response.data.slice(0, 5));
+    return res.status(200).json(response.data);
   } catch (err) {
-    console.error("Nominatim error:", err.message);
-    res.status(500).json({ message: "Location fetch failed" });
+    console.error(
+      "Nominatim error:",
+      err.response?.status,
+      err.response?.data || err.message
+    );
+
+    return res.status(500).json({
+      message: "Location fetch failed",
+    });
   }
 });
 
