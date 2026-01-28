@@ -135,8 +135,17 @@ const Register = ({ currentLanguage, onRegister }) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Registration failed");
+        let errorMessage = "Registration failed";
+
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          const text = await response.text();
+          if (text) errorMessage = text;
+        }
+
+        throw new Error(errorMessage);
       }
 
       alert("Registration successful!");
