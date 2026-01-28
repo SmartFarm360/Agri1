@@ -114,6 +114,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     const initMap = async () => {
       try {
         /* 1️⃣ Fetch farmer coordinates */
+        const API_URL = "https://agri1-32qq.onrender.com";
         const res = await fetch(`${API_URL}/api/farmer/location`, {
           headers: {
             Authorization: `Bearer ${token}`,
