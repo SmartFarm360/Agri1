@@ -11,7 +11,7 @@ connectDB();
 const app = express();
 
 /* =========================
-   🔥 CORS
+   🔥 CORS (FINAL & CORRECT)
    ========================= */
 app.set("trust proxy", 1);
 
@@ -23,23 +23,34 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin: (origin, callback) => {
+      // allow requests with no origin (Postman, curl, mobile apps)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("CORS blocked: " + origin));
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // ❗ DO NOT THROW ERROR — just deny silently
+      return callback(null, false);
     },
     credentials: true,
-  }),
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
 
+// ✅ MUST be after cors()
 app.options("*", cors());
 
+/* =========================
+   BODY PARSERS
+   ========================= */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ================= LOCATION SEARCH ================= */
-/* ================= LOCATION SEARCH (FIXED & SAFE) ================= */
 app.get("/api/location/search", async (req, res) => {
   const query = req.query.q;
 
@@ -62,14 +73,12 @@ app.get("/api/location/search", async (req, res) => {
           "Accept-Language": "en",
         },
         timeout: 8000,
-      },
+      }
     );
 
     return res.status(200).json(response.data);
   } catch (err) {
     console.error("Nominatim error:", err.message);
-
-    // 🔥 THIS LINE IS NON-NEGOTIABLE
     return res.status(200).json([]);
   }
 });
