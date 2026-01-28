@@ -6,7 +6,8 @@ const authMiddleware = require("../middleware/authMiddleware");
 const authController = require("../controllers/authController");
 
 // ✅ FIX 2: Proper destructuring from backBlazeUpload
-const { landDocumentUpload } = require("../middleware/backBlazeUpload");
+const { landDocumentUpload } = require('../middleware/backBlazeUpload');
+
 
 // ================= REGISTER =================
 router.post(
