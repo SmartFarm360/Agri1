@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import "./MainLayout.css";
-import smartFarm_logo from "/src/assets/MaatiAI.jpg";
+// import smartFarm_logo from "/src/assets/MaatiAI.jpg";
 
 const baseText = {
   home: "Home",
