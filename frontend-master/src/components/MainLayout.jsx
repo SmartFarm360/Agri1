@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import "./MainLayout.css";
-// import smartFarm_logo from "/src/assets/MaatiAI.jpg";
 
 const baseText = {
   home: "Home",
@@ -98,7 +97,6 @@ const MainLayout = ({
       <nav className="navbar">
         <div className="nav-left">
           <div className="product-name">
-            <img src={smartFarm_logo} alt="Maati AI Logo" className="logo" />
             <h3 id="smart_name">Maati AI</h3>
           </div>
         </div>
