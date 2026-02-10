@@ -46,6 +46,9 @@
 
 /* Main Section: Map and Parameters */
 #map {
+  width: 100%;
+  height: 100%;
+  display: block;
   min-height: clamp(300px, 50vw, 400px);
 }
 
@@ -69,6 +72,8 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   border: 2px solid rgba(16, 185, 129, 0.2);
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .map-header {
@@ -98,14 +103,15 @@
 }
 
 .map-placeholder {
-  flex: 1;
   background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
   border: 2px dashed #bbf7d0;
   border-radius: 1rem;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
+  position: relative;
   min-height: clamp(300px, 50vw, 400px);
+  width: 100%;
+  flex: 1;
 }
 
 .map-content {

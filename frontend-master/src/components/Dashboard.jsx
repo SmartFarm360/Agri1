@@ -404,7 +404,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               <div className="map-placeholder">
                 {mapError && <div className="map-error">{mapError}</div>}
 
-                {/* MAP – full space */}
+                {/* MAP - full space */}
                 <div
                   ref={mapRef}
                   id="map"
@@ -414,15 +414,15 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                     borderRadius: "12px",
                   }}
                 ></div>
+              </div>
 
-                {/* 🛡️ Land declaration disclaimer – BELOW map */}
-                <div className="map-disclaimer-inline">
-                  <strong>Operational Farm Area</strong>
-                  <span>
-                    Boundary shown is farmer-declared for advisory & monitoring
-                    purposes only.
-                  </span>
-                </div>
+              {/* Land declaration disclaimer - below map box */}
+              <div className="map-disclaimer-inline">
+                <strong>Operational Farm Area</strong>
+                <span>
+                  Boundary shown is farmer-declared for advisory & monitoring
+                  purposes only.
+                </span>
               </div>
             </div>
           </div>

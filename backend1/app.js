@@ -10,37 +10,20 @@ connectDB();
 
 const app = express();
 
-/* =========================
-   🔥 CORS (FINAL & CORRECT)
-   ========================= */
 app.set("trust proxy", 1);
 
-const allowedOrigins = [
-  "https://agri1-1.onrender.com",
-  "http://localhost:5173",
-  "http://localhost:5174",
-];
-
+/* =========================
+   🔥 CORS (FINAL – STABLE)
+   ========================= */
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // allow requests with no origin (Postman, curl, mobile apps)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      // ❗ DO NOT THROW ERROR — just deny silently
-      return callback(null, false);
-    },
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// ✅ MUST be after cors()
 app.options("*", cors());
 
 /* =========================
