@@ -6,6 +6,7 @@ const { uploadToBackblaze } = require("../middleware/backBlazeUpload");
 require("dotenv").config();
 
 let blacklistedTokens = [];
+exports.isTokenBlacklisted = (token) => blacklistedTokens.includes(token);
 
 /* ================= REGISTER ================= */
 exports.register = async (req, res) => {
