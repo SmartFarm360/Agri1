@@ -50,7 +50,9 @@ const Profile = ({ currentLanguage }) => {
 const handleSave = async () => {
   try {
     const API_URL =
-     "http://localhost:5000";
+      import.meta.env.MODE === "production"
+        ? "https://agri1-32qq.onrender.com"
+        : "http://localhost:5000";
 
     // Build payload safely
     const payload = {

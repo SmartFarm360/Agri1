@@ -214,7 +214,17 @@ exports.updateProfile = async (req, res) => {
     }
 
     const result = await pool.query(query, values);
-    res.json(result.rows[0]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updatedUser = result.rows[0];
+    res.json({
+      name: updatedUser.username,
+      email: updatedUser.email,
+      created_at: updatedUser.created_at,
+    });
   } catch (err) {
     res.status(500).json({ message: "Update failed" });
   }
