@@ -12,16 +12,18 @@ const Profile = ({ currentLanguage }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [showSuccess, setShowSuccess] = useState(false)
+  const [loadError, setLoadError] = useState("")
+
+  const API_URL =
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.MODE === "production"
+      ? "https://agri1-1.onrender.com"
+      : "http://localhost:5000")
 
   
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        
-        const API_URL =
-          import.meta.env.MODE === "production"
-            ? "https://agri1-32qq.onrender.com"
-            : "http://localhost:5000";
       const res = await axios.get(
         `${API_URL}/api/auth/profile`,
         {
@@ -33,8 +35,12 @@ const Profile = ({ currentLanguage }) => {
 
       setProfileData(res.data);
       setEditData(res.data);
+      setLoadError("");
     } catch (err) {
       console.error("Error fetching profile:", err);
+      setLoadError(
+        err.response?.data?.message || "Unable to load profile at the moment."
+      );
     }
   };
 
@@ -49,11 +55,6 @@ const Profile = ({ currentLanguage }) => {
 
 const handleSave = async () => {
   try {
-    const API_URL =
-      import.meta.env.MODE === "production"
-        ? "https://agri1-32qq.onrender.com"
-        : "http://localhost:5000";
-
     // Build payload safely
     const payload = {
       name: editData.name,
@@ -113,7 +114,15 @@ const handleSave = async () => {
   }
 
   if (!profileData) {
-    return <div className="profile-page">Loading profile...</div>
+    return (
+      <div className="profile-page">
+        <div className="profile-container">
+          <div className="form-value">
+            {loadError || "Loading profile..."}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
