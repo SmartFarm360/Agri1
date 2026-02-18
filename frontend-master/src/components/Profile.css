@@ -3,6 +3,7 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 50%, #f0fdfa 100%);
   padding: 2rem 1rem;
+  padding-top: 7rem;
 }
 
 .profile-container {
@@ -365,6 +366,7 @@
 @media (max-width: 640px) {
   .profile-page {
     padding: 1rem 0.5rem;
+    padding-top: 6rem;
   }
 
   .profile-form {
