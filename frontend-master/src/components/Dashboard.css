@@ -1301,3 +1301,21 @@ html {
 .add-farm-btn:hover {
   background: linear-gradient(135deg, #059669, #15803d);
 }
+.farm-details-panel {
+
+position:absolute;
+top:10px;
+right:10px;
+
+background:white;
+padding:12px;
+
+border-radius:8px;
+
+box-shadow:0 2px 8px rgba(0,0,0,0.2);
+
+z-index:1000;
+
+font-size:13px;
+
+}
