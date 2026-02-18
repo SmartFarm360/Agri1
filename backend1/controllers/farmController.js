@@ -92,7 +92,8 @@ exports.getMyFarms = async (req, res) => {
 // GET SINGLE FARM
 exports.getFarmById = async (req, res) => {
   try {
-    const farmId = req.params.id;
+   const farmId = req.params.farmId;
+
 
     const result = await pool.query(
       `

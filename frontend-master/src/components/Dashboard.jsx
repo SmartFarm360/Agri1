@@ -17,6 +17,7 @@ import {
   Leaf,
   Eye,
 } from "lucide-react";
+import AddFarmModal from "./AddFarmModal";
 
 // Mock translations for demo - replace with your actual translations
 const translations = {
@@ -57,6 +58,8 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
   const [farms, setFarms] = useState([]);
   const [loadingFarms, setLoadingFarms] = useState(true);
+  const [showAddFarmModal, setShowAddFarmModal] = useState(false);
+  const [selectedFarm, setSelectedFarm] = useState(null);
 
   // 🌾 Farmer-declared land size (hectares) – later fetch from backend
 
@@ -112,17 +115,21 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         const API_URL = "https://agri1-32qq.onrender.com";
         const token = localStorage.getItem("token");
 
-        const res = await fetch(`${API_URL}/api/farms`, {
+        const res = await fetch(`${API_URL}/api/farm/my`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          setFarms(data);
-        } else {
-          setFarms([]);
+        if (!res.ok) throw new Error("Failed to fetch farms");
+
+        const data = await res.json();
+
+        setFarms(data);
+
+        // set default farm
+        if (data.length > 0) {
+          setSelectedFarm(data[0]);
         }
       } catch (err) {
         console.error("Farm fetch error:", err);
@@ -133,7 +140,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     };
 
     fetchFarms();
-  }, [farms]);
+  }, []); // ✅ FIXED
 
   useEffect(() => {
     const API_URL = "https://agri1-32qq.onrender.com";
@@ -145,8 +152,10 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           return;
 
         // 🔁 Fallback coordinates (Bangalore)
-        let latitude = 12.9716;
-        let longitude = 77.5946;
+        if (!selectedFarm) return;
+
+        let latitude = Number(selectedFarm.latitude);
+        let longitude = Number(selectedFarm.longitude);
 
         // 🌐 Try API (non-blocking)
         try {
@@ -197,7 +206,10 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           .openPopup();
 
         // 🌾 Farm boundary
-        const landSizeHectares = 6;
+        const landSizeHectares = Number(
+          selectedFarm.area_hectares || selectedFarm.landSize || 1,
+        );
+
         const areaSqMeters = landSizeHectares * 10000;
         const sideMeters = Math.sqrt(areaSqMeters);
 
@@ -284,7 +296,8 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         leafletMapRef.current = null;
       }
     };
-  }, []); // ✅ IMPORTANT: EMPTY DEPENDENCY
+  }, [selectedFarm]);
+  // ✅ IMPORTANT: EMPTY DEPENDENCY
 
   useEffect(() => {
     if (activeCase) return;
@@ -429,6 +442,27 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               <div className="map-header">
                 <MapPin className="map-icon" />
                 <h3 className="map-title">{t.farmLocation}</h3>
+
+                {farms.length > 0 && (
+                  <select
+                    className="farm-selector"
+                    value={selectedFarm?.farm_id || ""}
+                    onChange={(e) => {
+                      const farm = farms.find(
+                        (f) => f.farm_id == e.target.value,
+                      );
+
+                      setSelectedFarm(farm);
+                    }}
+                  >
+                    {farms.map((farm) => (
+                      <option key={farm.farm_id} value={farm.farm_id}>
+                        {farm.farm_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
                 {selectedGrid && (
                   <span className="selected-grid-info">
                     - Viewing {selectedGrid.id}
@@ -465,7 +499,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
                         <button
                           className="add-farm-btn"
-                          onClick={() => alert("Open Add Farm Page")}
+                          onClick={() => setShowAddFarmModal(true)}
                         >
                           + Add Land
                         </button>
@@ -746,6 +780,17 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           </div>
         </div>
       )}
+
+      {/* ADD FARM MODAL — ADD THIS BLOCK HERE */}
+      <AddFarmModal
+        isOpen={showAddFarmModal}
+        onClose={() => setShowAddFarmModal(false)}
+        onFarmAdded={(newFarm) => {
+          setFarms((prev) => [...prev, newFarm]);
+
+          setSelectedFarm(newFarm);
+        }}
+      />
     </div>
   );
 };
