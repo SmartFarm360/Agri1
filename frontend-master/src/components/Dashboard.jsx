@@ -148,31 +148,26 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   useEffect(() => {
     
     const initMap = async () => {
-      try {
-        if (!mapRef.current || leafletMapRef.current || farms.length === 0)
-          return;
+  try {
 
-        // 🔁 Fallback coordinates (Bangalore)
-        if (!selectedFarm) return;
+    if (!mapRef.current || !selectedFarm) return;
 
-        let latitude = Number(selectedFarm.latitude);
-        let longitude = Number(selectedFarm.longitude);
+    let latitude = Number(selectedFarm.latitude);
+    let longitude = Number(selectedFarm.longitude);
 
-        // 🌐 Try API (non-blocking)
-       
+    const visualLat = latitude + 0.0025;
+    const visualLng = longitude + 0.0025;
 
-        // 🌾 UI offset
-        const visualLat = latitude + 0.0025;
-        const visualLng = longitude + 0.0025;
+    // SAFE REMOVE OLD MAP
+    if (leafletMapRef.current) {
+      leafletMapRef.current.remove();
+      leafletMapRef.current = null;
+    }
 
-        // 🔥 HARD RESET (prevents double-init)
-        if (mapRef.current && mapRef.current._leaflet_id) {
-          mapRef.current._leaflet_id = null;
-        }
+    const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
 
-        // 🗺️ Init map
-        const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
-        leafletMapRef.current = map;
+    leafletMapRef.current = map;
+
 
         // 🌍 Tiles
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
