@@ -2,6 +2,9 @@ const app = require("./app");
 const multer = require("multer");
 const exifr = require("exifr");
 
+const farmRoutes = require("./routes/farmRoutes");
+
+
 const upload = multer();
 
 const PORT = process.env.PORT || 5000;
@@ -29,6 +32,10 @@ app.post("/upload", upload.single("image"), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+/* ================= FARM ROUTES ================= */
+app.use("/api/farm", farmRoutes);
+
 
 /* ================= SERVER START ================= */
 app.listen(PORT, () => {

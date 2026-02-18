@@ -54,8 +54,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   });
   const [selectedGrid, setSelectedGrid] = useState(null);
   const [activeGridPopup, setActiveGridPopup] = useState(null);
+
+  const [farms, setFarms] = useState([]);
+  const [loadingFarms, setLoadingFarms] = useState(true);
+
   // 🌾 Farmer-declared land size (hectares) – later fetch from backend
-  
 
   const [activeCase, setActiveCase] = useState(null);
 
@@ -103,21 +106,13 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   const metersToLng = (m, lat) =>
     m / (111320 * Math.cos((lat * Math.PI) / 180));
 
- useEffect(() => {
-  const API_URL = "https://agri1-32qq.onrender.com";
-  const token = localStorage.getItem("token");
-
-  const initMap = async () => {
-    try {
-      if (!mapRef.current || leafletMapRef.current) return;
-
-      // 🔁 Fallback coordinates (Bangalore)
-      let latitude = 12.9716;
-      let longitude = 77.5946;
-
-      // 🌐 Try API (non-blocking)
+  useEffect(() => {
+    const fetchFarms = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/farmer/location`, {
+        const API_URL = "https://agri1-32qq.onrender.com";
+        const token = localStorage.getItem("token");
+
+        const res = await fetch(`${API_URL}/api/farms`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -125,132 +120,171 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
         if (res.ok) {
           const data = await res.json();
-          const lat = Number(data.latitude);
-          const lng = Number(data.longitude);
+          setFarms(data);
+        } else {
+          setFarms([]);
+        }
+      } catch (err) {
+        console.error("Farm fetch error:", err);
+        setFarms([]);
+      } finally {
+        setLoadingFarms(false);
+      }
+    };
 
-          if (lat && lng) {
-            latitude = lat;
-            longitude = lng;
+    fetchFarms();
+  }, [farms]);
+
+  useEffect(() => {
+    const API_URL = "https://agri1-32qq.onrender.com";
+    const token = localStorage.getItem("token");
+
+    const initMap = async () => {
+      try {
+        if (!mapRef.current || leafletMapRef.current || farms.length === 0)
+          return;
+
+        // 🔁 Fallback coordinates (Bangalore)
+        let latitude = 12.9716;
+        let longitude = 77.5946;
+
+        // 🌐 Try API (non-blocking)
+        try {
+          const res = await fetch(`${API_URL}/api/farmer/location`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const lat = Number(data.latitude);
+            const lng = Number(data.longitude);
+
+            if (lat && lng) {
+              latitude = lat;
+              longitude = lng;
+            }
+          }
+        } catch (e) {
+          console.warn(
+            "Location API failed (CORS or server error). Using fallback.",
+          );
+        }
+
+        // 🌾 UI offset
+        const visualLat = latitude + 0.0025;
+        const visualLng = longitude + 0.0025;
+
+        // 🔥 HARD RESET (prevents double-init)
+        if (mapRef.current && mapRef.current._leaflet_id) {
+          mapRef.current._leaflet_id = null;
+        }
+
+        // 🗺️ Init map
+        const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
+        leafletMapRef.current = map;
+
+        // 🌍 Tiles
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(map);
+
+        // 📍 Marker
+        L.marker([visualLat, visualLng])
+          .addTo(map)
+          .bindPopup("Farm Location")
+          .openPopup();
+
+        // 🌾 Farm boundary
+        const landSizeHectares = 6;
+        const areaSqMeters = landSizeHectares * 10000;
+        const sideMeters = Math.sqrt(areaSqMeters);
+
+        const metersToLat = (m) => m / 111320;
+        const metersToLng = (m, lat) =>
+          m / (111320 * Math.cos((lat * Math.PI) / 180));
+
+        const halfLat = metersToLat(sideMeters / 2);
+        const halfLng = metersToLng(sideMeters / 2, visualLat);
+
+        const farmBounds = [
+          [visualLat - halfLat, visualLng - halfLng],
+          [visualLat - halfLat, visualLng + halfLng],
+          [visualLat + halfLat, visualLng + halfLng],
+          [visualLat + halfLat, visualLng - halfLng],
+        ];
+
+        L.polygon(farmBounds, {
+          color: "#14532d",
+          weight: 2,
+          dashArray: "6,6",
+          fillColor: "#16a34a",
+          fillOpacity: 0.15,
+        })
+          .addTo(map)
+          .bindPopup(
+            `<strong>Operational Farm Area</strong><br/>
+           ${landSizeHectares} hectares<br/>
+           <small>Farmer-declared • Advisory use only</small>`,
+          );
+
+        // 🧩 Grid drawing
+        const gridRows = 5;
+        const gridCols = 5;
+        let index = 0;
+
+        const latStep = (halfLat * 2) / gridRows;
+        const lngStep = (halfLng * 2) / gridCols;
+
+        for (let row = 0; row < gridRows; row++) {
+          for (let col = 0; col < gridCols; col++) {
+            if (!gridData[index]) continue;
+
+            const grid = gridData[index++];
+            const startLat = visualLat - halfLat + row * latStep;
+            const startLng = visualLng - halfLng + col * lngStep;
+
+            const bounds = [
+              [startLat, startLng],
+              [startLat + latStep, startLng + lngStep],
+            ];
+
+            const color =
+              grid.status === "high"
+                ? "#ef4444"
+                : grid.status === "moderate"
+                  ? "#f59e0b"
+                  : "#10b981";
+
+            const rectangle = L.rectangle(bounds, {
+              color,
+              weight: 1,
+              fillOpacity: 0.35,
+            }).addTo(map);
+
+            rectangle.on("click", () => {
+              map.flyToBounds(bounds, { padding: [50, 50], duration: 0.8 });
+              setSelectedGrid(grid);
+              setActiveGridPopup(grid);
+            });
           }
         }
-      } catch (e) {
-        console.warn("Location API failed (CORS or server error). Using fallback.");
+      } catch (err) {
+        console.error("Leaflet map error:", err);
+        setMapError("Unable to load map");
       }
+    };
 
-      // 🌾 UI offset
-      const visualLat = latitude + 0.0025;
-      const visualLng = longitude + 0.0025;
+    initMap();
 
-      // 🔥 HARD RESET (prevents double-init)
-      if (mapRef.current && mapRef.current._leaflet_id) {
-        mapRef.current._leaflet_id = null;
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
       }
-
-      // 🗺️ Init map
-      const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
-      leafletMapRef.current = map;
-
-      // 🌍 Tiles
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(map);
-
-      // 📍 Marker
-      L.marker([visualLat, visualLng])
-        .addTo(map)
-        .bindPopup("Farm Location")
-        .openPopup();
-
-      // 🌾 Farm boundary
-      const landSizeHectares = 6;
-      const areaSqMeters = landSizeHectares * 10000;
-      const sideMeters = Math.sqrt(areaSqMeters);
-
-      const metersToLat = (m) => m / 111320;
-      const metersToLng = (m, lat) =>
-        m / (111320 * Math.cos((lat * Math.PI) / 180));
-
-      const halfLat = metersToLat(sideMeters / 2);
-      const halfLng = metersToLng(sideMeters / 2, visualLat);
-
-      const farmBounds = [
-        [visualLat - halfLat, visualLng - halfLng],
-        [visualLat - halfLat, visualLng + halfLng],
-        [visualLat + halfLat, visualLng + halfLng],
-        [visualLat + halfLat, visualLng - halfLng],
-      ];
-
-      L.polygon(farmBounds, {
-        color: "#14532d",
-        weight: 2,
-        dashArray: "6,6",
-        fillColor: "#16a34a",
-        fillOpacity: 0.15,
-      })
-        .addTo(map)
-        .bindPopup(
-          `<strong>Operational Farm Area</strong><br/>
-           ${landSizeHectares} hectares<br/>
-           <small>Farmer-declared • Advisory use only</small>`
-        );
-
-      // 🧩 Grid drawing
-      const gridRows = 5;
-      const gridCols = 5;
-      let index = 0;
-
-      const latStep = (halfLat * 2) / gridRows;
-      const lngStep = (halfLng * 2) / gridCols;
-
-      for (let row = 0; row < gridRows; row++) {
-        for (let col = 0; col < gridCols; col++) {
-          if (!gridData[index]) continue;
-
-          const grid = gridData[index++];
-          const startLat = visualLat - halfLat + row * latStep;
-          const startLng = visualLng - halfLng + col * lngStep;
-
-          const bounds = [
-            [startLat, startLng],
-            [startLat + latStep, startLng + lngStep],
-          ];
-
-          const color =
-            grid.status === "high"
-              ? "#ef4444"
-              : grid.status === "moderate"
-              ? "#f59e0b"
-              : "#10b981";
-
-          const rectangle = L.rectangle(bounds, {
-            color,
-            weight: 1,
-            fillOpacity: 0.35,
-          }).addTo(map);
-
-          rectangle.on("click", () => {
-            map.flyToBounds(bounds, { padding: [50, 50], duration: 0.8 });
-            setSelectedGrid(grid);
-            setActiveGridPopup(grid);
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Leaflet map error:", err);
-      setMapError("Unable to load map");
-    }
-  };
-
-  initMap();
-
-  return () => {
-    if (leafletMapRef.current) {
-      leafletMapRef.current.remove();
-      leafletMapRef.current = null;
-    }
-  };
-}, []); // ✅ IMPORTANT: EMPTY DEPENDENCY
-
+    };
+  }, []); // ✅ IMPORTANT: EMPTY DEPENDENCY
 
   useEffect(() => {
     if (activeCase) return;
@@ -405,15 +439,40 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 {mapError && <div className="map-error">{mapError}</div>}
 
                 {/* MAP - full space */}
-                <div
-                  ref={mapRef}
-                  id="map"
-                  style={{
-                    height: "100%",
-                    width: "100%",
-                    borderRadius: "12px",
-                  }}
-                ></div>
+                <div className="map-wrapper">
+                  <div
+                    ref={mapRef}
+                    id="map"
+                    className={farms.length === 0 ? "map-blur" : ""}
+                    style={{
+                      height: "100%",
+                      width: "100%",
+                      borderRadius: "12px",
+                    }}
+                  ></div>
+
+                  {farms.length === 0 && !loadingFarms && (
+                    <div className="no-farm-overlay">
+                      <div className="no-farm-card">
+                        <MapPin className="no-farm-icon" />
+
+                        <h3>No land added yet</h3>
+
+                        <p>
+                          Add your farm to start monitoring crops and receiving
+                          insights.
+                        </p>
+
+                        <button
+                          className="add-farm-btn"
+                          onClick={() => alert("Open Add Farm Page")}
+                        >
+                          + Add Land
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Land declaration disclaimer - below map box */}
