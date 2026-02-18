@@ -139,13 +139,14 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
       }
     };
 
-    fetchFarms();
-  }, []); // ✅ FIXED
+    
+ fetchFarms();
+
+}, []);   // ✅ FIXED
+
 
   useEffect(() => {
-    const API_URL = "https://agri1-32qq.onrender.com";
-    const token = localStorage.getItem("token");
-
+    
     const initMap = async () => {
       try {
         if (!mapRef.current || leafletMapRef.current || farms.length === 0)
@@ -158,28 +159,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         let longitude = Number(selectedFarm.longitude);
 
         // 🌐 Try API (non-blocking)
-        try {
-          const res = await fetch(`${API_URL}/api/farmer/location`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            const lat = Number(data.latitude);
-            const lng = Number(data.longitude);
-
-            if (lat && lng) {
-              latitude = lat;
-              longitude = lng;
-            }
-          }
-        } catch (e) {
-          console.warn(
-            "Location API failed (CORS or server error). Using fallback.",
-          );
-        }
+       
 
         // 🌾 UI offset
         const visualLat = latitude + 0.0025;
@@ -192,20 +172,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
         // 🗺️ Init map
         const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
-
-        // CLICK TO SELECT LOCATION
-        map.on("click", function (e) {
-          const lat = e.latlng.lat;
-          const lng = e.latlng.lng;
-
-          window.selectedLatLng = {
-            lat,
-            lng,
-          };
-
-          alert("Location selected");
-        });
-
         leafletMapRef.current = map;
 
         // 🌍 Tiles
@@ -310,8 +276,8 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         leafletMapRef.current = null;
       }
     };
-  }, [selectedFarm]);
-  // ✅ IMPORTANT: EMPTY DEPENDENCY
+ }, [selectedFarm]);
+ // ✅ IMPORTANT: EMPTY DEPENDENCY
 
   useEffect(() => {
     if (activeCase) return;
@@ -498,28 +464,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                       borderRadius: "12px",
                     }}
                   ></div>
-
-                  {selectedFarm && (
-                    <div className="farm-details-panel">
-                      <h4>Farm Details</h4>
-
-                      <p>
-                        <strong>Name:</strong> {selectedFarm.farm_name}
-                      </p>
-
-                      <p>
-                        <strong>Area:</strong> {selectedFarm.area_hectares} ha
-                      </p>
-
-                      <p>
-                        <strong>Latitude:</strong> {selectedFarm.latitude}
-                      </p>
-
-                      <p>
-                        <strong>Longitude:</strong> {selectedFarm.longitude}
-                      </p>
-                    </div>
-                  )}
 
                   {farms.length === 0 && !loadingFarms && (
                     <div className="no-farm-overlay">
