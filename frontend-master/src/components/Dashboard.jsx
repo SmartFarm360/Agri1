@@ -205,8 +205,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
         L.marker([latitude, longitude], { icon: farmMarkerIcon })
           .addTo(map)
-          .bindPopup(selectedFarm.farm_name)
-          .openPopup();
+          .bindPopup(selectedFarm.farm_name);
 
         const rawLandSizeHectares = Number(
           selectedFarm.area_hectares || selectedFarm.landSize || 1,
@@ -243,6 +242,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             `<strong>Operational Farm Area</strong><br/>
            ${landSizeHectares} hectares<br/>
            <small>Farmer-declared - Advisory use only</small>`,
+            { className: "farm-area-popup" },
           );
 
         const gridCellsPerSide = Math.max(
@@ -300,10 +300,10 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             ];
 
             L.polygon(gridBounds, {
-              color: "#14532d",
-              weight: 1,
+              color: "#166534",
+              weight: 1.2,
               fillColor,
-              fillOpacity: 0.35,
+              fillOpacity: 0.45,
             })
               .addTo(map)
               .bindPopup(
@@ -313,6 +313,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                  Humidity: ${humidity}%<br/>
                  Soil Moisture: ${moisture}%<br/>
                  Cell Area: ${cellArea} m2`,
+                { className: "farm-grid-popup" },
               );
           }
         }
