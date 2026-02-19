@@ -3,6 +3,17 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./AddFarmModal.css";
 import * as turf from "@turf/turf";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 const initialForm = {
   farm_name: "",
@@ -46,39 +57,48 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     }).addTo(map);
 
     map.on("click", (e) => {
-      const newPoint = {
-        lat: e.latlng.lat,
-        lng: e.latlng.lng,
-      };
-
       setBoundaryPoints((prev) => {
-        // ✅ LIMIT TO 4 POINTS ONLY
         if (prev.length >= 4) {
           alert("Only 4 boundary points allowed");
           return prev;
         }
 
+        const newPoint = {
+          lat: e.latlng.lat,
+          lng: e.latlng.lng,
+        };
+
         const updated = [...prev, newPoint];
+
+        // draw marker
+        L.marker([newPoint.lat, newPoint.lng]).addTo(map);
 
         // remove old polygon
         if (polygonRef.current) {
           map.removeLayer(polygonRef.current);
+          polygonRef.current = null;
         }
 
-        // draw polygon ONLY when 4 points reached
+        // draw polygon ONLY when exactly 4 points
         if (updated.length === 4) {
-          polygonRef.current = L.polygon(updated, {
-            color: "#16a34a",
-            fillOpacity: 0.3,
-          }).addTo(map);
+          polygonRef.current = L.polygon(
+            updated.map((p) => [p.lat, p.lng]),
+            {
+              color: "#16a34a",
+              fillOpacity: 0.3,
+              weight: 2,
+            },
+          ).addTo(map);
 
           // calculate area
-          const coords = updated.map((p) => [p.lng, p.lat]);
-          coords.push(coords[0]);
+          const turfCoords = [
+            ...updated.map((p) => [p.lng, p.lat]),
+            [updated[0].lng, updated[0].lat],
+          ];
 
-          const polygon = turf.polygon([coords]);
+          const turfPolygon = turf.polygon([turfCoords]);
 
-          const areaSqMeters = turf.area(polygon);
+          const areaSqMeters = turf.area(turfPolygon);
           const areaHectares = areaSqMeters / 10000;
 
           setFormData((prev) => ({
@@ -86,14 +106,14 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
             area_hectares: Number(areaHectares.toFixed(2)),
           }));
 
-          // generate grids ONLY when valid polygon
+          // generate grids
           generateGrids(updated, map);
+
+          map.fitBounds(polygonRef.current.getBounds());
         }
 
         return updated;
       });
-
-      L.marker(e.latlng).addTo(map);
     });
 
     leafletMapRef.current = map;
@@ -103,7 +123,8 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
         leafletMapRef.current = null;
       }
     };
-  }, [isOpen, formData.latitude, formData.longitude]);
+  }, [isOpen]);
+
 
   if (!isOpen) return null;
 
@@ -135,20 +156,24 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   };
 
   const generateGrids = (polygonCoords, map) => {
-    // remove old grids
+    if (!polygonCoords || polygonCoords.length !== 4) return;
 
-     if (!polygonCoords || polygonCoords.length !== 4) return;
+    // clear old grids
     gridLayersRef.current.forEach((layer) => map.removeLayer(layer));
     gridLayersRef.current = [];
 
-   
+    const coords = [
+      ...polygonCoords.map((p) => [p.lng, p.lat]),
+      [polygonCoords[0].lng, polygonCoords[0].lat],
+    ];
 
-    const polygon = turf.polygon([
-      [
-        ...polygonCoords.map((p) => [p.lng, p.lat]),
-        [polygonCoords[0].lng, polygonCoords[0].lat],
-      ],
-    ]);
+    let polygon;
+
+    try {
+      polygon = turf.polygon([coords]);
+    } catch {
+      return;
+    }
 
     const bbox = turf.bbox(polygon);
 
@@ -157,15 +182,24 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     });
 
     grid.features.forEach((cell) => {
-      const intersection = turf.intersect(cell, polygon);
+      let intersection;
+
+      try {
+        intersection = turf.intersect(cell, polygon);
+      } catch {
+        return;
+      }
 
       if (!intersection) return;
 
       const ratio = turf.area(intersection) / turf.area(cell);
 
-      const coords = cell.geometry.coordinates[0].map((c) => [c[1], c[0]]);
+      const leafletCoords = cell.geometry.coordinates[0].map((c) => [
+        c[1],
+        c[0],
+      ]);
 
-      const layer = L.polygon(coords, {
+      const layer = L.polygon(leafletCoords, {
         color: ratio >= 0.5 ? "#16a34a" : "#9ca3af",
         weight: 1,
         fillOpacity: ratio >= 0.5 ? 0.2 : 0.1,
