@@ -1343,3 +1343,20 @@ font-size:13px;
 .map-toast.error {
   background: #dc2626;
 }
+.farm-dropdown-container {
+  margin-left: auto;
+}
+
+.farm-selector {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #16a34a;
+  background: white;
+  font-weight: 600;
+  color: #14532d;
+  cursor: pointer;
+}
+
+.farm-selector:hover {
+  border-color: #15803d;
+}

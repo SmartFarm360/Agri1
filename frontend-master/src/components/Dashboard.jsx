@@ -82,6 +82,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     type: "loading",
     message: "",
   });
+  const [selectedGrid, setSelectedGrid] = useState(null);
 
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
@@ -148,6 +149,8 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   }, [mapToast]);
 
   useEffect(() => {
+    if (!selectedFarm) return;
+
     let isCancelled = false;
 
     const initMap = async () => {
@@ -178,7 +181,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         const tileLayer = L.tileLayer(
           "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
           {
-          attribution: "&copy; OpenStreetMap contributors",
+            attribution: "&copy; OpenStreetMap contributors",
           },
         );
 
@@ -299,22 +302,23 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               ],
             ];
 
-            L.polygon(gridBounds, {
+            const gridPolygon = L.polygon(gridBounds, {
               color: "#166534",
               weight: 1.2,
               fillColor,
               fillOpacity: 0.45,
-            })
-              .addTo(map)
-              .bindPopup(
-                `<strong>${gridId}</strong><br/>
-                 Risk: <strong style="color:${fillColor}">${risk.toUpperCase()}</strong><br/>
-                 Temperature: ${temperature} C<br/>
-                 Humidity: ${humidity}%<br/>
-                 Soil Moisture: ${moisture}%<br/>
-                 Cell Area: ${cellArea} m2`,
-                { className: "farm-grid-popup" },
-              );
+            }).addTo(map);
+
+            gridPolygon.on("click", () => {
+              setSelectedGrid({
+                gridId,
+                temperature,
+                humidity,
+                moisture,
+                risk,
+                cellArea,
+              });
+            });
           }
         }
 
@@ -464,24 +468,32 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 <MapPin className="map-icon" />
                 <h3 className="map-title">{t.farmLocation}</h3>
 
-                {farms.length > 0 && (
+                <div className="farm-selector-container">
                   <select
                     className="farm-selector"
                     value={selectedFarm?.farm_id || ""}
                     onChange={(e) => {
+                      if (e.target.value === "add-new") {
+                        setShowAddFarmModal(true);
+                        return;
+                      }
+
                       const farm = farms.find(
                         (f) => f.farm_id == e.target.value,
                       );
+
                       setSelectedFarm(farm);
                     }}
                   >
                     {farms.map((farm) => (
                       <option key={farm.farm_id} value={farm.farm_id}>
-                        {farm.farm_name}
+                        🌾 {farm.farm_name}
                       </option>
                     ))}
+
+                    <option value="add-new">➕ Add New Land</option>
                   </select>
-                )}
+                </div>
               </div>
 
               <div className="map-placeholder">
@@ -495,6 +507,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                   )}
 
                   <div
+                    key={selectedFarm?.farm_id}
                     ref={mapRef}
                     id="map"
                     className={farms.length === 0 ? "map-blur" : ""}
@@ -723,6 +736,56 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           </div>
         </div>
       )}
+      {selectedGrid && (
+        <div
+          className="grid-popup-overlay"
+          onClick={() => setSelectedGrid(null)}
+        >
+          <div className="grid-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="grid-popup-header">
+              <h3>{selectedGrid.gridId}</h3>
+              <button
+                className="popup-close"
+                onClick={() => setSelectedGrid(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-row">
+              <span>Risk</span>
+              <strong>{selectedGrid.risk.toUpperCase()}</strong>
+            </div>
+
+            <div className="modal-row">
+              <span>Temperature</span>
+              <strong>{selectedGrid.temperature} °C</strong>
+            </div>
+
+            <div className="modal-row">
+              <span>Humidity</span>
+              <strong>{selectedGrid.humidity}%</strong>
+            </div>
+
+            <div className="modal-row">
+              <span>Soil Moisture</span>
+              <strong>{selectedGrid.moisture}%</strong>
+            </div>
+
+            <div className="modal-row">
+              <span>Cell Area</span>
+              <strong>{selectedGrid.cellArea} m²</strong>
+            </div>
+
+            <button
+              className="resolve-btn"
+              onClick={() => setSelectedGrid(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       <AddFarmModal
         isOpen={showAddFarmModal}
@@ -737,4 +800,3 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 };
 
 export default Dashboard;
-
