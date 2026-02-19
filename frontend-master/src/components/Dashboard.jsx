@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import "./Dashboard.css";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 import {
   Thermometer,
@@ -29,6 +32,37 @@ const translations = {
   },
 };
 
+const GRID_CELL_SIZE_METERS = 20;
+
+const getSeededUnit = (seed) => {
+  let hash = 2166136261;
+  const text = String(seed);
+
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+
+  return ((hash >>> 0) % 10000) / 10000;
+};
+
+const getSeededNumber = (seed, min, max) => {
+  return Math.round(min + getSeededUnit(seed) * (max - min));
+};
+
+const getGridRisk = (temperature, humidity, moisture) => {
+  if (temperature > 32 || humidity > 78 || moisture < 35) return "high";
+  if (temperature > 28 || humidity > 65 || moisture < 50) return "moderate";
+  return "low";
+};
+
+const gridRiskColor = {
+  high: "#ef4444",
+  moderate: "#f59e0b",
+  low: "#10b981",
+};
+
 const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   const [dashboardData, setDashboardData] = useState({
     temperature: 0,
@@ -43,6 +77,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   const [selectedFarm, setSelectedFarm] = useState(null);
   const [activeCase, setActiveCase] = useState(null);
   const [mapError, setMapError] = useState(null);
+  const [mapToast, setMapToast] = useState({
+    visible: false,
+    type: "loading",
+    message: "",
+  });
 
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
@@ -84,54 +123,115 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   }, []);
 
   useEffect(() => {
+    if (loadingFarms) {
+      setMapToast({
+        visible: true,
+        type: "loading",
+        message: "Loading farm map...",
+      });
+      return;
+    }
+
+    if (!loadingFarms && farms.length === 0) {
+      setMapToast((prev) => ({ ...prev, visible: false }));
+    }
+  }, [loadingFarms, farms.length]);
+
+  useEffect(() => {
+    if (!mapToast.visible || mapToast.type === "loading") return;
+
+    const timer = setTimeout(() => {
+      setMapToast((prev) => ({ ...prev, visible: false }));
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [mapToast]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
     const initMap = async () => {
       try {
         if (!mapRef.current || !selectedFarm) return;
+        setMapToast({
+          visible: true,
+          type: "loading",
+          message: "Loading farm map...",
+        });
+        setMapError(null);
 
         const latitude = Number(selectedFarm.latitude);
         const longitude = Number(selectedFarm.longitude);
-        const visualLat = latitude;
-        const visualLng = longitude;
+
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          throw new Error("Invalid farm coordinates");
+        }
 
         if (leafletMapRef.current) {
           leafletMapRef.current.remove();
           leafletMapRef.current = null;
         }
 
-        const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
+        const map = L.map(mapRef.current).setView([latitude, longitude], 16);
         leafletMapRef.current = map;
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: "© OpenStreetMap contributors",
-        }).addTo(map);
+        const tileLayer = L.tileLayer(
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          {
+          attribution: "&copy; OpenStreetMap contributors",
+          },
+        );
 
-     const marker = L.marker([latitude, longitude])
-.addTo(map)
-.bindPopup(selectedFarm.farm_name)
-.openPopup();
+        tileLayer.once("load", () => {
+          if (isCancelled) return;
+          setMapToast({
+            visible: true,
+            type: "success",
+            message: "Farm map loaded successfully.",
+          });
+        });
 
-map.setView([latitude, longitude], 16);
+        tileLayer.addTo(map);
 
+        const farmMarkerIcon = L.icon({
+          iconRetinaUrl: markerIcon2x,
+          iconUrl: markerIcon,
+          shadowUrl: markerShadow,
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        });
 
-        const landSizeHectares = Number(
+        L.marker([latitude, longitude], { icon: farmMarkerIcon })
+          .addTo(map)
+          .bindPopup(selectedFarm.farm_name)
+          .openPopup();
+
+        const rawLandSizeHectares = Number(
           selectedFarm.area_hectares || selectedFarm.landSize || 1,
         );
+        const landSizeHectares =
+          Number.isFinite(rawLandSizeHectares) && rawLandSizeHectares > 0
+            ? rawLandSizeHectares
+            : 1;
         const areaSqMeters = landSizeHectares * 10000;
         const sideMeters = Math.sqrt(areaSqMeters);
         const metersToLat = (m) => m / 111320;
         const metersToLng = (m, lat) =>
           m / (111320 * Math.cos((lat * Math.PI) / 180));
-        const halfLat = metersToLat(sideMeters / 2);
-        const halfLng = metersToLng(sideMeters / 2, visualLat);
+        const halfSideMeters = sideMeters / 2;
+        const halfLat = metersToLat(halfSideMeters);
+        const halfLng = metersToLng(halfSideMeters, latitude);
 
         const farmBounds = [
-          [visualLat - halfLat, visualLng - halfLng],
-          [visualLat - halfLat, visualLng + halfLng],
-          [visualLat + halfLat, visualLng + halfLng],
-          [visualLat + halfLat, visualLng - halfLng],
+          [latitude - halfLat, longitude - halfLng],
+          [latitude - halfLat, longitude + halfLng],
+          [latitude + halfLat, longitude + halfLng],
+          [latitude + halfLat, longitude - halfLng],
         ];
 
-        L.polygon(farmBounds, {
+        const farmBoundary = L.polygon(farmBounds, {
           color: "#14532d",
           weight: 2,
           dashArray: "6,6",
@@ -142,17 +242,98 @@ map.setView([latitude, longitude], 16);
           .bindPopup(
             `<strong>Operational Farm Area</strong><br/>
            ${landSizeHectares} hectares<br/>
-           <small>Farmer-declared • Advisory use only</small>`,
+           <small>Farmer-declared - Advisory use only</small>`,
           );
+
+        const gridCellsPerSide = Math.max(
+          1,
+          Math.ceil(sideMeters / GRID_CELL_SIZE_METERS),
+        );
+
+        for (let row = 0; row < gridCellsPerSide; row += 1) {
+          for (let col = 0; col < gridCellsPerSide; col += 1) {
+            const gridIndex = row * gridCellsPerSide + col;
+            const gridId = `GRID-${String(gridIndex + 1).padStart(3, "0")}`;
+
+            const westMeters = -halfSideMeters + col * GRID_CELL_SIZE_METERS;
+            const eastMeters = Math.min(
+              westMeters + GRID_CELL_SIZE_METERS,
+              halfSideMeters,
+            );
+            const southMeters = -halfSideMeters + row * GRID_CELL_SIZE_METERS;
+            const northMeters = Math.min(
+              southMeters + GRID_CELL_SIZE_METERS,
+              halfSideMeters,
+            );
+
+            if (westMeters >= eastMeters || southMeters >= northMeters) {
+              continue;
+            }
+
+            const seedPrefix = `${selectedFarm.farm_id || selectedFarm.farm_name}-${gridIndex + 1}`;
+            const temperature = getSeededNumber(`${seedPrefix}-temp`, 21, 37);
+            const humidity = getSeededNumber(`${seedPrefix}-hum`, 40, 90);
+            const moisture = getSeededNumber(`${seedPrefix}-soil`, 25, 85);
+            const risk = getGridRisk(temperature, humidity, moisture);
+            const fillColor = gridRiskColor[risk];
+            const cellArea = Math.round(
+              (eastMeters - westMeters) * (northMeters - southMeters),
+            );
+
+            const gridBounds = [
+              [
+                latitude + metersToLat(southMeters),
+                longitude + metersToLng(westMeters, latitude),
+              ],
+              [
+                latitude + metersToLat(southMeters),
+                longitude + metersToLng(eastMeters, latitude),
+              ],
+              [
+                latitude + metersToLat(northMeters),
+                longitude + metersToLng(eastMeters, latitude),
+              ],
+              [
+                latitude + metersToLat(northMeters),
+                longitude + metersToLng(westMeters, latitude),
+              ],
+            ];
+
+            L.polygon(gridBounds, {
+              color: "#14532d",
+              weight: 1,
+              fillColor,
+              fillOpacity: 0.35,
+            })
+              .addTo(map)
+              .bindPopup(
+                `<strong>${gridId}</strong><br/>
+                 Risk: <strong style="color:${fillColor}">${risk.toUpperCase()}</strong><br/>
+                 Temperature: ${temperature} C<br/>
+                 Humidity: ${humidity}%<br/>
+                 Soil Moisture: ${moisture}%<br/>
+                 Cell Area: ${cellArea} m2`,
+              );
+          }
+        }
+
+        map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
       } catch (err) {
+        if (isCancelled) return;
         console.error("Leaflet map error:", err);
         setMapError("Unable to load map");
+        setMapToast({
+          visible: true,
+          type: "error",
+          message: "Unable to load farm map.",
+        });
       }
     };
 
     initMap();
 
     return () => {
+      isCancelled = true;
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
@@ -306,6 +487,12 @@ map.setView([latitude, longitude], 16);
                 {mapError && <div className="map-error">{mapError}</div>}
 
                 <div className="map-wrapper">
+                  {mapToast.visible && (
+                    <div className={`map-toast ${mapToast.type}`}>
+                      {mapToast.message}
+                    </div>
+                  )}
+
                   <div
                     ref={mapRef}
                     id="map"
@@ -549,3 +736,4 @@ map.setView([latitude, longitude], 16);
 };
 
 export default Dashboard;
+
