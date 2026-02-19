@@ -9,7 +9,7 @@
   background: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 50%, #ecfdf5 100%);
   padding: clamp(0.5rem, 2vw, 1rem);
    max-width: 2000px;
-   padding-top: 100rem
+   padding-top: 108rem
 }
 
 .dashboard-content {
@@ -53,8 +53,9 @@
 
 .main-section {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: clamp(1.5rem, 3vw, 2rem);
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  /* gap: clamp(1.5rem, 3vw, 2rem); */
   margin-bottom: clamp(1.5rem, 3vw, 2rem);
 }
 
@@ -105,13 +106,12 @@
   background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
   border: 2px dashed #bbf7d0;
   border-radius: 1rem;
-  display: flex;
   overflow: hidden;
   position: relative;
-  min-height: clamp(300px, 50vw, 400px);
+  height: 500px;
   width: 100%;
-  flex: 1;
 }
+
 
 .map-content {
   text-align: center;
