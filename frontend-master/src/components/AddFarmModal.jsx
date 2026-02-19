@@ -46,6 +46,18 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     }
   };
 
+  const handleLocationSelect = (place) => {
+    setFormData((prev) => ({
+      ...prev,
+      latitude: place.lat,
+      longitude: place.lon,
+    }));
+
+    setLocationQuery(place.display_name);
+    setLocationResults([]);
+    setShowDropdown(false);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -55,19 +67,6 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       setError("Please login again.");
       return;
     }
-
-    const handleLocationSelect = (place) => {
-      setFormData((prev) => ({
-        ...prev,
-        latitude: place.lat,
-        longitude: place.lon,
-      }));
-
-      setLocationQuery(place.display_name);
-
-      setLocationResults([]);
-      setShowDropdown(false);
-    };
 
     const payload = {
       farm_name: formData.farm_name.trim(),
