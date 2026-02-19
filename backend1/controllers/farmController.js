@@ -28,20 +28,26 @@ exports.createFarm = async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO farms
-      (
-        user_id,
+INSERT INTO farms
+(
+  user_id,
+  farm_name,
+  latitude,
+  longitude,
+  land_size,
+  polygon_coordinates
+)
+VALUES ($1,$2,$3,$4,$5,$6)
+RETURNING *
+`,
+      [
+        userId,
         farm_name,
         latitude,
         longitude,
-        area_hectares,
-        boundary
-      )
-      VALUES ($1,$2,$3,$4,$5,$6)
-      RETURNING *
-      `,
-
-      [userId, farm_name, latitude, longitude, area_hectares, boundary || null],
+        area_hectares, // maps to land_size
+        boundary || null, // maps to polygon_coordinates
+      ],
     );
 
     res.status(201).json({
@@ -92,8 +98,7 @@ exports.getMyFarms = async (req, res) => {
 // GET SINGLE FARM
 exports.getFarmById = async (req, res) => {
   try {
-   const farmId = req.params.farmId;
-
+    const farmId = req.params.farmId;
 
     const result = await pool.query(
       `
