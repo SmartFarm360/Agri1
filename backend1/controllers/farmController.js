@@ -46,7 +46,7 @@ RETURNING *
         latitude,
         longitude,
         area_hectares, // maps to land_size
-        boundary || null, // maps to polygon_coordinates
+        boundary ? JSON.stringify(boundary) : null,
       ],
     );
 
@@ -85,7 +85,15 @@ exports.getMyFarms = async (req, res) => {
       [userId],
     );
 
-    res.status(200).json(result.rows);
+    const farms = result.rows.map((farm) => ({
+      ...farm,
+      polygon_coordinates:
+        typeof farm.polygon_coordinates === "string"
+          ? JSON.parse(farm.polygon_coordinates)
+          : farm.polygon_coordinates,
+    }));
+
+    res.status(200).json(farms);
   } catch (error) {
     console.error("Get Farms Error:", error);
 
@@ -116,7 +124,14 @@ exports.getFarmById = async (req, res) => {
       });
     }
 
-    res.status(200).json(result.rows[0]);
+    const farm = result.rows[0];
+
+    farm.polygon_coordinates =
+      typeof farm.polygon_coordinates === "string"
+        ? JSON.parse(farm.polygon_coordinates)
+        : farm.polygon_coordinates;
+
+    res.status(200).json(farm);
   } catch (error) {
     console.error("Get Farm Error:", error);
 

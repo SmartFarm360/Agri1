@@ -13,11 +13,7 @@ import {
   Beaker,
 } from "lucide-react";
 
-import {
-  AlertTriangle,
-  MapPin,
-  Clock,
-} from "lucide-react";
+import { AlertTriangle, MapPin, Clock } from "lucide-react";
 import AddFarmModal from "./AddFarmModal";
 
 const translations = {
@@ -232,27 +228,39 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         const halfLat = metersToLat(halfSideMeters);
         const halfLng = metersToLng(halfSideMeters, latitude);
 
-        const farmBounds = [
-          [latitude - halfLat, longitude - halfLng],
-          [latitude - halfLat, longitude + halfLng],
-          [latitude + halfLat, longitude + halfLng],
-          [latitude + halfLat, longitude - halfLng],
-        ];
+        let farmBoundary;
 
-        const farmBoundary = L.polygon(farmBounds, {
-          color: "#14532d",
-          weight: 2,
-          dashArray: "6,6",
-          fillColor: "#16a34a",
-          fillOpacity: 0.15,
-        })
-          .addTo(map)
-          .bindPopup(
-            `<strong>Operational Farm Area</strong><br/>
-           ${landSizeHectares} hectares<br/>
-           <small>Farmer-declared - Advisory use only</small>`,
-            { className: "farm-area-popup" },
-          );
+        if (
+          selectedFarm.polygon_coordinates &&
+          selectedFarm.polygon_coordinates.length >= 3
+        ) {
+          farmBoundary = L.polygon(
+            selectedFarm.polygon_coordinates.map((point) => [
+              Number(point.lat),
+              Number(point.lng),
+            ]),
+            {
+              color: "#14532d",
+              weight: 2,
+              dashArray: "6,6",
+              fillColor: "#16a34a",
+              fillOpacity: 0.15,
+            },
+          )
+            .addTo(map)
+            .bindPopup(
+              `<strong>${selectedFarm.farm_name}</strong><br/>
+     Custom farm boundary`,
+            );
+        } else {
+          // fallback if no polygon exists
+          farmBoundary = L.circle([latitude, longitude], {
+            radius: 50,
+            color: "#14532d",
+            fillColor: "#16a34a",
+            fillOpacity: 0.15,
+          }).addTo(map);
+        }
 
         const gridCellsPerSide = Math.max(
           1,
@@ -328,7 +336,9 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           }
         }
 
-        map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
+        if (farmBoundary) {
+          map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
+        }
       } catch (err) {
         if (isCancelled) return;
         console.error("Leaflet map error:", err);

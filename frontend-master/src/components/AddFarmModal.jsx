@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
 import "./AddFarmModal.css";
 
 const initialForm = {
@@ -16,6 +19,67 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const [locationQuery, setLocationQuery] = useState("");
   const [locationResults, setLocationResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [boundaryPoints, setBoundaryPoints] = useState([]);
+  const mapRef = useRef(null);
+  const leafletMapRef = useRef(null);
+  const polygonRef = useRef(null);
+
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // remove old map
+    if (leafletMapRef.current) {
+      leafletMapRef.current.remove();
+      leafletMapRef.current = null;
+    }
+
+    const lat = Number(formData.latitude) || 20.5937;
+    const lng = Number(formData.longitude) || 78.9629;
+
+    const map = L.map(mapRef.current).setView([lat, lng], 15);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    map.on("click", (e) => {
+      const newPoint = {
+        lat: e.latlng.lat,
+        lng: e.latlng.lng,
+      };
+
+    setBoundaryPoints((prev) => {
+
+  const updated = [...prev, newPoint];
+
+  // remove old polygon
+  if (polygonRef.current) {
+    map.removeLayer(polygonRef.current);
+  }
+
+  // draw new polygon
+  polygonRef.current = L.polygon(updated, {
+    color: "#16a34a",
+    fillOpacity: 0.3,
+  }).addTo(map);
+
+  return updated;
+});
+
+
+      L.marker(e.latlng).addTo(map);
+    });
+
+    leafletMapRef.current = map;
+    return () => {
+  if (leafletMapRef.current) {
+    leafletMapRef.current.remove();
+    leafletMapRef.current = null;
+  }
+};
+
+  }, [formData.latitude, formData.longitude]);
 
   if (!isOpen) return null;
 
@@ -73,6 +137,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       latitude: Number(formData.latitude),
       longitude: Number(formData.longitude),
       area_hectares: Number(formData.area_hectares),
+      boundary: boundaryPoints,
     };
 
     if (
@@ -111,6 +176,8 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       }
 
       setFormData(initialForm);
+      setBoundaryPoints([]);
+
       onClose?.();
     } catch (submitError) {
       setError(submitError.message || "Failed to create farm.");
@@ -160,25 +227,48 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
               </div>
             )}
           </div>
-<input
-  type="number"
-  step="any"
-  name="latitude"
-  placeholder="Latitude"
-  value={formData.latitude}
-  readOnly
-/>
 
+          {/* MAP FOR SELECTING FARM BOUNDARY */}
+          <div
+            ref={mapRef}
+            style={{
+              height: "280px",
+              width: "100%",
+              borderRadius: "8px",
+              marginBottom: "10px",
+              border: "1px solid #d1d5db",
+            }}
+          ></div>
+
+          {/* SHOW SELECTED POINTS */}
+          {boundaryPoints.length > 0 && (
+            <div style={{ fontSize: "12px", marginBottom: "10px" }}>
+              <strong>Boundary Points:</strong>
+              {boundaryPoints.map((point, index) => (
+                <div key={index}>
+                  {index + 1}. {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
+                </div>
+              ))}
+            </div>
+          )}
 
           <input
-  type="number"
-  step="any"
-  name="longitude"
-  placeholder="Longitude"
-  value={formData.longitude}
-  readOnly
-/>
+            type="number"
+            step="any"
+            name="latitude"
+            placeholder="Latitude"
+            value={formData.latitude}
+            readOnly
+          />
 
+          <input
+            type="number"
+            step="any"
+            name="longitude"
+            placeholder="Longitude"
+            value={formData.longitude}
+            readOnly
+          />
 
           <input
             type="number"
