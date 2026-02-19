@@ -124,7 +124,8 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
         leafletMapRef.current = null;
       }
     };
-  }, [isOpen]);
+ }, [isOpen, formData.latitude, formData.longitude]);
+
 
 
   if (!isOpen) return null;
@@ -210,7 +211,8 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       fillOpacity: ratio >= 0.5 ? 0.25 : 0.12,
 
     }).addTo(map);
-    gridLayer.bringToFront();
+   setTimeout(() => gridLayer.bringToFront(), 0);
+
 
     gridLayersRef.current.push(gridLayer);
 
@@ -219,17 +221,33 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 };
 
 
-  const handleLocationSelect = (place) => {
-    setFormData((prev) => ({
-      ...prev,
-      latitude: place.lat,
-      longitude: place.lon,
-    }));
+ const handleLocationSelect = (place) => {
 
-    setLocationQuery(place.display_name);
-    setLocationResults([]);
-    setShowDropdown(false);
-  };
+  const lat = Number(place.lat);
+  const lng = Number(place.lon);
+
+  // update form state
+  setFormData((prev) => ({
+    ...prev,
+    latitude: lat,
+    longitude: lng,
+  }));
+
+  // MOVE MAP to selected location immediately
+  if (leafletMapRef.current) {
+
+    leafletMapRef.current.setView([lat, lng], 18);
+
+    // optional: add marker at selected location
+    L.marker([lat, lng]).addTo(leafletMapRef.current);
+
+  }
+
+  setLocationQuery(place.display_name);
+  setLocationResults([]);
+  setShowDropdown(false);
+};
+
 
   const handleSubmit = async (event) => {
     event.preventDefault();
