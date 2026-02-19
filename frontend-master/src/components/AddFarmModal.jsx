@@ -89,6 +89,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
               weight: 2,
             },
           ).addTo(map);
+          polygonRef.current.bringToBack();
 
           // calculate area
           const turfCoords = [
@@ -156,58 +157,67 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   };
 
   const generateGrids = (polygonCoords, map) => {
-    if (!polygonCoords || polygonCoords.length !== 4) return;
 
-    // clear old grids
-    gridLayersRef.current.forEach((layer) => map.removeLayer(layer));
-    gridLayersRef.current = [];
+  if (!polygonCoords || polygonCoords.length !== 4) return;
 
-    const coords = [
-      ...polygonCoords.map((p) => [p.lng, p.lat]),
-      [polygonCoords[0].lng, polygonCoords[0].lat],
-    ];
+  // remove old grids
+  gridLayersRef.current.forEach(layer => map.removeLayer(layer));
+  gridLayersRef.current = [];
 
-    let polygon;
+  // create turf polygon (correct order lng,lat)
+  const turfCoords = polygonCoords.map(p => [p.lng, p.lat]);
 
+  // close polygon
+  turfCoords.push([polygonCoords[0].lng, polygonCoords[0].lat]);
+
+  const farmPolygon = turf.polygon([turfCoords]);
+
+  // bounding box
+  const bbox = turf.bbox(farmPolygon);
+
+  // create grid (20m × 20m)
+  const grid = turf.squareGrid(bbox, 0.02, { units: "kilometers" });
+
+  grid.features.forEach(cell => {
+
+    // check if cell intersects farm polygon
+    const intersects = turf.booleanIntersects(cell, farmPolygon);
+
+    if (!intersects) return;
+
+    // calculate how much cell is inside farm
+    let intersection;
     try {
-      polygon = turf.polygon([coords]);
+      intersection = turf.intersect(cell, farmPolygon);
     } catch {
       return;
     }
 
-    const bbox = turf.bbox(polygon);
+    if (!intersection) return;
 
-    const grid = turf.squareGrid(bbox, 0.02, {
-      units: "kilometers",
-    });
+    const ratio =
+      turf.area(intersection) /
+      turf.area(cell);
 
-    grid.features.forEach((cell) => {
-      let intersection;
+    const leafletCoords =
+      cell.geometry.coordinates[0]
+      .map(coord => [coord[1], coord[0]]);
 
-      try {
-        intersection = turf.intersect(cell, polygon);
-      } catch {
-        return;
-      }
+    const gridLayer = L.polygon(leafletCoords, {
 
-      if (!intersection) return;
+      color: ratio >= 0.5 ? "#16a34a" : "#9ca3af",
+      weight: 1,
+      fillOpacity: ratio >= 0.5 ? 0.25 : 0.12,
 
-      const ratio = turf.area(intersection) / turf.area(cell);
+    }).addTo(map);
+    gridLayer.bringToFront();
 
-      const leafletCoords = cell.geometry.coordinates[0].map((c) => [
-        c[1],
-        c[0],
-      ]);
+    gridLayersRef.current.push(gridLayer);
 
-      const layer = L.polygon(leafletCoords, {
-        color: ratio >= 0.5 ? "#16a34a" : "#9ca3af",
-        weight: 1,
-        fillOpacity: ratio >= 0.5 ? 0.2 : 0.1,
-      }).addTo(map);
+  });
 
-      gridLayersRef.current.push(layer);
-    });
-  };
+};
+
 
   const handleLocationSelect = (place) => {
     setFormData((prev) => ({
