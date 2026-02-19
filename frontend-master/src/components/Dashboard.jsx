@@ -10,16 +10,9 @@ import {
   AlertTriangle,
   MapPin,
   Clock,
-  ChevronDown,
-  ChevronUp,
-  Grid3X3,
-  Beaker,
-  Leaf,
-  Eye,
 } from "lucide-react";
 import AddFarmModal from "./AddFarmModal";
 
-// Mock translations for demo - replace with your actual translations
 const translations = {
   en: {
     dashboard: "Agricultural Dashboard",
@@ -29,20 +22,10 @@ const translations = {
     high: "High",
     moderate: "Moderate",
     low: "Low",
-    risk: "Risk",
     activeCases: "Active Cases",
-    caseId: "Case ID",
-    gridId: "Grid ID",
-    problem: "Problem",
     recommendations: "Recommendations",
-    gridLocation: "Grid Location",
     farmLocation: "Farm Location",
     parameters: "Parameters",
-    waterLevel: "Water Level",
-    soilContent: "Soil Content",
-    nutrition: "Nutrition",
-    gridView: "Grid View",
-    viewDetails: "View Details",
   },
 };
 
@@ -53,61 +36,21 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     moisture: 0,
     cases: [],
   });
-  const [selectedGrid, setSelectedGrid] = useState(null);
-  const [activeGridPopup, setActiveGridPopup] = useState(null);
 
   const [farms, setFarms] = useState([]);
   const [loadingFarms, setLoadingFarms] = useState(true);
   const [showAddFarmModal, setShowAddFarmModal] = useState(false);
   const [selectedFarm, setSelectedFarm] = useState(null);
-
-  // 🌾 Farmer-declared land size (hectares) – later fetch from backend
-
   const [activeCase, setActiveCase] = useState(null);
-
   const [mapError, setMapError] = useState(null);
-  // const apiKey = "ploikagbfmtisxflsxfuwhszpqmbwkdlzvtg"; // MapmyIndia API Key
+
   const mapRef = useRef(null);
+  const leafletMapRef = useRef(null);
 
-  const leafletMapRef = useRef(null); //new
-
-  // Fallback to translations["en"] if translatedText is missing
-  const fallbackText = translations[currentLanguage] || translations["en"];
+  const fallbackText = translations[currentLanguage] || translations.en;
   const t = new Proxy(translatedText || fallbackText, {
     get: (target, prop) => target[prop] || prop,
   });
-
-  // Generate grid data
-  const generateGridData = () => {
-    const grids = [];
-    for (let i = 1; i <= 24; i++) {
-      const status =
-        Math.random() > 0.7 ? "high" : Math.random() > 0.4 ? "moderate" : "low";
-      grids.push({
-        id: `GRID-${i.toString().padStart(3, "0")}`,
-        status,
-        waterLevel: Math.floor(Math.random() * 40) + 30,
-        moisture: Math.floor(Math.random() * 50) + 25,
-        soilContent: Math.floor(Math.random() * 30) + 40,
-        nutrition: Math.floor(Math.random() * 35) + 45,
-        recommendations:
-          status === "high"
-            ? "Immediate irrigation needed, check drainage system"
-            : status === "moderate"
-              ? "Monitor closely, consider fertilizer application"
-              : "Maintain current conditions, regular monitoring",
-      });
-    }
-    return grids;
-  };
-
-  const [gridData, setGridData] = useState(generateGridData());
-  // Convert meters to latitude degrees
-  const metersToLat = (m) => m / 111320;
-
-  // Convert meters to longitude degrees (latitude dependent)
-  const metersToLng = (m, lat) =>
-    m / (111320 * Math.cos((lat * Math.PI) / 180));
 
   useEffect(() => {
     const fetchFarms = async () => {
@@ -124,10 +67,8 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         if (!res.ok) throw new Error("Failed to fetch farms");
 
         const data = await res.json();
-
         setFarms(data);
 
-        // set default farm
         if (data.length > 0) {
           setSelectedFarm(data[0]);
         }
@@ -139,59 +80,44 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
       }
     };
 
-    
- fetchFarms();
-
-}, []);   // ✅ FIXED
-
+    fetchFarms();
+  }, []);
 
   useEffect(() => {
-    
     const initMap = async () => {
-  try {
+      try {
+        if (!mapRef.current || !selectedFarm) return;
 
-    if (!mapRef.current || !selectedFarm) return;
+        const latitude = Number(selectedFarm.latitude);
+        const longitude = Number(selectedFarm.longitude);
+        const visualLat = latitude + 0.0025;
+        const visualLng = longitude + 0.0025;
 
-    let latitude = Number(selectedFarm.latitude);
-    let longitude = Number(selectedFarm.longitude);
+        if (leafletMapRef.current) {
+          leafletMapRef.current.remove();
+          leafletMapRef.current = null;
+        }
 
-    const visualLat = latitude + 0.0025;
-    const visualLng = longitude + 0.0025;
+        const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
+        leafletMapRef.current = map;
 
-    // SAFE REMOVE OLD MAP
-    if (leafletMapRef.current) {
-      leafletMapRef.current.remove();
-      leafletMapRef.current = null;
-    }
-
-    const map = L.map(mapRef.current).setView([visualLat, visualLng], 16);
-
-    leafletMapRef.current = map;
-
-
-        // 🌍 Tiles
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "© OpenStreetMap contributors",
         }).addTo(map);
 
-        // 📍 Marker
         L.marker([visualLat, visualLng])
           .addTo(map)
           .bindPopup("Farm Location")
           .openPopup();
 
-        // 🌾 Farm boundary
         const landSizeHectares = Number(
           selectedFarm.area_hectares || selectedFarm.landSize || 1,
         );
-
         const areaSqMeters = landSizeHectares * 10000;
         const sideMeters = Math.sqrt(areaSqMeters);
-
         const metersToLat = (m) => m / 111320;
         const metersToLng = (m, lat) =>
           m / (111320 * Math.cos((lat * Math.PI) / 180));
-
         const halfLat = metersToLat(sideMeters / 2);
         const halfLng = metersToLng(sideMeters / 2, visualLat);
 
@@ -215,48 +141,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
            ${landSizeHectares} hectares<br/>
            <small>Farmer-declared • Advisory use only</small>`,
           );
-
-        // 🧩 Grid drawing
-        const gridRows = 5;
-        const gridCols = 5;
-        let index = 0;
-
-        const latStep = (halfLat * 2) / gridRows;
-        const lngStep = (halfLng * 2) / gridCols;
-
-        for (let row = 0; row < gridRows; row++) {
-          for (let col = 0; col < gridCols; col++) {
-            if (!gridData[index]) continue;
-
-            const grid = gridData[index++];
-            const startLat = visualLat - halfLat + row * latStep;
-            const startLng = visualLng - halfLng + col * lngStep;
-
-            const bounds = [
-              [startLat, startLng],
-              [startLat + latStep, startLng + lngStep],
-            ];
-
-            const color =
-              grid.status === "high"
-                ? "#ef4444"
-                : grid.status === "moderate"
-                  ? "#f59e0b"
-                  : "#10b981";
-
-            const rectangle = L.rectangle(bounds, {
-              color,
-              weight: 1,
-              fillOpacity: 0.35,
-            }).addTo(map);
-
-            rectangle.on("click", () => {
-              map.flyToBounds(bounds, { padding: [50, 50], duration: 0.8 });
-              setSelectedGrid(grid);
-              setActiveGridPopup(grid);
-            });
-          }
-        }
       } catch (err) {
         console.error("Leaflet map error:", err);
         setMapError("Unable to load map");
@@ -271,11 +155,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         leafletMapRef.current = null;
       }
     };
- }, [selectedFarm]);
- // ✅ IMPORTANT: EMPTY DEPENDENCY
+  }, [selectedFarm]);
 
   useEffect(() => {
     if (activeCase) return;
+
     const generateData = () => {
       const newData = {
         temperature: Math.floor(Math.random() * 15) + 20,
@@ -336,6 +220,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           },
         ],
       };
+
       setDashboardData(newData);
     };
 
@@ -350,16 +235,20 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
       if (value < 25) return "low";
       return "moderate";
     }
+
     if (type === "humidity") {
       if (value > 70) return "high";
       if (value < 50) return "low";
       return "moderate";
     }
+
     if (type === "moisture") {
       if (value < 40) return "high";
       if (value > 70) return "low";
       return "moderate";
     }
+
+    return "low";
   };
 
   const getMetricIcon = (type) => {
@@ -375,42 +264,14 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     }
   };
 
-  const getGridIcon = (type) => {
-    switch (type) {
-      case "temperature":
-        return <Droplets className="grid-metric-icon" />;
-      case "humidity":
-        return <Sprout className="grid-metric-icon" />;
-      case "moisture":
-        return <Beaker className="grid-metric-icon" />;
-      case "soilContent":
-        return <Leaf className="grid-metric-icon" />;
-      default:
-        return null;
-    }
-  };
-
-  const toggleCase = (caseId) => {
-    setOpenCases((prev) => ({
-      ...prev,
-      [caseId]: !prev[caseId],
-    }));
-  };
-
-  const handleGridClick = (grid) => {
-    setSelectedGrid(grid);
-    setActiveGridPopup(grid);
-  };
-
   return (
     <div className="dashboard-container">
       <div className="dashboard-content">
-        {/* Header */}
         <div className="dashboard-header">
           <h1 className="dashboard-title">{t.dashboard}</h1>
           <div className="title-underline"></div>
         </div>
-        {/* First Section: Map and Parameters */}
+
         <div className="main-section">
           <div className="map-container">
             <div className="map-card">
@@ -426,7 +287,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                       const farm = farms.find(
                         (f) => f.farm_id == e.target.value,
                       );
-
                       setSelectedFarm(farm);
                     }}
                   >
@@ -437,17 +297,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                     ))}
                   </select>
                 )}
-
-                {selectedGrid && (
-                  <span className="selected-grid-info">
-                    - Viewing {selectedGrid.id}
-                  </span>
-                )}
               </div>
+
               <div className="map-placeholder">
                 {mapError && <div className="map-error">{mapError}</div>}
 
-                {/* MAP - full space */}
                 <div className="map-wrapper">
                   <div
                     ref={mapRef}
@@ -484,69 +338,17 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 </div>
               </div>
 
-              {/* Land declaration disclaimer - below map box */}
               <div className="map-disclaimer-inline">
                 <strong>Operational Farm Area</strong>
                 <span>
-                  Boundary shown is farmer-declared for advisory & monitoring
+                  Boundary shown is farmer-declared for advisory and monitoring
                   purposes only.
                 </span>
               </div>
             </div>
           </div>
-          <div className="parameters-container">
-            <h2 className="parameters-title">{t.parameters}</h2>
-            <div className="parameters-grid">
-              {["temperature", "humidity", "moisture"].map((type) => {
-                const value = dashboardData[type];
-                const risk = getRiskLevel(value, type);
-                const percentage =
-                  type === "temperature" ? (value / 40) * 100 : value;
-                return (
-                  <div key={type} className={`parameter-card ${risk}-risk`}>
-                    <div className="card-background"></div>
-                    <div className="card-content">
-                      <div className="parameter-header">
-                        <div className="parameter-title-section">
-                          <div
-                            className={`parameter-icon-container ${risk}-gradient`}
-                          >
-                            {getMetricIcon(type)}
-                          </div>
-                          <h3 className="parameter-title">{t[type]}</h3>
-                        </div>
-                        <div className={`risk-badge ${risk}-gradient`}>
-                          {t[risk]}
-                        </div>
-                      </div>
-                      <div className="parameter-value-section">
-                        <span className="parameter-value">{value}</span>
-                        <span className="parameter-unit">
-                          {type === "temperature" ? "°C" : "%"}
-                        </span>
-                      </div>
-                      <div className="progress-container">
-                        <div className="progress-track">
-                          <div
-                            className={`progress-bar ${risk}-gradient`}
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          ></div>
-                        </div>
-                        <div className="progress-labels">
-                          <span>0</span>
-                          <span>
-                            {type === "temperature" ? "40°C" : "100%"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
-        {/* Second Section: Recommendations */}
+
         <div className="recommendations-section">
           <div className="section-header">
             <h2 className="section-title">{t.recommendations}</h2>
@@ -587,45 +389,65 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             </div>
           </div>
         </div>
-        {/* Third Section: Grid View and Active Cases */}
+
         <div className="bottom-section">
           <div className="grid-container">
-            <div className="grid-header">
-              <Grid3X3 className="grid-icon" />
-              <h3 className="grid-title">{t.gridView}</h3>
+            <div className="cases-header">
+              <h3 className="cases-title">{t.parameters}</h3>
             </div>
-            <div className="grid-wrapper">
-              {gridData.map((grid) => (
-                <div key={grid.id} className="grid-item-container">
-                  <div
-                    className={`grid-item ${grid.status}-status ${
-                      selectedGrid?.id === grid.id ? "selected" : ""
-                    }`}
-                    onClick={() => handleGridClick(grid)}
-                  >
-                    <span className="grid-id">{grid.id}</span>
-                    <div
-                      className={`status-indicator ${grid.status}-indicator`}
-                    ></div>
+            <div className="parameters-grid">
+              {["temperature", "humidity", "moisture"].map((type) => {
+                const value = dashboardData[type];
+                const risk = getRiskLevel(value, type);
+                const percentage =
+                  type === "temperature" ? (value / 40) * 100 : value;
+
+                return (
+                  <div key={type} className={`parameter-card ${risk}-risk`}>
+                    <div className="card-background"></div>
+                    <div className="card-content">
+                      <div className="parameter-header">
+                        <div className="parameter-title-section">
+                          <div
+                            className={`parameter-icon-container ${risk}-gradient`}
+                          >
+                            {getMetricIcon(type)}
+                          </div>
+                          <h3 className="parameter-title">{t[type]}</h3>
+                        </div>
+                        <div className={`risk-badge ${risk}-gradient`}>
+                          {t[risk]}
+                        </div>
+                      </div>
+
+                      <div className="parameter-value-section">
+                        <span className="parameter-value">{value}</span>
+                        <span className="parameter-unit">
+                          {type === "temperature" ? "°C" : "%"}
+                        </span>
+                      </div>
+
+                      <div className="progress-container">
+                        <div className="progress-track">
+                          <div
+                            className={`progress-bar ${risk}-gradient`}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                          ></div>
+                        </div>
+                        <div className="progress-labels">
+                          <span>0</span>
+                          <span>
+                            {type === "temperature" ? "40°C" : "100%"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <div className="grid-legend">
-              <div className="legend-item">
-                <div className="legend-color-low-status"></div>
-                <span id="low">Low Risk</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-color-moderate-status"></div>
-                <span id="moderate">Moderate Risk</span>
-              </div>
-              <div className="legend-item">
-                <div className="legend-color-high-status"></div>
-                <span id="high">High Risk</span>
-              </div>
+                );
+              })}
             </div>
           </div>
+
           <div className="cases-container">
             <div className="cases-header">
               <h3 className="cases-title">{t.activeCases}</h3>
@@ -666,51 +488,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         </div>
       </div>
 
-      {activeGridPopup && (
-        <div
-          className="grid-popup-overlay"
-          onClick={() => setActiveGridPopup(null)}
-        >
-          <div className="grid-popup" onClick={(e) => e.stopPropagation()}>
-            <div className="grid-popup-header">
-              <h3>{activeGridPopup.id} Details</h3>
-              <button
-                className="popup-close"
-                onClick={() => setActiveGridPopup(null)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid-metrics">
-              <div className="grid-metric">
-                <span>Water Level</span>
-                <strong>{activeGridPopup.waterLevel}%</strong>
-              </div>
-              <div className="grid-metric">
-                <span>Soil Moisture</span>
-                <strong>{activeGridPopup.moisture}%</strong>
-              </div>
-              <div className="grid-metric">
-                <span>Soil Content</span>
-                <strong>{activeGridPopup.soilContent}%</strong>
-              </div>
-              <div className="grid-metric">
-                <span>Nutrition</span>
-                <strong>{activeGridPopup.nutrition}%</strong>
-              </div>
-            </div>
-
-            <div className="grid-recommendations">
-              <h4>Recommendations</h4>
-              <p>{activeGridPopup.recommendations}</p>
-            </div>
-
-            <button className="resolve-btn">Resolve</button>
-          </div>
-        </div>
-      )}
-
       {activeCase && (
         <div className="case-modal-overlay" onClick={() => setActiveCase(null)}>
           <div className="case-modal" onClick={(e) => e.stopPropagation()}>
@@ -745,10 +522,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 <p>{activeCase.recommendations}</p>
               </div>
 
-              <button
-                className="resolve-btn"
-                onClick={() => setActiveCase(null)}
-              >
+              <button className="resolve-btn" onClick={() => setActiveCase(null)}>
                 Back
               </button>
             </div>
@@ -756,13 +530,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         </div>
       )}
 
-      {/* ADD FARM MODAL — ADD THIS BLOCK HERE */}
       <AddFarmModal
         isOpen={showAddFarmModal}
         onClose={() => setShowAddFarmModal(false)}
         onFarmAdded={(newFarm) => {
           setFarms((prev) => [...prev, newFarm]);
-
           setSelectedFarm(newFarm);
         }}
       />
