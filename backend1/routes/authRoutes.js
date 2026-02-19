@@ -2,29 +2,32 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 
-// ✅ FIX 1: Import controller as OBJECT (prevents undefined)
 const authController = require("../controllers/authController");
+const { landDocumentUpload } = require("../middleware/backBlazeUpload");
 
-// ✅ FIX 2: Proper destructuring from backBlazeUpload
-const { landDocumentUpload } = require('../middleware/backBlazeUpload');
+/* ✅ FIX: allow preflight */
+router.options("/register", (req, res) => {
+  res.sendStatus(204);
+});
 
-
-// ================= REGISTER =================
+/* REGISTER */
 router.post(
   "/register",
   landDocumentUpload.single("landDocument"),
   authController.register
 );
 
-// ================= LOGIN / LOGOUT =================
+/* LOGIN */
 router.post("/login", authController.login);
+
+/* LOGOUT */
 router.post("/logout", authMiddleware, authController.logout);
 
-// ================= OTP =================
+/* OTP */
 router.post("/send-otp", authController.sendOTP);
 router.post("/verify-otp", authController.verifyOTP);
 
-// ================= PROFILE =================
+/* PROFILE */
 router.get("/profile", authMiddleware, authController.getProfile);
 router.put("/profile", authMiddleware, authController.updateProfile);
 

@@ -16,7 +16,7 @@ app.set("trust proxy", 1);
    🔥 CORS (FINAL – STABLE)
    ========================= */
 const allowedOrigins = [
-  "https://agri1-32qq.onrender.com",
+  "https://agri1-1.onrender.com",
   "http://localhost:5173",
   "http://localhost:3000",
   process.env.FRONTEND_URL,
