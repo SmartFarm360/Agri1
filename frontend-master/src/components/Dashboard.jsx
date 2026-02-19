@@ -626,10 +626,9 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               {[
                 "temperature",
                 "moisture",
-                "nutrients",
-                "ph",
+               
                 "humidity",
-                "waterLevel",
+            
               ].map((type) => {
                 const value = dashboardData[type];
                 const risk = getRiskLevel(value, type);

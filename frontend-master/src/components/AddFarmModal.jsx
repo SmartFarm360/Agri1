@@ -25,8 +25,9 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const polygonRef = useRef(null);
   const gridLayersRef = useRef([]);
 
-
   useEffect(() => {
+    if (!isOpen) return;
+
     if (!mapRef.current) return;
 
     // remove old map
@@ -115,8 +116,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
         leafletMapRef.current = null;
       }
     };
- }, []);
-
+  }, [isOpen, formData.latitude, formData.longitude]);
 
   if (!isOpen) return null;
 
@@ -148,53 +148,43 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   };
 
   const generateGrids = (polygonCoords, map) => {
+    // remove old grids
+    gridLayersRef.current.forEach((layer) => map.removeLayer(layer));
+    gridLayersRef.current = [];
 
-  // remove old grids
-  gridLayersRef.current.forEach(layer => map.removeLayer(layer));
-  gridLayersRef.current = [];
+    if (polygonCoords.length < 3) return;
 
-  if (polygonCoords.length < 3) return;
+    const polygon = turf.polygon([
+      [
+        ...polygonCoords.map((p) => [p.lng, p.lat]),
+        [polygonCoords[0].lng, polygonCoords[0].lat],
+      ],
+    ]);
 
-  const polygon = turf.polygon([
-    [...polygonCoords.map(p => [p.lng, p.lat]),
-     [polygonCoords[0].lng, polygonCoords[0].lat]]
-  ]);
+    const bbox = turf.bbox(polygon);
 
-  const bbox = turf.bbox(polygon);
+    const grid = turf.squareGrid(bbox, 0.02, {
+      units: "kilometers",
+    });
 
-  const grid = turf.squareGrid(bbox, 0.02, {
-    units: "kilometers",
-  });
+    grid.features.forEach((cell) => {
+      const intersection = turf.intersect(cell, polygon);
 
-  grid.features.forEach(cell => {
+      if (!intersection) return;
 
-    const intersection = turf.intersect(cell, polygon);
+      const ratio = turf.area(intersection) / turf.area(cell);
 
-    if (!intersection) return;
+      const coords = cell.geometry.coordinates[0].map((c) => [c[1], c[0]]);
 
-    const ratio =
-      turf.area(intersection) /
-      turf.area(cell);
+      const layer = L.polygon(coords, {
+        color: ratio >= 0.5 ? "#16a34a" : "#9ca3af",
+        weight: 1,
+        fillOpacity: ratio >= 0.5 ? 0.2 : 0.1,
+      }).addTo(map);
 
-    const coords =
-      cell.geometry.coordinates[0]
-      .map(c => [c[1], c[0]]);
-
-    const layer = L.polygon(coords, {
-
-      color: ratio >= 0.5 ? "#16a34a" : "#9ca3af",
-      weight: 1,
-      fillOpacity: ratio >= 0.5 ? 0.2 : 0.1,
-
-    }).addTo(map);
-
-    gridLayersRef.current.push(layer);
-
-  });
-
-};
-
-   
+      gridLayersRef.current.push(layer);
+    });
+  };
 
   const handleLocationSelect = (place) => {
     setFormData((prev) => ({
@@ -275,6 +265,10 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <button className="modal-close-btn" onClick={onClose}>
+          ✕
+        </button>
+
         <h2>Add Farm</h2>
 
         <form onSubmit={handleSubmit}>
@@ -318,7 +312,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
           <div
             ref={mapRef}
             style={{
-              height: "280px",
+              height: "300px",
               width: "100%",
               borderRadius: "8px",
               marginBottom: "10px",

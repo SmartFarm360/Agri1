@@ -125,3 +125,21 @@
 .location-item:hover {
   background: #f0fdf4;
 }
+.modal-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  color: #111;
+}
+.modal input {
+  background: white;
+  color: black;
+}
+
+.modal input::placeholder {
+  color: #374151;
+}
