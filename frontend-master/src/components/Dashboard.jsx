@@ -5,6 +5,13 @@ import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import {
+  Thermometer,
+  Droplets,
+  Sprout,
+  FlaskConical,
+  Beaker,
+} from "lucide-react";
 
 import {
   Thermometer,
@@ -66,8 +73,10 @@ const gridRiskColor = {
 const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   const [dashboardData, setDashboardData] = useState({
     temperature: 0,
-    humidity: 0,
     moisture: 0,
+    nutrients: 0,
+    ph: 0,
+    waterLevel: 0,
     cases: [],
   });
 
@@ -351,9 +360,13 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
     const generateData = () => {
       const newData = {
-        temperature: Math.floor(Math.random() * 15) + 20,
-        humidity: Math.floor(Math.random() * 40) + 40,
+        temperature: Math.floor(Math.random() * 18) + 18,
         moisture: Math.floor(Math.random() * 50) + 30,
+        nutrients: Math.floor(Math.random() * 60) + 30,
+        ph: (Math.random() * 3 + 5).toFixed(1),
+        humidity: Math.floor(Math.random() * 40) + 40,
+        waterLevel: Math.floor(Math.random() * 70) + 20,
+
         cases: [
           {
             caseId: `CASE-${Math.floor(Math.random() * 10000)}`,
@@ -444,15 +457,18 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     switch (type) {
       case "temperature":
         return <Thermometer className="metric-icon" />;
-      case "humidity":
-        return <Droplets className="metric-icon" />;
       case "moisture":
         return <Sprout className="metric-icon" />;
+      case "nutrients":
+        return <FlaskConical className="metric-icon" />;
+      case "ph":
+        return <Beaker className="metric-icon" />;
+      case "waterLevel":
+        return <Droplets className="metric-icon" />;
       default:
         return null;
     }
   };
-
   return (
     <div className="dashboard-container">
       <div className="dashboard-content">
@@ -600,7 +616,14 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               <h3 className="cases-title">{t.parameters}</h3>
             </div>
             <div className="parameters-grid">
-              {["temperature", "humidity", "moisture"].map((type) => {
+              {[
+                "temperature",
+                "moisture",
+                "nutrients",
+                "ph",
+                "humidity",
+                "waterLevel",
+              ].map((type) => {
                 const value = dashboardData[type];
                 const risk = getRiskLevel(value, type);
                 const percentage =
@@ -627,7 +650,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                       <div className="parameter-value-section">
                         <span className="parameter-value">{value}</span>
                         <span className="parameter-unit">
-                          {type === "temperature" ? "°C" : "%"}
+                          {type === "temperature"
+                            ? "°C"
+                            : type === "ph"
+                              ? "pH"
+                              : "%"}
                         </span>
                       </div>
 
