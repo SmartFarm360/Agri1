@@ -104,3 +104,24 @@
   background: #9ca3af;
   cursor: not-allowed;
 }
+
+
+.location-dropdown {
+  position: absolute;
+  background: white;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 9999;
+}
+
+.location-item {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.location-item:hover {
+  background: #f0fdf4;
+}

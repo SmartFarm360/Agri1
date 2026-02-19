@@ -90,8 +90,8 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
         const latitude = Number(selectedFarm.latitude);
         const longitude = Number(selectedFarm.longitude);
-        const visualLat = latitude + 0.0025;
-        const visualLng = longitude + 0.0025;
+        const visualLat = latitude;
+        const visualLng = longitude;
 
         if (leafletMapRef.current) {
           leafletMapRef.current.remove();
@@ -105,10 +105,13 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           attribution: "© OpenStreetMap contributors",
         }).addTo(map);
 
-        L.marker([visualLat, visualLng])
-          .addTo(map)
-          .bindPopup("Farm Location")
-          .openPopup();
+     const marker = L.marker([latitude, longitude])
+.addTo(map)
+.bindPopup(selectedFarm.farm_name)
+.openPopup();
+
+map.setView([latitude, longitude], 16);
+
 
         const landSizeHectares = Number(
           selectedFarm.area_hectares || selectedFarm.landSize || 1,
@@ -522,7 +525,10 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 <p>{activeCase.recommendations}</p>
               </div>
 
-              <button className="resolve-btn" onClick={() => setActiveCase(null)}>
+              <button
+                className="resolve-btn"
+                onClick={() => setActiveCase(null)}
+              >
                 Back
               </button>
             </div>

@@ -13,6 +13,10 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const [locationQuery, setLocationQuery] = useState("");
+  const [locationResults, setLocationResults] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
   if (!isOpen) return null;
 
   const handleChange = (event) => {
@@ -21,6 +25,25 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const searchLocation = async (query) => {
+    if (!query || query.length < 3) {
+      setLocationResults([]);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&limit=5`,
+      );
+
+      const data = await res.json();
+      setLocationResults(data);
+      setShowDropdown(true);
+    } catch (err) {
+      console.error("Location search error:", err);
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -32,6 +55,19 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       setError("Please login again.");
       return;
     }
+
+    const handleLocationSelect = (place) => {
+      setFormData((prev) => ({
+        ...prev,
+        latitude: place.lat,
+        longitude: place.lon,
+      }));
+
+      setLocationQuery(place.display_name);
+
+      setLocationResults([]);
+      setShowDropdown(false);
+    };
 
     const payload = {
       farm_name: formData.farm_name.trim(),
@@ -53,7 +89,8 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 
     try {
       setSaving(true);
-      const API_URL = import.meta.env.VITE_API_URL || "https://agri1-32qq.onrender.com";
+      const API_URL =
+        import.meta.env.VITE_API_URL || "https://agri1-32qq.onrender.com";
 
       const response = await fetch(`${API_URL}/api/farm/create`, {
         method: "POST",
@@ -98,25 +135,51 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
             required
           />
 
-          <input
-            type="number"
-            step="any"
-            name="latitude"
-            placeholder="Latitude"
-            value={formData.latitude}
-            onChange={handleChange}
-            required
-          />
+          {/* NEW LOCATION SEARCH INPUT */}
+          <div style={{ position: "relative" }}>
+            <input
+              type="text"
+              placeholder="Search Village / Farm Location"
+              value={locationQuery}
+              onChange={(e) => {
+                setLocationQuery(e.target.value);
+                searchLocation(e.target.value);
+              }}
+            />
+
+            {showDropdown && locationResults.length > 0 && (
+              <div className="location-dropdown">
+                {locationResults.map((place, index) => (
+                  <div
+                    key={index}
+                    className="location-item"
+                    onClick={() => handleLocationSelect(place)}
+                  >
+                    {place.display_name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+<input
+  type="number"
+  step="any"
+  name="latitude"
+  placeholder="Latitude"
+  value={formData.latitude}
+  readOnly
+/>
+
 
           <input
-            type="number"
-            step="any"
-            name="longitude"
-            placeholder="Longitude"
-            value={formData.longitude}
-            onChange={handleChange}
-            required
-          />
+  type="number"
+  step="any"
+  name="longitude"
+  placeholder="Longitude"
+  value={formData.longitude}
+  readOnly
+/>
+
 
           <input
             type="number"
@@ -130,7 +193,13 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
           />
 
           {error && (
-            <p style={{ color: "#b91c1c", fontSize: "0.85rem", margin: "0 0 10px" }}>
+            <p
+              style={{
+                color: "#b91c1c",
+                fontSize: "0.85rem",
+                margin: "0 0 10px",
+              }}
+            >
               {error}
             </p>
           )}
