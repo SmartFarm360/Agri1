@@ -51,57 +51,44 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
         lng: e.latlng.lng,
       };
 
-      // useEffect(() => {
-      //   if (boundaryPoints.length < 3) return;
-
-      //   const coords = boundaryPoints.map((p) => [p.lng, p.lat]);
-
-      //   coords.push(coords[0]); // close polygon
-
-      //   const polygon = turf.polygon([coords]);
-
-      //   const areaSqMeters = turf.area(polygon);
-
-      //   const areaHectares = areaSqMeters / 10000;
-
-      //   setFormData((prev) => ({
-      //     ...prev,
-      //     area_hectares: areaHectares.toFixed(2),
-      //   }));
-      // }, [boundaryPoints]);
-
       setBoundaryPoints((prev) => {
+        // ✅ LIMIT TO 4 POINTS ONLY
+        if (prev.length >= 4) {
+          alert("Only 4 boundary points allowed");
+          return prev;
+        }
+
         const updated = [...prev, newPoint];
 
-        // draw polygon
+        // remove old polygon
         if (polygonRef.current) {
           map.removeLayer(polygonRef.current);
         }
 
-        polygonRef.current = L.polygon(updated, {
-          color: "#16a34a",
-          fillOpacity: 0.3,
-        }).addTo(map);
+        // draw polygon ONLY when 4 points reached
+        if (updated.length === 4) {
+          polygonRef.current = L.polygon(updated, {
+            color: "#16a34a",
+            fillOpacity: 0.3,
+          }).addTo(map);
 
-        // calculate area automatically
-        if (updated.length >= 3) {
+          // calculate area
           const coords = updated.map((p) => [p.lng, p.lat]);
-
           coords.push(coords[0]);
 
           const polygon = turf.polygon([coords]);
 
           const areaSqMeters = turf.area(polygon);
-
           const areaHectares = areaSqMeters / 10000;
 
           setFormData((prev) => ({
             ...prev,
             area_hectares: Number(areaHectares.toFixed(2)),
           }));
-        }
 
-        generateGrids(updated, map);
+          // generate grids ONLY when valid polygon
+          generateGrids(updated, map);
+        }
 
         return updated;
       });
@@ -149,10 +136,12 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 
   const generateGrids = (polygonCoords, map) => {
     // remove old grids
+
+     if (!polygonCoords || polygonCoords.length !== 4) return;
     gridLayersRef.current.forEach((layer) => map.removeLayer(layer));
     gridLayersRef.current = [];
 
-    if (polygonCoords.length < 3) return;
+   
 
     const polygon = turf.polygon([
       [
