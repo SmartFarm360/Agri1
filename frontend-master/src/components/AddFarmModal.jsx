@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
 import "./AddFarmModal.css";
+import * as turf from "@turf/turf";
 
 const initialForm = {
   farm_name: "",
@@ -23,7 +23,6 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const polygonRef = useRef(null);
-
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -49,36 +48,53 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
         lng: e.latlng.lng,
       };
 
-    setBoundaryPoints((prev) => {
+      useEffect(() => {
+        if (boundaryPoints.length < 3) return;
 
-  const updated = [...prev, newPoint];
+        const coords = boundaryPoints.map((p) => [p.lng, p.lat]);
 
-  // remove old polygon
-  if (polygonRef.current) {
-    map.removeLayer(polygonRef.current);
-  }
+        coords.push(coords[0]); // close polygon
 
-  // draw new polygon
-  polygonRef.current = L.polygon(updated, {
-    color: "#16a34a",
-    fillOpacity: 0.3,
-  }).addTo(map);
+        const polygon = turf.polygon([coords]);
 
-  return updated;
-});
+        const areaSqMeters = turf.area(polygon);
 
+        const areaHectares = areaSqMeters / 10000;
+
+        setFormData((prev) => ({
+          ...prev,
+          area_hectares: areaHectares.toFixed(2),
+        }));
+      }, [boundaryPoints]);
+
+      setBoundaryPoints((prev) => {
+        const updated = [...prev, newPoint];
+
+        // remove old polygon
+        if (polygonRef.current) {
+          map.removeLayer(polygonRef.current);
+        }
+
+        // draw new polygon
+        polygonRef.current = L.polygon(updated, {
+          color: "#16a34a",
+          fillOpacity: 0.3,
+        }).addTo(map);
+        generateGrids(updated, map);
+
+        return updated;
+      });
 
       L.marker(e.latlng).addTo(map);
     });
 
     leafletMapRef.current = map;
     return () => {
-  if (leafletMapRef.current) {
-    leafletMapRef.current.remove();
-    leafletMapRef.current = null;
-  }
-};
-
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+    };
   }, [formData.latitude, formData.longitude]);
 
   if (!isOpen) return null;
@@ -108,6 +124,45 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     } catch (err) {
       console.error("Location search error:", err);
     }
+  };
+
+  const generateGrids = (polygonCoords, map) => {
+    const polygon = turf.polygon([polygonCoords.map((p) => [p.lng, p.lat])]);
+
+    const bbox = turf.bbox(polygon);
+
+    const cellSize = 0.02; // 20 meters = 0.02 km
+
+    const grid = turf.squareGrid(bbox, cellSize, {
+      units: "kilometers",
+    });
+
+    grid.features.forEach((cell) => {
+      const intersection = turf.intersect(cell, polygon);
+
+      if (!intersection) return;
+
+      const intersectionArea = turf.area(intersection);
+      const cellArea = turf.area(cell);
+
+      const ratio = intersectionArea / cellArea;
+
+      const coords = cell.geometry.coordinates[0].map((c) => [c[1], c[0]]);
+
+      if (ratio >= 0.5) {
+        L.polygon(coords, {
+          color: "#16a34a",
+          weight: 1,
+          fillOpacity: 0.2,
+        }).addTo(map);
+      } else {
+        L.polygon(coords, {
+          color: "#9ca3af",
+          weight: 1,
+          fillOpacity: 0.1,
+        }).addTo(map);
+      }
+    });
   };
 
   const handleLocationSelect = (place) => {
@@ -270,7 +325,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
             readOnly
           />
 
-          <input
+          {/* <input
             type="number"
             step="any"
             min="0.01"
@@ -279,7 +334,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
             value={formData.area_hectares}
             onChange={handleChange}
             required
-          />
+          /> */}
 
           {error && (
             <p
