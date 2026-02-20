@@ -77,10 +77,9 @@
 
 .main-section {
   display: grid;
-  grid-template-columns: minmax(0, 680px) minmax(280px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: clamp(1.2rem, 2.5vw, 1.8rem);
   align-items: start;
-  justify-content: space-between;
   width: 100%;
   margin-bottom: clamp(1.5rem, 3vw, 2rem);
 }
@@ -140,9 +139,8 @@
   border-radius: 1rem;
   overflow: hidden;
   position: relative;
-  width: min(100%, 760px);
-  aspect-ratio: 1 / 1;
-  height: auto;
+  width: 100%;
+  height: clamp(320px, 34vw, 430px);
 }
 
 
@@ -363,8 +361,6 @@
   min-width: 0;
   grid-column: 2;
   width: 100%;
-  max-width: 360px;
-  justify-self: end;
   align-self: start;
 }
 
@@ -989,12 +985,9 @@ margin-bottom: 0.35rem;
   .main-section {
     grid-template-columns: 1fr;
     gap: clamp(1.2rem, 2.5vw, 1.5rem);
-    justify-content: stretch;
   }
 
   .map-placeholder {
-    width: 100%;
-    aspect-ratio: auto;
     height: clamp(300px, 44vw, 400px);
   }
 
@@ -1010,8 +1003,7 @@ margin-bottom: 0.35rem;
   }
 
   .parameters-panel {
-    max-width: 100%;
-    justify-self: stretch;
+    width: 100%;
   }
 
   .bottom-section {
