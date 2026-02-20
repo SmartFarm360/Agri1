@@ -15,6 +15,7 @@ import {
 
 import { AlertTriangle, MapPin, Clock } from "lucide-react";
 import AddFarmModal from "./AddFarmModal";
+import * as turf from "@turf/turf";
 
 const translations = {
   en: {
@@ -187,12 +188,12 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           },
         );
 
-// L.tileLayer(
-//   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-//   {
-//     attribution: "Tiles © Esri"
-//   }
-// ).addTo(map);
+        // L.tileLayer(
+        //   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        //   {
+        //     attribution: "Tiles © Esri"
+        //   }
+        // ).addTo(map);
 
         tileLayer.once("load", () => {
           if (isCancelled) return;
@@ -241,6 +242,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           selectedFarm.polygon_coordinates &&
           selectedFarm.polygon_coordinates.length >= 3
         ) {
+          // DRAW boundary FIRST
           farmBoundary = L.polygon(
             selectedFarm.polygon_coordinates.map((point) => [
               Number(point.lat),
@@ -253,14 +255,69 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               fillColor: "#16a34a",
               fillOpacity: 0.15,
             },
-          )
-            .addTo(map)
-            .bindPopup(
-              `<strong>${selectedFarm.farm_name}</strong><br/>
-     Custom farm boundary`,
-            );
+          ).addTo(map);
+
+          // THEN generate turf grid
+          const turfCoords = selectedFarm.polygon_coordinates.map((p) => [
+            Number(p.lng),
+            Number(p.lat),
+          ]);
+
+          turfCoords.push(turfCoords[0]);
+
+          const farmPolygon = turf.polygon([turfCoords]);
+
+          const bbox = turf.bbox(farmPolygon);
+
+          const grid = turf.squareGrid(bbox, GRID_CELL_SIZE_METERS / 1000, {
+            units: "kilometers",
+          });
+
+          grid.features.forEach((cell, index) => {
+            const intersection = turf.intersect(cell, farmPolygon);
+
+            if (!intersection) return;
+
+            const ratio = turf.area(intersection) / turf.area(cell);
+
+            if (ratio < 0.51) return;
+
+            const coords = cell.geometry.coordinates[0].map((c) => [
+              c[1],
+              c[0],
+            ]);
+
+            const seedPrefix = `${selectedFarm.farm_id}-${index}`;
+
+            const temperature = getSeededNumber(`${seedPrefix}-temp`, 21, 37);
+
+            const humidity = getSeededNumber(`${seedPrefix}-hum`, 40, 90);
+
+            const moisture = getSeededNumber(`${seedPrefix}-soil`, 25, 85);
+
+            const risk = getGridRisk(temperature, humidity, moisture);
+
+            const fillColor = gridRiskColor[risk];
+
+            const gridPolygon = L.polygon(coords, {
+              color: "#166534",
+              weight: 1,
+              fillColor,
+              fillOpacity: 0.45,
+            }).addTo(map);
+
+            gridPolygon.on("click", () => {
+              setSelectedGrid({
+                gridId: `GRID-${index + 1}`,
+                temperature,
+                humidity,
+                moisture,
+                risk,
+                cellArea: Math.round(turf.area(cell)),
+              });
+            });
+          });
         } else {
-          // fallback if no polygon exists
           farmBoundary = L.circle([latitude, longitude], {
             radius: 50,
             color: "#14532d",
@@ -269,80 +326,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           }).addTo(map);
         }
 
-        const gridCellsPerSide = Math.max(
-          1,
-          Math.ceil(sideMeters / GRID_CELL_SIZE_METERS),
-        );
-
-        for (let row = 0; row < gridCellsPerSide; row += 1) {
-          for (let col = 0; col < gridCellsPerSide; col += 1) {
-            const gridIndex = row * gridCellsPerSide + col;
-            const gridId = `GRID-${String(gridIndex + 1).padStart(3, "0")}`;
-
-            const westMeters = -halfSideMeters + col * GRID_CELL_SIZE_METERS;
-            const eastMeters = Math.min(
-              westMeters + GRID_CELL_SIZE_METERS,
-              halfSideMeters,
-            );
-            const southMeters = -halfSideMeters + row * GRID_CELL_SIZE_METERS;
-            const northMeters = Math.min(
-              southMeters + GRID_CELL_SIZE_METERS,
-              halfSideMeters,
-            );
-
-            if (westMeters >= eastMeters || southMeters >= northMeters) {
-              continue;
-            }
-
-            const seedPrefix = `${selectedFarm.farm_id || selectedFarm.farm_name}-${gridIndex + 1}`;
-            const temperature = getSeededNumber(`${seedPrefix}-temp`, 21, 37);
-            const humidity = getSeededNumber(`${seedPrefix}-hum`, 40, 90);
-            const moisture = getSeededNumber(`${seedPrefix}-soil`, 25, 85);
-            const risk = getGridRisk(temperature, humidity, moisture);
-            const fillColor = gridRiskColor[risk];
-            const cellArea = Math.round(
-              (eastMeters - westMeters) * (northMeters - southMeters),
-            );
-
-            const gridBounds = [
-              [
-                latitude + metersToLat(southMeters),
-                longitude + metersToLng(westMeters, latitude),
-              ],
-              [
-                latitude + metersToLat(southMeters),
-                longitude + metersToLng(eastMeters, latitude),
-              ],
-              [
-                latitude + metersToLat(northMeters),
-                longitude + metersToLng(eastMeters, latitude),
-              ],
-              [
-                latitude + metersToLat(northMeters),
-                longitude + metersToLng(westMeters, latitude),
-              ],
-            ];
-
-            const gridPolygon = L.polygon(gridBounds, {
-              color: "#166534",
-              weight: 1.2,
-              fillColor,
-              fillOpacity: 0.45,
-            }).addTo(map);
-
-            gridPolygon.on("click", () => {
-              setSelectedGrid({
-                gridId,
-                temperature,
-                humidity,
-                moisture,
-                risk,
-                cellArea,
-              });
-            });
-          }
-        }
-
+    
         if (farmBoundary) {
           map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
         }
@@ -630,13 +614,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               <h3 className="cases-title">{t.parameters}</h3>
             </div>
             <div className="parameters-grid">
-              {[
-                "temperature",
-                "moisture",
-               
-                "humidity",
-            
-              ].map((type) => {
+              {["temperature", "moisture", "humidity"].map((type) => {
                 const value = dashboardData[type];
                 const risk = getRiskLevel(value, type);
                 const percentage =
