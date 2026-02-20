@@ -181,11 +181,18 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         leafletMapRef.current = map;
 
         const tileLayer = L.tileLayer(
-          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
           {
-            attribution: "&copy; OpenStreetMap contributors",
+            attribution: "Tiles © Esri",
           },
         );
+
+// L.tileLayer(
+//   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+//   {
+//     attribution: "Tiles © Esri"
+//   }
+// ).addTo(map);
 
         tileLayer.once("load", () => {
           if (isCancelled) return;
