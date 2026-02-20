@@ -181,18 +181,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         leafletMapRef.current = map;
 
         const tileLayer = L.tileLayer(
-          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
           {
-            attribution: "Tiles © Esri",
+            attribution: "&copy; OpenStreetMap contributors",
           },
         );
-
-        // L.tileLayer(
-        //   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        //   {
-        //     attribution: "Tiles © Esri",
-        //   },
-        // ).addTo(map);
 
         tileLayer.once("load", () => {
           if (isCancelled) return;
@@ -630,7 +623,13 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               <h3 className="cases-title">{t.parameters}</h3>
             </div>
             <div className="parameters-grid">
-              {["temperature", "moisture", "humidity"].map((type) => {
+              {[
+                "temperature",
+                "moisture",
+               
+                "humidity",
+            
+              ].map((type) => {
                 const value = dashboardData[type];
                 const risk = getRiskLevel(value, type);
                 const percentage =
