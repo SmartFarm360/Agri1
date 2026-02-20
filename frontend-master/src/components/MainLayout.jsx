@@ -170,7 +170,6 @@ const MainLayout = ({
             <p>{t.footerDescription}</p>
           </div>
           <div className="footer-section">
-            <h4>{t.aboutUs}</h4>
             <Link to="/about" className="footer-link">{t.aboutUs}</Link>
           </div>
           <div className="footer-section">

@@ -224,6 +224,18 @@
   opacity: 0.9;
 }
 
+.footer-link {
+  color: #e8fff0;
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-block;
+  transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+  color: #9ad8ff;
+}
+
 .footer-bottom {
   text-align: center;
   margin-top: 2rem;
@@ -238,6 +250,8 @@
     padding: 0.6rem 0.75rem;
     min-height: 64px;
     gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .main-content {
@@ -246,9 +260,16 @@
   }
 
   .nav-right {
-    width: auto;
+    width: 100%;
     justify-content: flex-start;
     gap: 0.5rem;
+    order: 2;
+    padding-bottom: 2px;
+  }
+
+  .nav-left {
+    width: 100%;
+    order: 1;
   }
 
   .product-name {

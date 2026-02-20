@@ -220,7 +220,9 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           shadowSize: [41, 41],
         });
 
-        L.marker([latitude, longitude], { icon: farmMarkerIcon })
+        const centerMarker = L.marker([latitude, longitude], {
+          icon: farmMarkerIcon,
+        })
           .addTo(map)
           .bindPopup(selectedFarm.farm_name);
 
@@ -440,6 +442,14 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         if (farmBoundary) {
           map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
         }
+
+        const syncMarkerToCenter = () => {
+          centerMarker.setLatLng(map.getCenter());
+        };
+
+        syncMarkerToCenter();
+        map.on("move", syncMarkerToCenter);
+        map.on("zoom", syncMarkerToCenter);
 
         setTimeout(() => {
           if (isCancelled || !leafletMapRef.current) return;
