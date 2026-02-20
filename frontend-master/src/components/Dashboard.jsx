@@ -35,47 +35,6 @@ const translations = {
 
 const GRID_CELL_SIZE_METERS = 20;
 
-const normalizePolygonPoints = (points) => {
-  if (!Array.isArray(points)) return [];
-
-  const numericPoints = points
-    .map((point) => ({
-      lat: Number(point?.lat),
-      lng: Number(point?.lng),
-    }))
-    .filter(
-      (point) => Number.isFinite(point.lat) && Number.isFinite(point.lng),
-    );
-
-  if (numericPoints.length < 3) return [];
-
-  const seen = new Set();
-  const dedupedPoints = [];
-
-  numericPoints.forEach((point) => {
-    const key = `${point.lat.toFixed(8)}:${point.lng.toFixed(8)}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    dedupedPoints.push(point);
-  });
-
-  if (dedupedPoints.length < 3) return [];
-
-  const centroid = dedupedPoints.reduce(
-    (acc, point) => ({
-      lat: acc.lat + point.lat / dedupedPoints.length,
-      lng: acc.lng + point.lng / dedupedPoints.length,
-    }),
-    { lat: 0, lng: 0 },
-  );
-
-  return [...dedupedPoints].sort((a, b) => {
-    const angleA = Math.atan2(a.lat - centroid.lat, a.lng - centroid.lng);
-    const angleB = Math.atan2(b.lat - centroid.lat, b.lng - centroid.lng);
-    return angleA - angleB;
-  });
-};
-
 const getSeededUnit = (seed) => {
   let hash = 2166136261;
   const text = String(seed);
@@ -289,15 +248,77 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           }
         }
 
-        const normalizedPolygonCoords = normalizePolygonPoints(polygonCoords);
+        const validPolygonCoords = Array.isArray(polygonCoords)
+          ? polygonCoords
+              .map((point) => ({
+                lat: Number(point?.lat),
+                lng: Number(point?.lng),
+              }))
+              .filter(
+                (point) =>
+                  Number.isFinite(point.lat) && Number.isFinite(point.lng),
+              )
+          : [];
 
-        if (normalizedPolygonCoords.length >= 3) {
-          // DRAW boundary FIRST
+        if (validPolygonCoords.length >= 4) {
+          const seenPoints = new Set();
+          const uniquePolygonCoords = validPolygonCoords.filter((point) => {
+            const key = `${point.lat.toFixed(8)}:${point.lng.toFixed(8)}`;
+            if (seenPoints.has(key)) return false;
+            seenPoints.add(key);
+            return true;
+          });
+
+          if (uniquePolygonCoords.length < 4) {
+            throw new Error("Invalid farm polygon points");
+          }
+
+          const buildClosedCoords = (points) => {
+            const coords = points.map((p) => [Number(p.lng), Number(p.lat)]);
+            const firstCoord = coords[0];
+            const lastCoord = coords[coords.length - 1];
+
+            if (
+              !lastCoord ||
+              lastCoord[0] !== firstCoord[0] ||
+              lastCoord[1] !== firstCoord[1]
+            ) {
+              coords.push(firstCoord);
+            }
+
+            return coords;
+          };
+
+          let polygonToRender = uniquePolygonCoords;
+          let turfCoords = buildClosedCoords(polygonToRender);
+          let farmPolygon = turf.polygon([turfCoords]);
+
+          if (!turf.booleanValid(farmPolygon)) {
+            const center = polygonToRender.reduce(
+              (acc, point) => ({
+                lat: acc.lat + point.lat / polygonToRender.length,
+                lng: acc.lng + point.lng / polygonToRender.length,
+              }),
+              { lat: 0, lng: 0 },
+            );
+
+            polygonToRender = [...polygonToRender].sort((a, b) => {
+              const angleA = Math.atan2(a.lat - center.lat, a.lng - center.lng);
+              const angleB = Math.atan2(b.lat - center.lat, b.lng - center.lng);
+              return angleA - angleB;
+            });
+
+            turfCoords = buildClosedCoords(polygonToRender);
+            farmPolygon = turf.polygon([turfCoords]);
+          }
+
+          if (!turf.booleanValid(farmPolygon)) {
+            throw new Error("Invalid farm polygon");
+          }
+
+          // DRAW boundary
           farmBoundary = L.polygon(
-            normalizedPolygonCoords.map((point) => [
-              Number(point.lat),
-              Number(point.lng),
-            ]),
+            polygonToRender.map((point) => [Number(point.lat), Number(point.lng)]),
             {
               color: "#14532d",
               weight: 2,
@@ -307,47 +328,64 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             },
           ).addTo(map);
 
-          // THEN generate turf grid
-          const turfCoords = normalizedPolygonCoords.map((p) => [
-            Number(p.lng),
-            Number(p.lat),
-          ]);
-
-          const firstCoord = turfCoords[0];
-          const lastCoord = turfCoords[turfCoords.length - 1];
-
-          if (
-            !lastCoord ||
-            lastCoord[0] !== firstCoord[0] ||
-            lastCoord[1] !== firstCoord[1]
-          ) {
-            turfCoords.push(firstCoord);
-          }
-
-          const farmPolygon = turf.polygon([turfCoords]);
-
           const bbox = turf.bbox(farmPolygon);
 
-          const grid = turf.squareGrid(bbox, GRID_CELL_SIZE_METERS / 1000, {
-            units: "kilometers",
-          });
+          const MAX_GRID_CELLS = 3000;
+          const cellSizeKmBase = GRID_CELL_SIZE_METERS / 1000;
+
+          const southWest = turf.point([bbox[0], bbox[1]]);
+          const southEast = turf.point([bbox[2], bbox[1]]);
+          const northWest = turf.point([bbox[0], bbox[3]]);
+
+          const bboxWidthMeters =
+            turf.distance(southWest, southEast, { units: "kilometers" }) *
+            1000;
+          const bboxHeightMeters =
+            turf.distance(southWest, northWest, { units: "kilometers" }) *
+            1000;
+
+          const estimatedCellsAtBase =
+            (bboxWidthMeters * bboxHeightMeters) /
+            (GRID_CELL_SIZE_METERS * GRID_CELL_SIZE_METERS);
+
+          const dynamicCellSizeKm =
+            Number.isFinite(estimatedCellsAtBase) &&
+            estimatedCellsAtBase > MAX_GRID_CELLS
+              ? Math.sqrt(
+                  (bboxWidthMeters * bboxHeightMeters) / MAX_GRID_CELLS,
+                ) / 1000
+              : cellSizeKmBase;
+
+          const grid = turf.squareGrid(
+            bbox,
+            Math.max(cellSizeKmBase, dynamicCellSizeKm),
+            {
+              units: "kilometers",
+            },
+          );
 
           grid.features.forEach((cell, index) => {
-            if (!turf.booleanIntersects(cell, farmPolygon)) return;
+            const cellArea = turf.area(cell);
+            let intersectionArea = 0;
 
-            let intersection;
+            if (turf.booleanWithin(cell, farmPolygon)) {
+              intersectionArea = cellArea;
+            } else {
+              if (!turf.booleanIntersects(cell, farmPolygon)) return;
 
-            try {
-              intersection = turf.intersect(
-                turf.featureCollection([cell, farmPolygon]),
-              );
-            } catch {
-              return;
+              let intersection;
+              try {
+                intersection = turf.intersect(
+                  turf.featureCollection([cell, farmPolygon]),
+                );
+              } catch {
+                return;
+              }
+              if (!intersection) return;
+              intersectionArea = turf.area(intersection);
             }
 
-            if (!intersection) return;
-
-            const ratio = turf.area(intersection) / turf.area(cell);
+            const ratio = intersectionArea / cellArea;
 
             if (ratio < 0.51) return;
 
