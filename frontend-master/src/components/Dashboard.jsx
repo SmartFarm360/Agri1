@@ -12,6 +12,14 @@ import {
   FlaskConical,
   Beaker,
 } from "lucide-react";
+import {
+  FaTimes,
+  FaTemperatureHigh,
+  FaTint,
+  FaSeedling,
+  FaRulerCombined,
+  FaExclamationTriangle,
+} from "react-icons/fa";
 
 import { AlertTriangle, MapPin, Clock } from "lucide-react";
 import AddFarmModal from "./AddFarmModal";
@@ -34,6 +42,8 @@ const translations = {
 };
 
 const GRID_CELL_SIZE_METERS = 20;
+const SMALL_GRID_ZOOM_THRESHOLD = 17;
+const LARGE_GRID_TARGET_CELLS = 420;
 
 const getSeededUnit = (seed) => {
   let hash = 2166136261;
@@ -61,7 +71,7 @@ const getGridRisk = (temperature, humidity, moisture) => {
 const gridRiskColor = {
   high: "#ef4444",
   moderate: "#f59e0b",
-  low: "#10b981",
+  low: "#9ca3af",
 };
 
 const Dashboard = ({ currentLanguage = "en", translatedText }) => {
@@ -336,8 +346,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
           const bbox = turf.bbox(farmPolygon);
 
-          const MAX_GRID_CELLS = 3000;
-          const cellSizeKmBase = GRID_CELL_SIZE_METERS / 1000;
+          const smallCellSizeKm = GRID_CELL_SIZE_METERS / 1000;
 
           const southWest = turf.point([bbox[0], bbox[1]]);
           const southEast = turf.point([bbox[2], bbox[1]]);
@@ -350,86 +359,145 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             turf.distance(southWest, northWest, { units: "kilometers" }) *
             1000;
 
-          const estimatedCellsAtBase =
-            (bboxWidthMeters * bboxHeightMeters) /
-            (GRID_CELL_SIZE_METERS * GRID_CELL_SIZE_METERS);
-
-          const dynamicCellSizeKm =
-            Number.isFinite(estimatedCellsAtBase) &&
-            estimatedCellsAtBase > MAX_GRID_CELLS
-              ? Math.sqrt(
-                  (bboxWidthMeters * bboxHeightMeters) / MAX_GRID_CELLS,
-                ) / 1000
-              : cellSizeKmBase;
-
-          const grid = turf.squareGrid(
-            bbox,
-            Math.max(cellSizeKmBase, dynamicCellSizeKm),
-            {
-              units: "kilometers",
-            },
+          const largeCellSizeKm = Math.max(
+            smallCellSizeKm * 5,
+            Math.sqrt((bboxWidthMeters * bboxHeightMeters) / LARGE_GRID_TARGET_CELLS) /
+              1000,
           );
 
-          grid.features.forEach((cell, index) => {
-            const cellArea = turf.area(cell);
-            let intersectionArea = 0;
+          const getIntersectingCells = (cellSizeKm, ratioThreshold = 0.51) => {
+            const grid = turf.squareGrid(bbox, cellSizeKm, {
+              units: "kilometers",
+            });
 
-            if (turf.booleanWithin(cell, farmPolygon)) {
-              intersectionArea = cellArea;
-            } else {
-              if (!turf.booleanIntersects(cell, farmPolygon)) return;
+            const keptCells = [];
 
-              let intersection;
-              try {
-                intersection = turf.intersect(
-                  turf.featureCollection([cell, farmPolygon]),
-                );
-              } catch {
-                return;
+            grid.features.forEach((cell) => {
+              const cellArea = turf.area(cell);
+              let intersectionArea = 0;
+
+              if (turf.booleanWithin(cell, farmPolygon)) {
+                intersectionArea = cellArea;
+              } else {
+                if (!turf.booleanIntersects(cell, farmPolygon)) return;
+
+                let intersection;
+                try {
+                  intersection = turf.intersect(
+                    turf.featureCollection([cell, farmPolygon]),
+                  );
+                } catch {
+                  return;
+                }
+                if (!intersection) return;
+                intersectionArea = turf.area(intersection);
               }
-              if (!intersection) return;
-              intersectionArea = turf.area(intersection);
-            }
 
-            const ratio = intersectionArea / cellArea;
+              if (intersectionArea / cellArea < ratioThreshold) return;
+              keptCells.push({ cell, intersectionArea });
+            });
 
-            if (ratio < 0.51) return;
+            return keptCells;
+          };
 
-            const coords = cell.geometry.coordinates[0].map((c) => [
-              c[1],
-              c[0],
-            ]);
+          const largeGridLayer = L.layerGroup().addTo(map);
+          const smallGridLayer = L.layerGroup();
 
-            const seedPrefix = `${selectedFarm.farm_id}-${index}`;
-
+          const buildMetricPayload = (seedPrefix, cellId, areaSqM, metricScope) => {
             const temperature = getSeededNumber(`${seedPrefix}-temp`, 21, 37);
-
             const humidity = getSeededNumber(`${seedPrefix}-hum`, 40, 90);
-
             const moisture = getSeededNumber(`${seedPrefix}-soil`, 25, 85);
-
             const risk = getGridRisk(temperature, humidity, moisture);
 
-            const fillColor = gridRiskColor[risk];
+            return {
+              gridId: cellId,
+              temperature,
+              humidity,
+              moisture,
+              risk,
+              cellArea: Math.round(areaSqM),
+              metricScope,
+            };
+          };
 
-            const gridPolygon = L.polygon(coords, {
-              color: "#166534",
-              weight: 1,
-              fillColor,
-              fillOpacity: 0.45,
-            }).addTo(map);
+          const drawCells = (cells, layerGroup, styleConfig, idPrefix, metricScope) => {
+            cells.forEach(({ cell, intersectionArea }, index) => {
+              const coords = cell.geometry.coordinates[0].map((c) => [c[1], c[0]]);
+              const seedPrefix = `${selectedFarm.farm_id}-${idPrefix}-${index}`;
+              const payload = buildMetricPayload(
+                seedPrefix,
+                `${idPrefix}-${index + 1}`,
+                intersectionArea,
+                metricScope,
+              );
 
-            gridPolygon.on("click", () => {
-              setSelectedGrid({
-                gridId: `GRID-${index + 1}`,
-                temperature,
-                humidity,
-                moisture,
-                risk,
-                cellArea: Math.round(turf.area(cell)),
+              const gridPolygon = L.polygon(coords, {
+                color: styleConfig.strokeColor,
+                weight: styleConfig.weight,
+                fillColor: gridRiskColor[payload.risk],
+                fillOpacity: styleConfig.fillOpacity,
+              }).addTo(layerGroup);
+
+              gridPolygon.on("click", () => {
+                setSelectedGrid(payload);
               });
             });
-          });
+          };
+
+          const largeCells = getIntersectingCells(largeCellSizeKm, 0.45);
+          drawCells(
+            largeCells,
+            largeGridLayer,
+            {
+              strokeColor: "#6b7280",
+              weight: 1.2,
+              fillOpacity: 0.32,
+            },
+            "ZONE",
+            "overall",
+          );
+
+          let smallGridDrawn = false;
+          const ensureSmallGrid = () => {
+            if (smallGridDrawn) return;
+            smallGridDrawn = true;
+
+            const smallCells = getIntersectingCells(smallCellSizeKm, 0.51);
+            drawCells(
+              smallCells,
+              smallGridLayer,
+              {
+                strokeColor: "#4b5563",
+                weight: 1,
+                fillOpacity: 0.45,
+              },
+              "GRID",
+              "individual",
+            );
+          };
+
+          const syncGridLayersByZoom = () => {
+            if (map.getZoom() >= SMALL_GRID_ZOOM_THRESHOLD) {
+              ensureSmallGrid();
+              if (map.hasLayer(largeGridLayer)) {
+                map.removeLayer(largeGridLayer);
+              }
+              if (!map.hasLayer(smallGridLayer)) {
+                smallGridLayer.addTo(map);
+              }
+              return;
+            }
+
+            if (map.hasLayer(smallGridLayer)) {
+              map.removeLayer(smallGridLayer);
+            }
+            if (!map.hasLayer(largeGridLayer)) {
+              largeGridLayer.addTo(map);
+            }
+          };
+
+          syncGridLayersByZoom();
+          map.on("zoomend", syncGridLayersByZoom);
         } else {
           farmBoundary = L.circle([latitude, longitude], {
             radius: 50,
@@ -442,14 +510,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         if (farmBoundary) {
           map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
         }
-
-        const syncMarkerToCenter = () => {
-          centerMarker.setLatLng(map.getCenter());
-        };
-
-        syncMarkerToCenter();
-        map.on("move", syncMarkerToCenter);
-        map.on("zoom", syncMarkerToCenter);
 
         setTimeout(() => {
           if (isCancelled || !leafletMapRef.current) return;
@@ -840,10 +900,10 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             <div className="case-modal-header">
               <h3>{activeCase.caseId}</h3>
               <button
-                className="popup-close"
+                className="case-modal-close"
                 onClick={() => setActiveCase(null)}
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -885,42 +945,77 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         >
           <div className="grid-popup" onClick={(e) => e.stopPropagation()}>
             <div className="grid-popup-header">
-              <h3>{selectedGrid.gridId}</h3>
+              <div className="grid-popup-title-wrap">
+                <h3>{selectedGrid.gridId}</h3>
+                <p>
+                  {selectedGrid.metricScope === "overall"
+                    ? "Overall parameters"
+                    : "Individual grid parameters"}
+                </p>
+              </div>
               <button
                 className="popup-close"
+                aria-label="Close grid details"
                 onClick={() => setSelectedGrid(null)}
               >
-                ✕
+                <FaTimes />
               </button>
             </div>
 
-            <div className="modal-row">
-              <span>Risk</span>
-              <strong>{selectedGrid.risk.toUpperCase()}</strong>
-            </div>
+            <div className="grid-popup-body">
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaExclamationTriangle className="grid-popup-row-icon icon-risk" />
+                  <span>Risk</span>
+                </div>
+                <strong className={`grid-popup-row-value risk-${selectedGrid.risk}`}>
+                  {selectedGrid.risk.toUpperCase()}
+                </strong>
+              </div>
 
-            <div className="modal-row">
-              <span>Temperature</span>
-              <strong>{selectedGrid.temperature} °C</strong>
-            </div>
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaTemperatureHigh className="grid-popup-row-icon icon-temp" />
+                  <span>Temperature</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.temperature} °C
+                </strong>
+              </div>
 
-            <div className="modal-row">
-              <span>Humidity</span>
-              <strong>{selectedGrid.humidity}%</strong>
-            </div>
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaTint className="grid-popup-row-icon icon-humidity" />
+                  <span>Humidity</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.humidity}%
+                </strong>
+              </div>
 
-            <div className="modal-row">
-              <span>Soil Moisture</span>
-              <strong>{selectedGrid.moisture}%</strong>
-            </div>
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaSeedling className="grid-popup-row-icon icon-moisture" />
+                  <span>Soil Moisture</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.moisture}%
+                </strong>
+              </div>
 
-            <div className="modal-row">
-              <span>Cell Area</span>
-              <strong>{selectedGrid.cellArea} m²</strong>
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaRulerCombined className="grid-popup-row-icon icon-area" />
+                  <span>Cell Area</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.cellArea} m²
+                </strong>
+              </div>
             </div>
 
             <button
-              className="resolve-btn"
+              className="resolve-btn grid-resolve-btn"
               onClick={() => setSelectedGrid(null)}
             >
               Close
@@ -942,3 +1037,4 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 };
 
 export default Dashboard;
+
