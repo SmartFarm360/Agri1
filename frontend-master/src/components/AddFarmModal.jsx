@@ -252,7 +252,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       latitude: Number(formData.latitude),
       longitude: Number(formData.longitude),
       area_hectares: Number(formData.area_hectares),
-      polygon_coordinates: boundaryPoints,
+     polygon_coordinates: [...boundaryPoints],
     };
 
     if (

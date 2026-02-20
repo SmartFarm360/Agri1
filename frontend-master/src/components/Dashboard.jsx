@@ -238,13 +238,16 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
         let farmBoundary;
 
-        if (
-          selectedFarm.polygon_coordinates &&
-          selectedFarm.polygon_coordinates.length >= 3
-        ) {
+        let polygonCoords = selectedFarm.polygon_coordinates;
+
+        if (typeof polygonCoords === "string") {
+          polygonCoords = JSON.parse(polygonCoords);
+        }
+
+        if (polygonCoords && polygonCoords.length >= 4) {
           // DRAW boundary FIRST
           farmBoundary = L.polygon(
-            selectedFarm.polygon_coordinates.map((point) => [
+            polygonCoords.map((point) => [
               Number(point.lat),
               Number(point.lng),
             ]),
@@ -258,7 +261,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           ).addTo(map);
 
           // THEN generate turf grid
-          const turfCoords = selectedFarm.polygon_coordinates.map((p) => [
+          const turfCoords = polygonCoords.map((p) => [
             Number(p.lng),
             Number(p.lat),
           ]);
@@ -274,7 +277,13 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           });
 
           grid.features.forEach((cell, index) => {
-            const intersection = turf.intersect(cell, farmPolygon);
+            let intersection;
+
+            try {
+              intersection = turf.intersect(cell, farmPolygon);
+            } catch {
+              return;
+            }
 
             if (!intersection) return;
 
@@ -326,7 +335,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           }).addTo(map);
         }
 
-    
         if (farmBoundary) {
           map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
         }
