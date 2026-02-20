@@ -35,6 +35,47 @@ const translations = {
 
 const GRID_CELL_SIZE_METERS = 20;
 
+const normalizePolygonPoints = (points) => {
+  if (!Array.isArray(points)) return [];
+
+  const numericPoints = points
+    .map((point) => ({
+      lat: Number(point?.lat),
+      lng: Number(point?.lng),
+    }))
+    .filter(
+      (point) => Number.isFinite(point.lat) && Number.isFinite(point.lng),
+    );
+
+  if (numericPoints.length < 3) return [];
+
+  const seen = new Set();
+  const dedupedPoints = [];
+
+  numericPoints.forEach((point) => {
+    const key = `${point.lat.toFixed(8)}:${point.lng.toFixed(8)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    dedupedPoints.push(point);
+  });
+
+  if (dedupedPoints.length < 3) return [];
+
+  const centroid = dedupedPoints.reduce(
+    (acc, point) => ({
+      lat: acc.lat + point.lat / dedupedPoints.length,
+      lng: acc.lng + point.lng / dedupedPoints.length,
+    }),
+    { lat: 0, lng: 0 },
+  );
+
+  return [...dedupedPoints].sort((a, b) => {
+    const angleA = Math.atan2(a.lat - centroid.lat, a.lng - centroid.lng);
+    const angleB = Math.atan2(b.lat - centroid.lat, b.lng - centroid.lng);
+    return angleA - angleB;
+  });
+};
+
 const getSeededUnit = (seed) => {
   let hash = 2166136261;
   const text = String(seed);
@@ -241,13 +282,19 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         let polygonCoords = selectedFarm.polygon_coordinates;
 
         if (typeof polygonCoords === "string") {
-          polygonCoords = JSON.parse(polygonCoords);
+          try {
+            polygonCoords = JSON.parse(polygonCoords);
+          } catch {
+            polygonCoords = [];
+          }
         }
 
-        if (polygonCoords && polygonCoords.length >= 4) {
+        const normalizedPolygonCoords = normalizePolygonPoints(polygonCoords);
+
+        if (normalizedPolygonCoords.length >= 3) {
           // DRAW boundary FIRST
           farmBoundary = L.polygon(
-            polygonCoords.map((point) => [
+            normalizedPolygonCoords.map((point) => [
               Number(point.lat),
               Number(point.lng),
             ]),
@@ -261,12 +308,21 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           ).addTo(map);
 
           // THEN generate turf grid
-          const turfCoords = polygonCoords.map((p) => [
+          const turfCoords = normalizedPolygonCoords.map((p) => [
             Number(p.lng),
             Number(p.lat),
           ]);
 
-          turfCoords.push(turfCoords[0]);
+          const firstCoord = turfCoords[0];
+          const lastCoord = turfCoords[turfCoords.length - 1];
+
+          if (
+            !lastCoord ||
+            lastCoord[0] !== firstCoord[0] ||
+            lastCoord[1] !== firstCoord[1]
+          ) {
+            turfCoords.push(firstCoord);
+          }
 
           const farmPolygon = turf.polygon([turfCoords]);
 
@@ -277,10 +333,14 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           });
 
           grid.features.forEach((cell, index) => {
+            if (!turf.booleanIntersects(cell, farmPolygon)) return;
+
             let intersection;
 
             try {
-              intersection = turf.intersect(cell, farmPolygon);
+              intersection = turf.intersect(
+                turf.featureCollection([cell, farmPolygon]),
+              );
             } catch {
               return;
             }
