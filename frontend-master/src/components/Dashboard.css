@@ -9,13 +9,13 @@
   background: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 50%, #ecfdf5 100%);
   padding: 1rem;
   max-width: 2000px;
-  padding-top: 115rem;
+  padding-top: 103rem;
 }
 
 .dashboard-content {
   max-width: 1280px;
   margin: 0 auto;
-  padding-top: 115rem;
+  padding-top: 104rem;
 }
 
 /* .dashboard-container {

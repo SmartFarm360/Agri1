@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
+import navLogo from "../assets/Maati AI.jpg";
 import "./MainLayout.css";
 
 const baseText = {
@@ -97,6 +98,7 @@ const MainLayout = ({
       <nav className="navbar">
         <div className="nav-left">
           <div className="product-name">
+            <img src={navLogo} alt="Maati AI logo" className="logo" />
             <h3 id="smart_name">Maati AI</h3>
           </div>
         </div>

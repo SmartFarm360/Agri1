@@ -42,7 +42,7 @@
   top: auto;
   z-index: 1;
   box-shadow: var(--shadow-lg);
-  padding-top: 2 rem;
+ 
 }
 
 .header-content {

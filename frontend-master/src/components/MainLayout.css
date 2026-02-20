@@ -40,12 +40,14 @@
   /* 🔒 prevents resize jitter */
   min-width: 42px;
   object-fit: contain;
-  display: inline-flex;
+  display: block;
   /* 🔒 removes baseline behavior */
   align-items: center;
   justify-content: center;
   vertical-align: middle;
   flex-shrink: 0;
+  transition: none;
+  transform: none;
   /* 🔒 prevents flex reflow */
 }
 
