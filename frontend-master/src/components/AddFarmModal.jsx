@@ -148,7 +148,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 
     try {
       const res = await fetch(
-        `https://geocode.maps.co/search?q=${encodeURIComponent(query)}&limit=5`,
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`,
       );
 
       if (!res.ok) {
@@ -156,8 +156,34 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       }
 
       const data = await res.json();
-      setLocationResults(data);
-      setShowDropdown(Array.isArray(data) && data.length > 0);
+      const mappedResults = Array.isArray(data?.features)
+        ? data.features
+            .map((feature) => {
+              const lat = Number(feature?.geometry?.coordinates?.[1]);
+              const lon = Number(feature?.geometry?.coordinates?.[0]);
+
+              const display_name = [
+                feature?.properties?.name,
+                feature?.properties?.city ||
+                  feature?.properties?.district ||
+                  feature?.properties?.state,
+                feature?.properties?.country,
+              ]
+                .filter(Boolean)
+                .join(", ");
+
+              return { lat, lon, display_name };
+            })
+            .filter(
+              (place) =>
+                Number.isFinite(place.lat) &&
+                Number.isFinite(place.lon) &&
+                place.display_name,
+            )
+        : [];
+
+      setLocationResults(mappedResults);
+      setShowDropdown(mappedResults.length > 0);
     } catch (err) {
       setLocationResults([]);
       setShowDropdown(false);

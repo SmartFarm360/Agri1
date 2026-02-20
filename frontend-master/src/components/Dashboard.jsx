@@ -439,17 +439,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
         if (farmBoundary) {
           map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
-          map.setView([latitude, longitude], map.getZoom(), { animate: false });
         }
 
         setTimeout(() => {
           if (isCancelled || !leafletMapRef.current) return;
           leafletMapRef.current.invalidateSize();
-          leafletMapRef.current.setView(
-            [latitude, longitude],
-            leafletMapRef.current.getZoom(),
-            { animate: false },
-          );
         }, 100);
       } catch (err) {
         if (isCancelled) return;
