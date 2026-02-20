@@ -205,6 +205,10 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         });
 
         tileLayer.addTo(map);
+        setTimeout(() => {
+          if (isCancelled || !leafletMapRef.current) return;
+          leafletMapRef.current.invalidateSize();
+        }, 0);
 
         const farmMarkerIcon = L.icon({
           iconRetinaUrl: markerIcon2x,
@@ -436,6 +440,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         if (farmBoundary) {
           map.fitBounds(farmBoundary.getBounds(), { padding: [20, 20] });
         }
+
+        setTimeout(() => {
+          if (isCancelled || !leafletMapRef.current) return;
+          leafletMapRef.current.invalidateSize();
+        }, 100);
       } catch (err) {
         if (isCancelled) return;
         console.error("Leaflet map error:", err);

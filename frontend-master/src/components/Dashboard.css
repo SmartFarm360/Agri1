@@ -138,8 +138,7 @@
   border-radius: 1rem;
   overflow: hidden;
   position: relative;
-  aspect-ratio: 1 / 1;
-  min-height: clamp(360px, 46vw, 620px);
+  height: clamp(320px, 34vw, 430px);
   width: 100%;
 }
 
@@ -985,8 +984,7 @@ margin-bottom: 0.35rem;
   }
 
   .map-placeholder {
-    aspect-ratio: 4 / 3;
-    min-height: clamp(300px, 56vw, 520px);
+    height: clamp(300px, 44vw, 400px);
   }
 
   .parameters-grid {
