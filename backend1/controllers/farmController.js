@@ -11,9 +11,13 @@ exports.createFarm = async (req, res) => {
       });
     }
 
-    const { farm_name, latitude, longitude, area_hectares, boundary } =
-      req.body;
-
+    const {
+      farm_name,
+      latitude,
+      longitude,
+      area_hectares,
+      polygon_coordinates,
+    } = req.body;
     // validation
     if (
       !farm_name ||
@@ -46,7 +50,7 @@ RETURNING *
         latitude,
         longitude,
         area_hectares, // maps to land_size
-        boundary ? JSON.stringify(boundary) : null,
+        polygon_coordinates ? JSON.stringify(polygon_coordinates) : null,
       ],
     );
 
