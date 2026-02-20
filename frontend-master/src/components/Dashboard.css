@@ -7,15 +7,15 @@
   width: 100%;
   overflow-x: hidden;
   background: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 50%, #ecfdf5 100%);
-  padding: clamp(0.5rem, 2vw, 1rem);
+  padding: 1rem;
   max-width: 2000px;
-  padding-top: 120 rem;
+  padding-top: 0;
 }
 
 .dashboard-content {
   max-width: 1280px;
   margin: 0 auto;
-  padding-top: 100 rem;
+  padding-top: 0;
 }
 
 /* .dashboard-container {
