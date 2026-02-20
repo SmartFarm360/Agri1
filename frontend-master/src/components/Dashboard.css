@@ -77,7 +77,7 @@
 
 .main-section {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
   gap: clamp(1.2rem, 2.5vw, 1.8rem);
   align-items: start;
   width: 100%;
@@ -138,8 +138,9 @@
   border-radius: 1rem;
   overflow: hidden;
   position: relative;
-  height: clamp(320px, 34vw, 430px);
-  width: 100%;
+  width: min(100%, 760px);
+  aspect-ratio: 1 / 1;
+  height: auto;
 }
 
 
@@ -977,13 +978,15 @@ margin-bottom: 0.35rem;
 }
 
 /* Responsive Design */
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
   .main-section {
     grid-template-columns: 1fr;
     gap: clamp(1.2rem, 2.5vw, 1.5rem);
   }
 
   .map-placeholder {
+    width: 100%;
+    aspect-ratio: auto;
     height: clamp(300px, 44vw, 400px);
   }
 
