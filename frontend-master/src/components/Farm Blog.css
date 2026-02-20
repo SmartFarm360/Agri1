@@ -31,13 +31,14 @@
     Ubuntu, Cantarell, sans-serif;
   color: var(--dark-gray);
   line-height: 1.6;
+  padding-top: 10rem;
 }
 
 /* =============== HEADER SECTION =============== */
 .blog-header {
   background: linear-gradient(135deg, var(--primary-green) 0%, var(--light-green) 100%);
   color: var(--white);
-  padding: 20px 0;
+  padding: 80px 0;
   position: relative;
   top: auto;
   z-index: 1;
