@@ -671,51 +671,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="recommendations-section">
-          <div className="section-header">
-            <h2 className="section-title">{t.recommendations}</h2>
-            <div className="section-underline"></div>
-          </div>
-          <div className="recommendations-grid">
-            <div className="recommendation-card irrigation">
-              <div className="recommendation-icon">💧</div>
-              <h4 className="recommendation-title">Irrigation Schedule</h4>
-              <p className="recommendation-text">
-                Based on current soil moisture levels, consider adjusting
-                irrigation timing for optimal crop growth.
-              </p>
-            </div>
-            <div className="recommendation-card health">
-              <div className="recommendation-icon">🌱</div>
-              <h4 className="recommendation-title">Crop Health</h4>
-              <p className="recommendation-text">
-                Monitor for early signs of disease given current humidity
-                conditions. Regular inspection recommended.
-              </p>
-            </div>
-            <div className="recommendation-card weather">
-              <div className="recommendation-icon">🌤️</div>
-              <h4 className="recommendation-title">Weather Alert</h4>
-              <p className="recommendation-text">
-                Temperature fluctuations expected. Prepare protective measures
-                for sensitive crops.
-              </p>
-            </div>
-            <div className="recommendation-card fertilizer">
-              <div className="recommendation-icon">🧪</div>
-              <h4 className="recommendation-title">Fertilizer Application</h4>
-              <p className="recommendation-text">
-                Soil analysis suggests nitrogen deficiency in some areas.
-                Consider targeted fertilizer application.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bottom-section">
-          <div className="grid-container">
+          <div className="grid-container parameters-panel">
             <div className="cases-header">
               <h3 className="cases-title">{t.parameters}</h3>
             </div>
@@ -775,7 +731,50 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               })}
             </div>
           </div>
+        </div>
 
+        <div className="recommendations-section">
+          <div className="section-header">
+            <h2 className="section-title">{t.recommendations}</h2>
+            <div className="section-underline"></div>
+          </div>
+          <div className="recommendations-grid">
+            <div className="recommendation-card irrigation">
+              <div className="recommendation-icon">💧</div>
+              <h4 className="recommendation-title">Irrigation Schedule</h4>
+              <p className="recommendation-text">
+                Based on current soil moisture levels, consider adjusting
+                irrigation timing for optimal crop growth.
+              </p>
+            </div>
+            <div className="recommendation-card health">
+              <div className="recommendation-icon">🌱</div>
+              <h4 className="recommendation-title">Crop Health</h4>
+              <p className="recommendation-text">
+                Monitor for early signs of disease given current humidity
+                conditions. Regular inspection recommended.
+              </p>
+            </div>
+            <div className="recommendation-card weather">
+              <div className="recommendation-icon">🌤️</div>
+              <h4 className="recommendation-title">Weather Alert</h4>
+              <p className="recommendation-text">
+                Temperature fluctuations expected. Prepare protective measures
+                for sensitive crops.
+              </p>
+            </div>
+            <div className="recommendation-card fertilizer">
+              <div className="recommendation-icon">🧪</div>
+              <h4 className="recommendation-title">Fertilizer Application</h4>
+              <p className="recommendation-text">
+                Soil analysis suggests nitrogen deficiency in some areas.
+                Consider targeted fertilizer application.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bottom-section">
           <div className="cases-container">
             <div className="cases-header">
               <h3 className="cases-title">{t.activeCases}</h3>
