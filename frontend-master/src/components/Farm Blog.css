@@ -38,10 +38,11 @@
   background: linear-gradient(135deg, var(--primary-green) 0%, var(--light-green) 100%);
   color: var(--white);
   padding: 20px 0;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  position: relative;
+  top: auto;
+  z-index: 1;
   box-shadow: var(--shadow-lg);
+  padding-top: 2 rem;
 }
 
 .header-content {
@@ -1172,3 +1173,4 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-color);
 }
+

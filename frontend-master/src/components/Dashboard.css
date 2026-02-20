@@ -73,7 +73,7 @@
   gap: 1.5rem;
   /* gap: clamp(1.5rem, 3vw, 2rem); */
   /* margin-bottom: clamp(1.5rem, 3vw, 2rem); */
-/* } */ */
+/* } */
 
 .main-section {
   display: grid;
@@ -660,7 +660,7 @@ margin-bottom: 0.35rem;
 
   /* max-height: clamp(400px, 60vh, 500px);
   overflow-y: auto;
-} */ */
+} */
 
 .cases-list {
   display: flex;
@@ -1423,3 +1423,4 @@ font-size:13px;
 .farm-selector:hover {
   border-color: #15803d;
 }
+
