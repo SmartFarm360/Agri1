@@ -11,8 +11,9 @@ import DroneDashboard from "./components/DroneDashboard";
 import History from "./components/History";
 import Language from "./components/Language";
 import Profile from "./components/Profile";
-import Blog from "./components/Blog";
+import FarmBlog from "./components/Farm Blog";
 import Help from "./components/Help";
+
 
 import axios from "axios";
 
@@ -191,7 +192,7 @@ function AppRoutes() {
               currentLanguage={currentLanguage}
               setCurrentLanguage={setCurrentLanguage}
             >
-              <Blog currentLanguage={currentLanguage} />
+              <FarmBlog currentLanguage={currentLanguage} />
             </MainLayout>
           }
         />
