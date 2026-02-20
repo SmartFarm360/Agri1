@@ -52,9 +52,12 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 
     const map = L.map(mapRef.current).setView([lat, lng], 15);
 
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      attribution: "Tiles © Esri",
-    }).addTo(map);
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Tiles © Esri",
+      },
+    ).addTo(map);
 
     map.on("click", (e) => {
       setBoundaryPoints((prev) => {
@@ -124,9 +127,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
         leafletMapRef.current = null;
       }
     };
- }, [isOpen, formData.latitude, formData.longitude]);
-
-
+  }, [isOpen, formData.latitude, formData.longitude]);
 
   if (!isOpen) return null;
 
@@ -158,96 +159,83 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   };
 
   const generateGrids = (polygonCoords, map) => {
+    if (!polygonCoords || polygonCoords.length !== 4) return;
 
-  if (!polygonCoords || polygonCoords.length !== 4) return;
+    // remove old grids
+    gridLayersRef.current.forEach((layer) => map.removeLayer(layer));
+    gridLayersRef.current = [];
 
-  // remove old grids
-  gridLayersRef.current.forEach(layer => map.removeLayer(layer));
-  gridLayersRef.current = [];
+    // create turf polygon (correct order lng,lat)
+    const turfCoords = polygonCoords.map((p) => [p.lng, p.lat]);
 
-  // create turf polygon (correct order lng,lat)
-  const turfCoords = polygonCoords.map(p => [p.lng, p.lat]);
+    // close polygon
+    turfCoords.push([polygonCoords[0].lng, polygonCoords[0].lat]);
 
-  // close polygon
-  turfCoords.push([polygonCoords[0].lng, polygonCoords[0].lat]);
+    const farmPolygon = turf.polygon([turfCoords]);
 
-  const farmPolygon = turf.polygon([turfCoords]);
+    // bounding box
+    const bbox = turf.bbox(farmPolygon);
 
-  // bounding box
-  const bbox = turf.bbox(farmPolygon);
+    // create grid (20m × 20m)
+    const grid = turf.squareGrid(bbox, 0.02, { units: "kilometers" });
 
-  // create grid (20m × 20m)
-  const grid = turf.squareGrid(bbox, 0.02, { units: "kilometers" });
+    grid.features.forEach((cell) => {
+      // check if cell intersects farm polygon
+      const intersects = turf.booleanIntersects(cell, farmPolygon);
 
-  grid.features.forEach(cell => {
+      if (!intersects) return;
 
-    // check if cell intersects farm polygon
-    const intersects = turf.booleanIntersects(cell, farmPolygon);
+      // calculate how much cell is inside farm
+      let intersection;
+      try {
+        intersection = turf.intersect(cell, farmPolygon);
+      } catch {
+        return;
+      }
 
-    if (!intersects) return;
+      if (!intersection) return;
 
-    // calculate how much cell is inside farm
-    let intersection;
-    try {
-      intersection = turf.intersect(cell, farmPolygon);
-    } catch {
-      return;
+      const ratio = turf.area(intersection) / turf.area(cell);
+
+      const leafletCoords = cell.geometry.coordinates[0].map((coord) => [
+        coord[1],
+        coord[0],
+      ]);
+
+      const gridLayer = L.polygon(leafletCoords, {
+        color: ratio >= 0.5 ? "#16a34a" : "#9ca3af",
+        weight: 1,
+        fillOpacity: ratio >= 0.5 ? 0.25 : 0.12,
+      }).addTo(map);
+      setTimeout(() => gridLayer.bringToFront(), 0);
+
+      gridLayersRef.current.push(gridLayer);
+    });
+  };
+
+  const handleLocationSelect = (place) => {
+    const lat = Number(place.lat);
+    const lng = Number(place.lon);
+
+    // update form state
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+    }));
+
+    // MOVE MAP to selected location immediately
+    if (leafletMapRef.current) {
+      leafletMapRef.current.setView([lat, lng], 18);
+
+      // optional: add marker at selected location
+      L.marker([lat, lng]).addTo(leafletMapRef.current);
     }
 
-    if (!intersection) return;
-
-    const ratio =
-      turf.area(intersection) /
-      turf.area(cell);
-
-    const leafletCoords =
-      cell.geometry.coordinates[0]
-      .map(coord => [coord[1], coord[0]]);
-
-    const gridLayer = L.polygon(leafletCoords, {
-
-      color: ratio >= 0.5 ? "#16a34a" : "#9ca3af",
-      weight: 1,
-      fillOpacity: ratio >= 0.5 ? 0.25 : 0.12,
-
-    }).addTo(map);
-   setTimeout(() => gridLayer.bringToFront(), 0);
-
-
-    gridLayersRef.current.push(gridLayer);
-
-  });
-
-};
-
-
- const handleLocationSelect = (place) => {
-
-  const lat = Number(place.lat);
-  const lng = Number(place.lon);
-
-  // update form state
-  setFormData((prev) => ({
-    ...prev,
-    latitude: lat,
-    longitude: lng,
-  }));
-
-  // MOVE MAP to selected location immediately
-  if (leafletMapRef.current) {
-
-    leafletMapRef.current.setView([lat, lng], 18);
-
-    // optional: add marker at selected location
-    L.marker([lat, lng]).addTo(leafletMapRef.current);
-
-  }
-
-  setLocationQuery(place.display_name);
-  setLocationResults([]);
-  setShowDropdown(false);
-};
-
+    setLocationQuery(place.display_name);
+    setLocationResults([]);
+    setShowDropdown(false);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -264,7 +252,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       latitude: Number(formData.latitude),
       longitude: Number(formData.longitude),
       area_hectares: Number(formData.area_hectares),
-      boundary: boundaryPoints,
+      polygon_coordinates: boundaryPoints,
     };
 
     if (
