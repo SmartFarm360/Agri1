@@ -142,18 +142,25 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const searchLocation = async (query) => {
     if (!query || query.length < 3) {
       setLocationResults([]);
+      setShowDropdown(false);
       return;
     }
 
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&limit=5`,
+        `https://geocode.maps.co/search?q=${encodeURIComponent(query)}&limit=5`,
       );
+
+      if (!res.ok) {
+        throw new Error("Location lookup failed.");
+      }
 
       const data = await res.json();
       setLocationResults(data);
-      setShowDropdown(true);
+      setShowDropdown(Array.isArray(data) && data.length > 0);
     } catch (err) {
+      setLocationResults([]);
+      setShowDropdown(false);
       console.error("Location search error:", err);
     }
   };
@@ -302,7 +309,14 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="modal-overlay"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose?.();
+        }
+      }}
+    >
       <div className="modal" onClick={(event) => event.stopPropagation()}>
         <button className="modal-close-btn" onClick={onClose}>
           ✕
