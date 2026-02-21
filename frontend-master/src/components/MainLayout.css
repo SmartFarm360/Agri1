@@ -206,10 +206,22 @@
 
 .footer-content {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+  align-items: flex-start;
+}
+
+.footer-section {
+  min-width: 0;
+}
+
+.footer-links-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .footer-section h3,
@@ -297,6 +309,14 @@
     height: 34px;
     font-size: 1rem;
     margin-left: 0;
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-links-section {
+    align-items: flex-start;
   }
 }
 

@@ -16,6 +16,7 @@ const baseText = {
   blog: "Blog",
   accountInfo: "Account Information",
   help: "Help",
+  helpSupport: "Help & Support",
   sendFeedback: "Send Feedback",
   footerDescription:
     "Empowering farmers with smart technology for sustainable agriculture.",
@@ -37,6 +38,7 @@ const fallbackTranslations = {
     blog: "\u092c\u094d\u0932\u0949\u0917",
     accountInfo: "\u0916\u093e\u0924\u093e \u091c\u093e\u0928\u0915\u093e\u0930\u0940",
     help: "\u0938\u0939\u093e\u092f\u0924\u093e",
+    helpSupport: "\u0938\u0939\u093e\u092f\u0924\u093e \u0914\u0930 \u0938\u092e\u0930\u094d\u0925\u0928",
     sendFeedback: "\u092b\u0940\u0921\u092c\u0948\u0915 \u092d\u0947\u091c\u0947\u0902",
     footerDescription:
       "\u0938\u0924\u0924 \u0915\u0943\u0937\u093f \u0915\u0947 \u0932\u093f\u090f \u0915\u093f\u0938\u093e\u0928\u094b\u0902 \u0915\u094b \u0938\u094d\u092e\u093e\u0930\u094d\u091f \u0924\u0915\u0928\u0940\u0915 \u0938\u0947 \u0938\u0936\u0915\u094d\u0924 \u092c\u0928\u093e\u0928\u093e\u0964",
@@ -199,8 +201,9 @@ const MainLayout = ({
             <h3>MAATI AI</h3>
             <p>{t.footerDescription}</p>
           </div>
-          <div className="footer-section">
+          <div className="footer-section footer-links-section">
             <Link to="/about" className="footer-link">{t.aboutUs}</Link>
+            <Link to="/help" className="footer-link">{t.helpSupport}</Link>
           </div>
           <div className="footer-section">
             <h4>{t.contactUs}</h4>

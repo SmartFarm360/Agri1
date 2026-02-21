@@ -28,6 +28,7 @@ function AppRoutes() {
     message: "",
   });
   const navigate = useNavigate();
+  const API_URL = import.meta.env.VITE_API_URL || "https://agri1-32qq.onrender.com";
 
   const showToast = (message, type = "success") => {
     setToast({
@@ -59,10 +60,12 @@ function AppRoutes() {
     return () => clearTimeout(timer);
   }, [toast.visible]);
 
+  useEffect(() => {
+    fetch(API_URL, { method: "GET", mode: "no-cors" }).catch(() => {});
+  }, [API_URL]);
+
   const handleLogin = async (credentials) => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL;
-
       const response = await axios.post(
         `${API_URL}/api/auth/login`,
         credentials,
@@ -103,8 +106,6 @@ function AppRoutes() {
 
   const handleRegister = async (formData) => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL;
-
       const response = await axios.post(
         `${API_URL}/api/auth/register`,
         formData,

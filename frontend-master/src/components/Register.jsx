@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 
 import { Link, useNavigate } from "react-router-dom";
 import { translations } from "../utils/translations";
@@ -26,6 +26,8 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [landDocument, setLandDocument] = useState(null);
   const locationTimeoutRef = useRef(null);
+  const locationAbortRef = useRef(null);
+  const locationCacheRef = useRef(new Map());
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,23 +50,53 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
         return;
       }
 
+      const query = value.trim();
+      const cacheKey = query.toLowerCase();
+
+      const cached = locationCacheRef.current.get(cacheKey);
+      if (cached) {
+        setLocationSuggestions(cached);
+        return;
+      }
+
       locationTimeoutRef.current = setTimeout(async () => {
         try {
+          if (locationAbortRef.current) {
+            locationAbortRef.current.abort();
+          }
+
+          const controller = new AbortController();
+          locationAbortRef.current = controller;
+
           const res = await fetch(
-            `https://agri1-32qq.onrender.com/api/location/search?q=${encodeURIComponent(value)}`,
+            `https://agri1-32qq.onrender.com/api/location/search?q=${encodeURIComponent(query)}`,
+            { signal: controller.signal },
           );
 
           if (!res.ok) throw new Error("Location fetch failed");
 
           const data = await res.json();
+          locationCacheRef.current.set(cacheKey, data);
           setLocationSuggestions(data);
         } catch (err) {
+          if (err.name === "AbortError") return;
           console.error("Location fetch error:", err);
           setLocationSuggestions([]);
         }
-      }, 500);
+      }, 200);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (locationTimeoutRef.current) {
+        clearTimeout(locationTimeoutRef.current);
+      }
+      if (locationAbortRef.current) {
+        locationAbortRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleLocationSelect = (location) => {
     setFormData((prev) => ({
