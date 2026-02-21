@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom"
 import { translations } from "../utils/translations"
 import "./Home.css"
 import drone2 from "/src/assets/drone2.jpg"
-import navLogo from "../assets/Maati AI.jpg"
 
 const Home = ({ currentLanguage }) => {
   const navigate = useNavigate()
@@ -26,13 +25,9 @@ const Home = ({ currentLanguage }) => {
         <div className="hero-content">
 
 
-                    <h1 className="hero-title">
-            <img
-              src={navLogo}
-              alt="Maati AI logo"
-              className="home-logo-image"
-              draggable="false"
-            />
+          <h1 className="hero-title">
+            <span id="smart">Maati</span>
+            <span id="farm">AI</span>
           </h1>
 
           <p className="hero-subtitle">{t.heroSubtitle ?? "Transforming agriculture with intelligence and care."}</p>
