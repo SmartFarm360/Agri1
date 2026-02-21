@@ -123,7 +123,7 @@ const MainLayout = ({
       <nav className="navbar">
         <div className="nav-left">
           <div className="product-name">
-            <img src={navLogo} alt="Maati AI logo" className="logo" />
+            <img src={navLogo} alt="Maati AI logo" className="navbar-logo" />
             <h3 id="smart_name">Maati AI</h3>
           </div>
         </div>

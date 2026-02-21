@@ -32,7 +32,7 @@
   flex-shrink: 0;
 }
 
-.logo {
+.navbar-logo {
   height: 42px;
   width: 42px;
   min-height: 42px;
@@ -276,7 +276,7 @@
     min-height: 36px;
   }
 
-  .logo {
+  .navbar-logo {
     height: 36px;
     width: 36px;
     min-height: 36px;
