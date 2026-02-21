@@ -24,9 +24,31 @@ const baseText = {
   heroSubtitle: "Grow smarter, not harder.",
 };
 
+const fallbackTranslations = {
+  en: baseText,
+  hi: {
+    home: "\u0939\u094b\u092e",
+    aboutUs: "\u0939\u092e\u093e\u0930\u0947 \u092c\u093e\u0930\u0947 \u092e\u0947\u0902",
+    dashboard: "\u0921\u0948\u0936\u092c\u094b\u0930\u094d\u0921",
+    language: "\u092d\u093e\u0937\u093e",
+    history: "\u0907\u0936\u094d\u092f\u0942 \u0932\u0949\u0917",
+    login: "\u0932\u0949\u0917\u093f\u0928",
+    logout: "\u0932\u0949\u0917\u0906\u0909\u091f",
+    blog: "\u092c\u094d\u0932\u0949\u0917",
+    accountInfo: "\u0916\u093e\u0924\u093e \u091c\u093e\u0928\u0915\u093e\u0930\u0940",
+    help: "\u0938\u0939\u093e\u092f\u0924\u093e",
+    sendFeedback: "\u092b\u0940\u0921\u092c\u0948\u0915 \u092d\u0947\u091c\u0947\u0902",
+    footerDescription:
+      "\u0938\u0924\u0924 \u0915\u0943\u0937\u093f \u0915\u0947 \u0932\u093f\u090f \u0915\u093f\u0938\u093e\u0928\u094b\u0902 \u0915\u094b \u0938\u094d\u092e\u093e\u0930\u094d\u091f \u0924\u0915\u0928\u0940\u0915 \u0938\u0947 \u0938\u0936\u0915\u094d\u0924 \u092c\u0928\u093e\u0928\u093e\u0964",
+    contactUs: "\u0938\u0902\u092a\u0930\u094d\u0915 \u0915\u0930\u0947\u0902",
+    allRightsReserved: "\u0938\u0930\u094d\u0935\u093e\u0927\u093f\u0915\u093e\u0930 \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924\u0964",
+    heroSubtitle: "\u0938\u094d\u092e\u093e\u0930\u094d\u091f \u0924\u0930\u0940\u0915\u0947 \u0938\u0947 \u0916\u0947\u0924\u0940 \u0915\u0930\u0947\u0902\u0964",
+  },
+};
+
 const languageLabels = {
   en: "English",
-  hi: "Hindi",
+  hi: "\u0939\u093f\u0902\u0926\u0940",
 };
 
 const MainLayout = ({
@@ -57,6 +79,8 @@ const MainLayout = ({
   }, []);
 
   const translateUI = async (targetLang) => {
+    const fallbackForLang = fallbackTranslations[targetLang] || baseText;
+
     try {
       const res = await axios.post(
         "https://frontend-k-backend.onrender.com/translations",
@@ -69,13 +93,13 @@ const MainLayout = ({
 
       const translated = {};
       Object.keys(baseText).forEach((key, idx) => {
-        translated[key] = res.data.translatedTexts[idx] || baseText[key];
+        translated[key] = res.data.translatedTexts[idx] || fallbackForLang[key];
       });
 
       setTranslatedText(translated);
     } catch (err) {
       console.error("Translation failed:", err.message);
-      setTranslatedText(baseText);
+      setTranslatedText(fallbackForLang);
     }
   };
 

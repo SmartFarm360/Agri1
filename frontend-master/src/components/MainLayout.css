@@ -74,8 +74,7 @@
   gap: 0.75rem;
   white-space: nowrap;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;
   flex: 1;

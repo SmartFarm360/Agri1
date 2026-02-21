@@ -3,15 +3,7 @@ import "./Language.css";
 
 const languages = [
   { code: "en", name: "English" },
-  { code: "hi", name: "हिंदी" },
-  { code: "ta", name: "தமிழ்" },
-  { code: "te", name: "తెలుగు" },
-  { code: "kn", name: "ಕನ್ನಡ" },
-  { code: "ml", name: "മലയാളം" },
-  { code: "gu", name: "ગુજરાતી" },
-  { code: "mr", name: "मराठी" },
-  { code: "bn", name: "বাংলা" },
-  { code: "pa", name: "ਪੰਜਾਬੀ" },
+  { code: "hi", name: "\u0939\u093f\u0902\u0926\u0940" },
 ];
 
 const Language = ({ currentLanguage, setCurrentLanguage }) => {
@@ -70,3 +62,4 @@ const Language = ({ currentLanguage, setCurrentLanguage }) => {
 };
 
 export default Language;
+

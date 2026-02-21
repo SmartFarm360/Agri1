@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { translations } from "../utils/translations";
 import "./Login.css";
 
@@ -13,8 +13,6 @@ const Login = ({ onLogin, currentLanguage }) => {
 
   // Fallback to 'en' if currentLanguage is not defined or translation not found
   const t = translations[currentLanguage] || translations["en"];
-
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
@@ -32,7 +30,7 @@ const handleSubmit = async (e) => {
       password: formData.password,
     });
   } catch (error) {
-    alert("Login failed");
+    // Toast is handled globally in AppRoutes.
   }
 };
 

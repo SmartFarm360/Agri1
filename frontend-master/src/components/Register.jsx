@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { translations } from "../utils/translations";
 import "./Register.css";
 
-const Register = ({ currentLanguage, onRegister }) => {
+const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
   const [formData, setFormData] = useState({
     firstName: "",
     email: "",
@@ -148,10 +148,14 @@ const Register = ({ currentLanguage, onRegister }) => {
         throw new Error(errorMessage);
       }
 
-      alert("Registration successful!");
+      showGlobalToast?.("Registration successful. You can now login.", "success");
       navigate("/login");
     } catch (registerError) {
       console.error("Registration error:", registerError);
+      showGlobalToast?.(
+        registerError.message || "Registration failed. Please try again.",
+        "error",
+      );
       setErrors({
         submit:
           registerError.message || "Registration failed. Please try again.",

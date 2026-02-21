@@ -215,6 +215,19 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         });
 
         tileLayer.addTo(map);
+
+        map.createPane("labels");
+        map.getPane("labels").style.zIndex = 650;
+        map.getPane("labels").style.pointerEvents = "none";
+
+        L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+          {
+            subdomains: "abcd",
+            pane: "labels",
+            attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+          },
+        ).addTo(map);
         setTimeout(() => {
           if (isCancelled || !leafletMapRef.current) return;
           leafletMapRef.current.invalidateSize();

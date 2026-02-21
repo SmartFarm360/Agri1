@@ -31,10 +31,79 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const [locationResults, setLocationResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [boundaryPoints, setBoundaryPoints] = useState([]);
+  const [movingPointIndex, setMovingPointIndex] = useState(null);
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const polygonRef = useRef(null);
   const gridLayersRef = useRef([]);
+  const boundaryMarkersRef = useRef([]);
+  const movingPointIndexRef = useRef(null);
+
+  const clearBoundaryLayers = (map) => {
+    boundaryMarkersRef.current.forEach((marker) => map.removeLayer(marker));
+    boundaryMarkersRef.current = [];
+
+    if (polygonRef.current) {
+      map.removeLayer(polygonRef.current);
+      polygonRef.current = null;
+    }
+
+    gridLayersRef.current.forEach((layer) => map.removeLayer(layer));
+    gridLayersRef.current = [];
+  };
+
+  const syncBoundaryLayers = (points, map) => {
+    if (!map) return;
+    clearBoundaryLayers(map);
+
+    points.forEach((point) => {
+      const marker = L.marker([point.lat, point.lng]).addTo(map);
+      boundaryMarkersRef.current.push(marker);
+    });
+
+    if (points.length !== 4) {
+      setFormData((prev) =>
+        prev.area_hectares === ""
+          ? prev
+          : {
+              ...prev,
+              area_hectares: "",
+            },
+      );
+      return;
+    }
+
+    polygonRef.current = L.polygon(
+      points.map((point) => [point.lat, point.lng]),
+      {
+        color: "#16a34a",
+        fillOpacity: 0.3,
+        weight: 2,
+      },
+    ).addTo(map);
+    polygonRef.current.bringToBack();
+
+    const turfCoords = [
+      ...points.map((point) => [point.lng, point.lat]),
+      [points[0].lng, points[0].lat],
+    ];
+
+    const turfPolygon = turf.polygon([turfCoords]);
+    const areaSqMeters = turf.area(turfPolygon);
+    const areaHectares = Number((areaSqMeters / 10000).toFixed(2));
+
+    setFormData((prev) =>
+      prev.area_hectares === areaHectares
+        ? prev
+        : {
+            ...prev,
+            area_hectares: areaHectares,
+          },
+    );
+
+    generateGrids(points, map);
+    map.fitBounds(polygonRef.current.getBounds());
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -59,68 +128,48 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       },
     ).addTo(map);
 
+    map.createPane("labels");
+    map.getPane("labels").style.zIndex = 650;
+    map.getPane("labels").style.pointerEvents = "none";
+
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+      {
+        subdomains: "abcd",
+        pane: "labels",
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+      },
+    ).addTo(map);
+
     map.on("click", (e) => {
       setBoundaryPoints((prev) => {
+        const clickedPoint = {
+          lat: e.latlng.lat,
+          lng: e.latlng.lng,
+        };
+
+        const pointToMove = movingPointIndexRef.current;
+        if (pointToMove !== null && prev[pointToMove]) {
+          const moved = prev.map((point, index) =>
+            index === pointToMove ? clickedPoint : point,
+          );
+
+          movingPointIndexRef.current = null;
+          setMovingPointIndex(null);
+          return moved;
+        }
+
         if (prev.length >= 4) {
           alert("Only 4 boundary points allowed");
           return prev;
         }
 
-        const newPoint = {
-          lat: e.latlng.lat,
-          lng: e.latlng.lng,
-        };
-
-        const updated = [...prev, newPoint];
-
-        // draw marker
-        L.marker([newPoint.lat, newPoint.lng]).addTo(map);
-
-        // remove old polygon
-        if (polygonRef.current) {
-          map.removeLayer(polygonRef.current);
-          polygonRef.current = null;
-        }
-
-        // draw polygon ONLY when exactly 4 points
-        if (updated.length === 4) {
-          polygonRef.current = L.polygon(
-            updated.map((p) => [p.lat, p.lng]),
-            {
-              color: "#16a34a",
-              fillOpacity: 0.3,
-              weight: 2,
-            },
-          ).addTo(map);
-          polygonRef.current.bringToBack();
-
-          // calculate area
-          const turfCoords = [
-            ...updated.map((p) => [p.lng, p.lat]),
-            [updated[0].lng, updated[0].lat],
-          ];
-
-          const turfPolygon = turf.polygon([turfCoords]);
-
-          const areaSqMeters = turf.area(turfPolygon);
-          const areaHectares = areaSqMeters / 10000;
-
-          setFormData((prev) => ({
-            ...prev,
-            area_hectares: Number(areaHectares.toFixed(2)),
-          }));
-
-          // generate grids
-          generateGrids(updated, map);
-
-          map.fitBounds(polygonRef.current.getBounds());
-        }
-
-        return updated;
+        return [...prev, clickedPoint];
       });
     });
 
     leafletMapRef.current = map;
+    syncBoundaryLayers(boundaryPoints, map);
     return () => {
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
@@ -128,6 +177,17 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       }
     };
   }, [isOpen, formData.latitude, formData.longitude]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      movingPointIndexRef.current = null;
+      setMovingPointIndex(null);
+      return;
+    }
+
+    if (!leafletMapRef.current) return;
+    syncBoundaryLayers(boundaryPoints, leafletMapRef.current);
+  }, [isOpen, boundaryPoints]);
 
   if (!isOpen) return null;
 
@@ -270,6 +330,36 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     setShowDropdown(false);
   };
 
+  const handleDeleteBoundaryPoint = (index) => {
+    const isConfirmed = window.confirm(
+      `Delete boundary point ${index + 1}?`,
+    );
+    if (!isConfirmed) return;
+
+    setBoundaryPoints((prev) => prev.filter((_, pointIndex) => pointIndex !== index));
+
+    if (movingPointIndexRef.current !== null) {
+      if (movingPointIndexRef.current === index) {
+        movingPointIndexRef.current = null;
+        setMovingPointIndex(null);
+      } else if (movingPointIndexRef.current > index) {
+        const newIndex = movingPointIndexRef.current - 1;
+        movingPointIndexRef.current = newIndex;
+        setMovingPointIndex(newIndex);
+      }
+    }
+  };
+
+  const handleMoveBoundaryPoint = (index) => {
+    const isConfirmed = window.confirm(
+      `Move boundary point ${index + 1}? Click on the map to set its new position.`,
+    );
+    if (!isConfirmed) return;
+
+    movingPointIndexRef.current = index;
+    setMovingPointIndex(index);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -325,6 +415,8 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 
       setFormData(initialForm);
       setBoundaryPoints([]);
+      movingPointIndexRef.current = null;
+      setMovingPointIndex(null);
 
       onClose?.();
     } catch (submitError) {
@@ -401,11 +493,40 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 
           {/* SHOW SELECTED POINTS */}
           {boundaryPoints.length > 0 && (
-            <div style={{ fontSize: "12px", marginBottom: "10px" }}>
-              <strong>Boundary Points:</strong>
+            <div className="boundary-points-panel">
+              <div className="boundary-points-header">
+                <strong>Boundary Points</strong>
+                {movingPointIndex !== null && (
+                  <span className="boundary-move-note">
+                    Move mode: click map for point {movingPointIndex + 1}
+                  </span>
+                )}
+              </div>
               {boundaryPoints.map((point, index) => (
-                <div key={index}>
-                  {index + 1}. {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
+                <div
+                  key={`${point.lat}-${point.lng}-${index}`}
+                  className={`boundary-point-row ${movingPointIndex === index ? "moving" : ""}`}
+                >
+                  <div className="boundary-point-index">{index + 1}</div>
+                  <div className="boundary-point-coords">
+                    {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
+                  </div>
+                  <div className="boundary-point-actions">
+                    <button
+                      type="button"
+                      className="move-btn"
+                      onClick={() => handleMoveBoundaryPoint(index)}
+                    >
+                      Move
+                    </button>
+                    <button
+                      type="button"
+                      className="delete-btn"
+                      onClick={() => handleDeleteBoundaryPoint(index)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

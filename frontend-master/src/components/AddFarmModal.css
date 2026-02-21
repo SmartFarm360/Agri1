@@ -143,3 +143,105 @@
 .modal input::placeholder {
   color: #374151;
 }
+
+.boundary-points-panel {
+  margin-bottom: 12px;
+  border: 1px solid #d1fae5;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.boundary-points-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #14532d;
+  font-size: 13px;
+}
+
+.boundary-move-note {
+  font-size: 11px;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.boundary-point-row {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.boundary-point-row:last-child {
+  margin-bottom: 0;
+}
+
+.boundary-point-row.moving {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.12);
+}
+
+.boundary-point-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boundary-point-coords {
+  font-size: 12px;
+  color: #111827;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+.boundary-point-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.boundary-point-actions button {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 5px 8px;
+}
+
+.boundary-point-actions .move-btn {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.boundary-point-actions .move-btn:hover {
+  background: #bbf7d0;
+}
+
+.boundary-point-actions .delete-btn {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.boundary-point-actions .delete-btn:hover {
+  background: #fecaca;
+}

@@ -22,7 +22,20 @@ function AppRoutes() {
   const [currentLanguage, setCurrentLanguage] = useState("en");
   const [userRole, setUserRole] = useState("");
   const [appLoaded, setAppLoaded] = useState(false);
+  const [toast, setToast] = useState({
+    visible: false,
+    type: "success",
+    message: "",
+  });
   const navigate = useNavigate();
+
+  const showToast = (message, type = "success") => {
+    setToast({
+      visible: true,
+      type,
+      message,
+    });
+  };
 
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated");
@@ -36,36 +49,55 @@ function AppRoutes() {
     setAppLoaded(true);
   }, []);
 
+  useEffect(() => {
+    if (!toast.visible) return;
+
+    const timer = setTimeout(() => {
+      setToast((prev) => ({ ...prev, visible: false }));
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [toast.visible]);
+
   const handleLogin = async (credentials) => {
-    const API_URL = import.meta.env.VITE_API_URL;
+    try {
+      const API_URL = import.meta.env.VITE_API_URL;
 
-    const response = await axios.post(
-      `${API_URL}/api/auth/login`,
-      credentials,
-      {
-        headers: {
-          "Content-Type": "application/json",
+      const response = await axios.post(
+        `${API_URL}/api/auth/login`,
+        credentials,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-      },
-    );
+      );
 
-    if (response.data?.token && response.data?.role) {
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("userRole", response.data.role);
-      localStorage.setItem("token", response.data.token);
+      if (response.data?.token && response.data?.role) {
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userRole", response.data.role);
+        localStorage.setItem("token", response.data.token);
 
-      setIsAuthenticated(true);
-      setUserRole(response.data.role);
+        setIsAuthenticated(true);
+        setUserRole(response.data.role);
+        showToast("Logged in successfully.", "success");
 
-      if (response.data.role === "farmer") {
-        navigate("/dashboard");
-      } else if (response.data.role === "drone_controller") {
-        navigate("/drone-dashboard");
+        if (response.data.role === "farmer") {
+          navigate("/dashboard");
+        } else if (response.data.role === "drone_controller") {
+          navigate("/drone-dashboard");
+        } else {
+          navigate("/");
+        }
       } else {
-        navigate("/");
+        throw new Error("Invalid login response");
       }
-    } else {
-      throw new Error("Invalid login response");
+    } catch (error) {
+      showToast(
+        error.response?.data?.message || error.message || "Login failed.",
+        "error",
+      );
+      throw error;
     }
   };
 
@@ -84,16 +116,17 @@ function AppRoutes() {
       );
 
       if (response.data?.message) {
-        alert("Registration successful. You can now login.");
+        showToast("Registration successful. You can now login.", "success");
         navigate("/login");
       } else {
-        alert("Registration failed: Invalid response from server.");
+        showToast("Registration failed: Invalid response from server.", "error");
       }
     } catch (error) {
       console.error("Registration error:", error);
-      alert(
+      showToast(
         "Registration failed: " +
           (error.response?.data?.message || "Server error"),
+        "error",
       );
     }
   };
@@ -109,7 +142,27 @@ function AppRoutes() {
 
   return (
     appLoaded && (
-      <Routes>
+      <>
+        {toast.visible && (
+          <div
+            style={{
+              position: "fixed",
+              top: "88px",
+              right: "20px",
+              zIndex: 2000,
+              background: toast.type === "success" ? "#16a34a" : "#dc2626",
+              color: "#ffffff",
+              padding: "10px 14px",
+              borderRadius: "10px",
+              boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
+              fontWeight: 600,
+              maxWidth: "320px",
+            }}
+          >
+            {toast.message}
+          </div>
+        )}
+        <Routes>
         {/* ✅ HOME PAGE - always show */}
         <Route
           path="/"
@@ -145,6 +198,7 @@ function AppRoutes() {
               <Register
                 onRegister={handleRegister}
                 currentLanguage={currentLanguage}
+                showGlobalToast={showToast}
               />
             ) : (
               <Navigate to="/" />
@@ -281,7 +335,8 @@ function AppRoutes() {
 
         {/* CATCH-ALL */}
         <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+        </Routes>
+      </>
     )
   );
 }
