@@ -144,6 +144,34 @@
   color: #374151;
 }
 
+.area-field-row {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.area-field-row input {
+  margin-bottom: 0;
+}
+
+.area-unit-select {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+  transition: all 0.2s ease;
+}
+
+.area-unit-select:focus {
+  outline: none;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.15);
+}
+
 .boundary-points-panel {
   margin-bottom: 12px;
   border: 1px solid #d1fae5;

@@ -22,6 +22,15 @@ const initialForm = {
   area_hectares: "",
 };
 
+const AREA_UNITS = {
+  hectares: "Hectares",
+  acres: "Acres",
+  sq_metres: "Sq Metres",
+};
+
+const HECTARE_TO_ACRE = 2.4710538147;
+const HECTARE_TO_SQ_METRE = 10000;
+
 const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const [formData, setFormData] = useState(initialForm);
   const [saving, setSaving] = useState(false);
@@ -31,6 +40,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const [locationResults, setLocationResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [boundaryPoints, setBoundaryPoints] = useState([]);
+  const [areaUnit, setAreaUnit] = useState("hectares");
   const [movingPointIndex, setMovingPointIndex] = useState(null);
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
@@ -426,6 +436,21 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     }
   };
 
+  const getConvertedArea = () => {
+    const hectares = Number(formData.area_hectares);
+    if (!Number.isFinite(hectares) || hectares <= 0) return "";
+
+    if (areaUnit === "acres") {
+      return (hectares * HECTARE_TO_ACRE).toFixed(2);
+    }
+
+    if (areaUnit === "sq_metres") {
+      return (hectares * HECTARE_TO_SQ_METRE).toFixed(2);
+    }
+
+    return hectares.toFixed(2);
+  };
+
   return (
     <div
       className="modal-overlay"
@@ -549,6 +574,27 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
             value={formData.longitude}
             readOnly
           />
+
+          <div className="area-field-row">
+            <input
+              type="text"
+              name="total_area"
+              placeholder="Total Area"
+              value={getConvertedArea()}
+              readOnly
+            />
+            <select
+              className="area-unit-select"
+              value={areaUnit}
+              onChange={(event) => setAreaUnit(event.target.value)}
+            >
+              {Object.entries(AREA_UNITS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* <input
             type="number"
