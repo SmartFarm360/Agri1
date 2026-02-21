@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { translations } from "../utils/translations";
 import "./Login.css";
+import navLogo from "../assets/Maati AI.jpg";
 
 const Login = ({ onLogin, currentLanguage }) => {
   const [formData, setFormData] = useState({
@@ -40,7 +41,12 @@ const handleSubmit = async (e) => {
       <div className="login-card">
         <div className="login-header">
           <div className="logo-section">
-            <div className="logo">🌱</div>
+                        <img
+              src={navLogo}
+              alt="Maati AI logo"
+              className="logo-image"
+              draggable="false"
+            />
             <h1>MAATI AI</h1>
           </div>
           <p className="tagline">{t.loginTagline}</p>

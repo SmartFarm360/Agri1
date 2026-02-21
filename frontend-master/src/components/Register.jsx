@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { translations } from "../utils/translations";
 import "./Register.css";
+import navLogo from "../assets/Maati AI.jpg";
 
 const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
   const [formData, setFormData] = useState({
@@ -371,7 +372,12 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
         <div className="register-card">
           <div className="register-header">
             <div className="logo-section">
-              <div className="logo">🌱</div>
+                          <img
+              src={navLogo}
+              alt="Maati AI logo"
+              className="logo-image"
+              draggable="false"
+            />
               <h1>MAATI AI</h1>
             </div>
             <p className="tagline">

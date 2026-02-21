@@ -77,6 +77,18 @@ html, body {
   animation: bounce 2s infinite;
 }
 
+.logo-image {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  display: block;
+  animation: none;
+  transform: none;
+  user-select: none;
+}
+
 @keyframes bounce {
   0%, 20%, 50%, 80%, 100% {
     transform: translateY(0);

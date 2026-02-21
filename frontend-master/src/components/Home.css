@@ -114,6 +114,16 @@
   gap: 5px;
 }
 
+.home-logo-image {
+  width: clamp(210px, 36vw, 320px);
+  height: auto;
+  object-fit: contain;
+  display: block;
+  transform: none;
+  animation: none;
+  user-select: none;
+}
+
 #smart {
   color: #8B5A2B;                 /* same as navbar logo */
   background: none;

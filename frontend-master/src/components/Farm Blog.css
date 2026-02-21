@@ -38,7 +38,7 @@
 .blog-header {
   background: linear-gradient(135deg, var(--primary-green) 0%, var(--light-green) 100%);
   color: var(--white);
-  padding: 340px 0;
+  padding: 315px 0;
   position: relative;
   top: auto;
   z-index: 1;

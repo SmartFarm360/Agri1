@@ -71,6 +71,17 @@ html {
   box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
 }
 
+.logo-image {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  display: block;
+  transform: none;
+  user-select: none;
+}
+
 
 .register-header h1 {
   background: linear-gradient(135deg, #059669 0%, #10b981 100%);
