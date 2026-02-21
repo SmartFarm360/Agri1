@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import { translations } from "../utils/translations"
 import "./Profile.css"
@@ -12,7 +12,9 @@ const Profile = ({ currentLanguage }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [showSuccess, setShowSuccess] = useState(false)
+  const [toast, setToast] = useState({ visible: false, type: "error", message: "" })
   const [loadError, setLoadError] = useState("")
+  const toastTimerRef = useRef(null)
 
   const API_URL =
     import.meta.env.VITE_API_URL ||
@@ -46,6 +48,14 @@ const Profile = ({ currentLanguage }) => {
 
   fetchProfile();
 }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current)
+      }
+    }
+  }, [])
 
 
   const handleEdit = () => {
@@ -84,9 +94,17 @@ const handleSave = async () => {
     setTimeout(() => setShowSuccess(false), 3000);
   } catch (error) {
     console.error("Failed to update profile:", error);
-    alert(
-      error.response?.data?.message ||
-      "❌ Failed to update profile. Please try again."
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({
+      visible: true,
+      type: "error",
+      message:
+        error.response?.data?.message ||
+        "Failed to update profile. Please try again.",
+    });
+    toastTimerRef.current = setTimeout(
+      () => setToast({ visible: false, type: "error", message: "" }),
+      2800,
     );
   }
 };
@@ -132,6 +150,13 @@ const handleSave = async () => {
           <div className="success-message">
             <span className="success-icon">✓</span>
             <span>{t?.profileUpdated || "Profile updated successfully!"}</span>
+          </div>
+        )}
+
+        {toast.visible && (
+          <div className="error-message">
+            <span className="error-icon">!</span>
+            <span>{toast.message}</span>
           </div>
         )}
 
@@ -273,3 +298,4 @@ const handleSave = async () => {
 }
 
 export default Profile
+

@@ -35,6 +35,13 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const [formData, setFormData] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState({
+    visible: false,
+    type: "info",
+    message: "",
+    confirm: false,
+    onConfirm: null,
+  });
 
   const [locationQuery, setLocationQuery] = useState("");
   const [locationResults, setLocationResults] = useState([]);
@@ -48,6 +55,60 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const gridLayersRef = useRef([]);
   const boundaryMarkersRef = useRef([]);
   const movingPointIndexRef = useRef(null);
+  const toastTimerRef = useRef(null);
+
+  const hideToast = () => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast((prev) => ({
+      ...prev,
+      visible: false,
+      confirm: false,
+      onConfirm: null,
+    }));
+  };
+
+  const showToast = (message, type = "info", duration = 2200) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+
+    setToast({
+      visible: true,
+      type,
+      message,
+      confirm: false,
+      onConfirm: null,
+    });
+
+    toastTimerRef.current = setTimeout(() => {
+      setToast((prev) => ({
+        ...prev,
+        visible: false,
+        confirm: false,
+        onConfirm: null,
+      }));
+      toastTimerRef.current = null;
+    }, duration);
+  };
+
+  const showConfirmToast = (message, onConfirm) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+
+    setToast({
+      visible: true,
+      type: "warning",
+      message,
+      confirm: true,
+      onConfirm,
+    });
+  };
 
   const clearBoundaryLayers = (map) => {
     boundaryMarkersRef.current.forEach((marker) => map.removeLayer(marker));
@@ -166,11 +227,12 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 
           movingPointIndexRef.current = null;
           setMovingPointIndex(null);
+          showToast(`Boundary point ${pointToMove + 1} moved.`, "success");
           return moved;
         }
 
         if (prev.length >= 4) {
-          alert("Only 4 boundary points allowed");
+          showToast("Only 4 boundary points allowed.", "warning");
           return prev;
         }
 
@@ -192,12 +254,21 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     if (!isOpen) {
       movingPointIndexRef.current = null;
       setMovingPointIndex(null);
+      hideToast();
       return;
     }
 
     if (!leafletMapRef.current) return;
     syncBoundaryLayers(boundaryPoints, leafletMapRef.current);
   }, [isOpen, boundaryPoints]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -341,33 +412,33 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   };
 
   const handleDeleteBoundaryPoint = (index) => {
-    const isConfirmed = window.confirm(
-      `Delete boundary point ${index + 1}?`,
-    );
-    if (!isConfirmed) return;
+    showConfirmToast(`Delete boundary point ${index + 1}?`, () => {
+      setBoundaryPoints((prev) => prev.filter((_, pointIndex) => pointIndex !== index));
 
-    setBoundaryPoints((prev) => prev.filter((_, pointIndex) => pointIndex !== index));
-
-    if (movingPointIndexRef.current !== null) {
-      if (movingPointIndexRef.current === index) {
-        movingPointIndexRef.current = null;
-        setMovingPointIndex(null);
-      } else if (movingPointIndexRef.current > index) {
-        const newIndex = movingPointIndexRef.current - 1;
-        movingPointIndexRef.current = newIndex;
-        setMovingPointIndex(newIndex);
+      if (movingPointIndexRef.current !== null) {
+        if (movingPointIndexRef.current === index) {
+          movingPointIndexRef.current = null;
+          setMovingPointIndex(null);
+        } else if (movingPointIndexRef.current > index) {
+          const newIndex = movingPointIndexRef.current - 1;
+          movingPointIndexRef.current = newIndex;
+          setMovingPointIndex(newIndex);
+        }
       }
-    }
+
+      showToast(`Boundary point ${index + 1} deleted.`, "success");
+    });
   };
 
   const handleMoveBoundaryPoint = (index) => {
-    const isConfirmed = window.confirm(
-      `Move boundary point ${index + 1}? Click on the map to set its new position.`,
+    showConfirmToast(
+      `Move boundary point ${index + 1}? Click Confirm, then click on the map to set its new position.`,
+      () => {
+        movingPointIndexRef.current = index;
+        setMovingPointIndex(index);
+        showToast(`Move mode enabled for point ${index + 1}.`, "info", 3200);
+      },
     );
-    if (!isConfirmed) return;
-
-    movingPointIndexRef.current = index;
-    setMovingPointIndex(index);
   };
 
   const handleSubmit = async (event) => {
@@ -461,6 +532,34 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       }}
     >
       <div className="modal" onClick={(event) => event.stopPropagation()}>
+        {toast.visible && (
+          <div className={`modal-toast modal-toast-${toast.type}`}>
+            <span>{toast.message}</span>
+            {toast.confirm && (
+              <div className="modal-toast-actions">
+                <button
+                  type="button"
+                  className="modal-toast-btn confirm"
+                  onClick={() => {
+                    const confirmAction = toast.onConfirm;
+                    hideToast();
+                    confirmAction?.();
+                  }}
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  className="modal-toast-btn cancel"
+                  onClick={hideToast}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <button className="modal-close-btn" onClick={onClose}>
           ✕
         </button>

@@ -144,6 +144,69 @@
   color: #374151;
 }
 
+.modal-toast {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.modal-toast-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+}
+
+.modal-toast-success {
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+.modal-toast-warning {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.modal-toast-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.modal-toast-btn {
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 5px 9px;
+}
+
+.modal-toast-btn.confirm {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.modal-toast-btn.confirm:hover {
+  background: #15803d;
+}
+
+.modal-toast-btn.cancel {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.modal-toast-btn.cancel:hover {
+  background: #d1d5db;
+}
+
 .area-field-row {
   display: grid;
   grid-template-columns: 1fr 150px;

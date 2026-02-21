@@ -35,6 +35,25 @@
   font-weight: bold;
 }
 
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  animation: slideDown 0.3s ease-out;
+}
+
+.error-icon {
+  color: #dc2626;
+  font-weight: 800;
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;
