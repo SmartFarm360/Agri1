@@ -276,6 +276,10 @@
     gap: 0.5rem;
     order: 2;
     padding-bottom: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 
   .nav-left {
@@ -301,6 +305,10 @@
     height: 34px;
     padding: 6px 10px;
     font-size: 0.9rem;
+    flex: 0 0 auto;
+  }
+
+  .profile-section {
     flex: 0 0 auto;
   }
 
