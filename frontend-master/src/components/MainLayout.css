@@ -342,11 +342,25 @@
 
 .language-toggle-btn {
   cursor: pointer;
-  background: transparent;
-  border: none;
+  background: #ffffff;
+  border: 1px solid #2e7d32;
+  border-radius: 999px;
   color: #333;
   font: inherit;
-  padding: 0;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.language-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.language-caret {
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
 .dropdown-menu {
@@ -378,6 +392,12 @@
 .dropdown-item:hover {
   background: rgba(46, 125, 50, 0.1);
   color: #2e7d32;
+}
+
+.dropdown-item.active {
+  background: rgba(46, 125, 50, 0.15);
+  color: #1b5e20;
+  font-weight: 600;
 }
 
 html,

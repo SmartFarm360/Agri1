@@ -120,8 +120,11 @@ const MainLayout = ({
               type="button"
               className="language-toggle-btn"
               onClick={toggleLangMenu}
+              aria-label="Change language"
+              title="Change language"
             >
-              Language {languageLabels[currentLanguage]} v
+              <span className="language-icon" aria-hidden="true">🌐</span>
+              <span className="language-caret" aria-hidden="true">▾</span>
             </button>
             {showLangMenu && (
               <div className="dropdown-menu">
@@ -129,7 +132,7 @@ const MainLayout = ({
                   <button
                     key={code}
                     type="button"
-                    className="dropdown-item"
+                    className={`dropdown-item${currentLanguage === code ? " active" : ""}`}
                     onClick={() => handleLanguageChange(code)}
                   >
                     {name}
