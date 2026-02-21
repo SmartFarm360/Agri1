@@ -335,13 +335,18 @@
 
 .language-dropdown {
   position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.language-toggle-btn {
   cursor: pointer;
   background: transparent;
   border: none;
-  display: flex;
-  align-items: center;
   color: #333;
-  flex: 0 0 auto;
+  font: inherit;
+  padding: 0;
 }
 
 .dropdown-menu {
@@ -364,6 +369,10 @@
   text-decoration: none;
   display: block;
   white-space: nowrap;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
 }
 
 .dropdown-item:hover {

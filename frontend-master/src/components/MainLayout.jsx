@@ -26,7 +26,7 @@ const baseText = {
 
 const languageLabels = {
   en: "English",
-  hi: "हिन्दी",
+  hi: "Hindi",
 };
 
 const MainLayout = ({
@@ -81,6 +81,7 @@ const MainLayout = ({
 
   const handleLanguageChange = async (langCode) => {
     setCurrentLanguage(langCode);
+    localStorage.setItem("selectedLanguage", langCode);
     setShowLangMenu(false);
     await translateUI(langCode);
   };
@@ -114,27 +115,29 @@ const MainLayout = ({
             {t.blog}
           </Link>
 
-          <button
-            type="button"
-            className="language-dropdown"
-            onClick={toggleLangMenu}
-            ref={langRef}
-          >
-            🌐 {languageLabels[currentLanguage]} ▾
+          <div className="language-dropdown" ref={langRef}>
+            <button
+              type="button"
+              className="language-toggle-btn"
+              onClick={toggleLangMenu}
+            >
+              Language {languageLabels[currentLanguage]} v
+            </button>
             {showLangMenu && (
               <div className="dropdown-menu">
                 {Object.entries(languageLabels).map(([code, name]) => (
-                  <div
+                  <button
                     key={code}
+                    type="button"
                     className="dropdown-item"
                     onClick={() => handleLanguageChange(code)}
                   >
                     {name}
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
-          </button>
+          </div>
 
           <Link to="/history" className={location.pathname === "/history" ? "nav-link active" : "nav-link"}>
             {t.history}
@@ -188,3 +191,5 @@ const MainLayout = ({
 };
 
 export default MainLayout;
+
+
