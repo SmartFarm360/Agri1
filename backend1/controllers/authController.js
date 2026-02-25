@@ -7,6 +7,53 @@ require("dotenv").config();
 
 let blacklistedTokens = [];
 exports.isTokenBlacklisted = (token) => blacklistedTokens.includes(token);
+let cachedUserNameColumn = null;
+let cachedDroneProfileTable = null;
+
+const resolveUserNameColumn = async (db) => {
+  if (cachedUserNameColumn) return cachedUserNameColumn;
+
+  const result = await db.query(
+    `
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'users'
+      AND column_name IN ('username', 'name')
+    ORDER BY CASE WHEN column_name = 'username' THEN 0 ELSE 1 END
+    LIMIT 1
+    `
+  );
+
+  if (result.rows.length === 0) {
+    throw new Error("Missing name column in users table");
+  }
+
+  cachedUserNameColumn = result.rows[0].column_name;
+  return cachedUserNameColumn;
+};
+
+const resolveDroneProfileTable = async (db) => {
+  if (cachedDroneProfileTable) return cachedDroneProfileTable;
+
+  const result = await db.query(
+    `
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name IN ('drone_controller_profiles', 'drone_profiles')
+    ORDER BY CASE WHEN table_name = 'drone_controller_profiles' THEN 0 ELSE 1 END
+    LIMIT 1
+    `
+  );
+
+  if (result.rows.length === 0) {
+    throw new Error("Missing drone profile table");
+  }
+
+  cachedDroneProfileTable = result.rows[0].table_name;
+  return cachedDroneProfileTable;
+};
 
 /* ================= REGISTER ================= */
 exports.register = async (req, res) => {
@@ -37,10 +84,11 @@ exports.register = async (req, res) => {
     await client.query("BEGIN");
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const userNameColumn = await resolveUserNameColumn(client);
 
     const userResult = await client.query(
       `
-      INSERT INTO users (username, email, mob, password_hash, role)
+      INSERT INTO users (${userNameColumn}, email, mob, password_hash, role)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING user_id
       `,
@@ -87,10 +135,11 @@ exports.register = async (req, res) => {
     if (role === "drone_controller") {
       const { licenseId, baseLocation, availableDrones, flightExperience } =
         req.body;
+      const droneProfileTable = await resolveDroneProfileTable(client);
 
       await client.query(
         `
-        INSERT INTO drone_controller_profiles
+        INSERT INTO ${droneProfileTable}
         (user_id, license_id, base_location, available_drones, flight_experience)
         VALUES ($1,$2,$3,$4,$5)
         `,
@@ -169,9 +218,10 @@ exports.verifyOTP = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
+    const userNameColumn = await resolveUserNameColumn(pool);
 
     const result = await pool.query(
-      "SELECT username, email, created_at FROM users WHERE user_id = $1",
+      `SELECT ${userNameColumn} AS username, email, created_at FROM users WHERE user_id = $1`,
       [userId]
     );
 
@@ -196,20 +246,21 @@ exports.updateProfile = async (req, res) => {
   try {
     const userId = req.user.user_id;
     const { name, email, password } = req.body;
+    const userNameColumn = await resolveUserNameColumn(pool);
 
     let query, values;
 
     if (password) {
       const hash = await bcrypt.hash(password, 10);
       query = `
-        UPDATE users SET username=$1, email=$2, password_hash=$3
-        WHERE user_id=$4 RETURNING username,email,created_at
+        UPDATE users SET ${userNameColumn}=$1, email=$2, password_hash=$3
+        WHERE user_id=$4 RETURNING ${userNameColumn} AS username,email,created_at
       `;
       values = [name, email, hash, userId];
     } else {
       query = `
-        UPDATE users SET username=$1, email=$2
-        WHERE user_id=$3 RETURNING username,email,created_at
+        UPDATE users SET ${userNameColumn}=$1, email=$2
+        WHERE user_id=$3 RETURNING ${userNameColumn} AS username,email,created_at
       `;
       values = [name, email, userId];
     }
