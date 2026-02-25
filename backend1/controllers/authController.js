@@ -19,14 +19,18 @@ const resolveUserNameColumn = async (db) => {
     FROM information_schema.columns
     WHERE table_schema = 'public'
       AND table_name = 'users'
-      AND column_name IN ('username', 'name')
-    ORDER BY CASE WHEN column_name = 'username' THEN 0 ELSE 1 END
+      AND column_name IN ('username', 'full_name', 'name')
+    ORDER BY CASE
+      WHEN column_name = 'username' THEN 0
+      WHEN column_name = 'full_name' THEN 1
+      ELSE 2
+    END
     LIMIT 1
     `
   );
 
   if (result.rows.length === 0) {
-    throw new Error("Missing name column in users table");
+    throw new Error("Missing username/full_name/name column in users table");
   }
 
   cachedUserNameColumn = result.rows[0].column_name;
