@@ -227,6 +227,20 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   }, [mapToast]);
 
   useEffect(() => {
+    const isAnyPopupOpen = Boolean(selectedGrid || activeCase);
+
+    if (isAnyPopupOpen) {
+      document.body.classList.add("dashboard-modal-open");
+    } else {
+      document.body.classList.remove("dashboard-modal-open");
+    }
+
+    return () => {
+      document.body.classList.remove("dashboard-modal-open");
+    };
+  }, [selectedGrid, activeCase]);
+
+  useEffect(() => {
     if (!selectedFarm) return;
 
     let isCancelled = false;
