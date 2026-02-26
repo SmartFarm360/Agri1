@@ -1143,19 +1143,24 @@ html {
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 9999;
+  padding: 84px 12px 16px;
+  overflow-y: auto;
 }
 
 .grid-popup {
   background: linear-gradient(165deg, #ffffff 0%, #f7fffb 100%);
-  width: min(92%, 460px);
+  width: min(96vw, 760px);
   border-radius: 1.1rem;
   padding: 1.15rem;
   border: 1px solid #d1fae5;
   box-shadow: 0 25px 45px rgba(0, 0, 0, 0.28);
   animation: fadeInUp 0.3s ease;
+  max-height: calc(100vh - 104px);
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 .grid-popup-header {
@@ -1293,6 +1298,7 @@ html {
   color: #111827;
   font-size: 1.05rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .risk-low {
