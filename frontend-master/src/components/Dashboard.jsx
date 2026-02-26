@@ -136,6 +136,128 @@ const getCaseGridMetrics = (caseData) => {
   };
 };
 
+const cropProfiles = [
+  {
+    name: "Rice",
+    ranges: {
+      temperature: [24, 35],
+      humidity: [60, 90],
+      moisture: [55, 85],
+      soilPh: [5, 7],
+    },
+    harvestMonth: "October-November",
+    expectedTime: "110-140 days",
+  },
+  {
+    name: "Wheat",
+    ranges: {
+      temperature: [15, 25],
+      humidity: [40, 65],
+      moisture: [35, 60],
+      soilPh: [6, 7.5],
+    },
+    harvestMonth: "March-April",
+    expectedTime: "110-130 days",
+  },
+  {
+    name: "Maize",
+    ranges: {
+      temperature: [18, 32],
+      humidity: [50, 75],
+      moisture: [40, 65],
+      soilPh: [5.5, 7.5],
+    },
+    harvestMonth: "September-October",
+    expectedTime: "90-110 days",
+  },
+  {
+    name: "Cotton",
+    ranges: {
+      temperature: [21, 35],
+      humidity: [45, 70],
+      moisture: [35, 55],
+      soilPh: [5.8, 8],
+    },
+    harvestMonth: "October-January",
+    expectedTime: "150-170 days",
+  },
+  {
+    name: "Mustard",
+    ranges: {
+      temperature: [10, 25],
+      humidity: [35, 60],
+      moisture: [30, 50],
+      soilPh: [6, 7.5],
+    },
+    harvestMonth: "February-March",
+    expectedTime: "110-140 days",
+  },
+  {
+    name: "Groundnut",
+    ranges: {
+      temperature: [20, 30],
+      humidity: [50, 70],
+      moisture: [35, 60],
+      soilPh: [5.5, 7],
+    },
+    harvestMonth: "September-October",
+    expectedTime: "100-120 days",
+  },
+];
+
+const getRangeScore = (value, min, max) => {
+  if (!Number.isFinite(value)) return 0.4;
+  if (value >= min && value <= max) return 1;
+
+  const width = Math.max(max - min, 1);
+  const distance = value < min ? min - value : value - max;
+  const normalizedDistance = distance / width;
+
+  if (normalizedDistance <= 0.2) return 0.75;
+  if (normalizedDistance <= 0.4) return 0.55;
+  if (normalizedDistance <= 0.7) return 0.35;
+  return 0.15;
+};
+
+const getGridCropPlan = (gridMetrics, limit = 3) => {
+  if (!gridMetrics) return [];
+
+  return cropProfiles
+    .map((crop) => {
+      const temperatureScore = getRangeScore(
+        gridMetrics.temperature,
+        crop.ranges.temperature[0],
+        crop.ranges.temperature[1],
+      );
+      const humidityScore = getRangeScore(
+        gridMetrics.humidity,
+        crop.ranges.humidity[0],
+        crop.ranges.humidity[1],
+      );
+      const moistureScore = getRangeScore(
+        gridMetrics.moisture,
+        crop.ranges.moisture[0],
+        crop.ranges.moisture[1],
+      );
+      const phScore = getRangeScore(
+        gridMetrics.soilPh,
+        crop.ranges.soilPh[0],
+        crop.ranges.soilPh[1],
+      );
+
+      return {
+        ...crop,
+        score:
+          temperatureScore * 0.35 +
+          humidityScore * 0.25 +
+          moistureScore * 0.25 +
+          phScore * 0.15,
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+};
+
 const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   const [dashboardData, setDashboardData] = useState({
     temperature: 0,
@@ -830,6 +952,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   };
 
   const activeCaseGridMetrics = getCaseGridMetrics(activeCase);
+  const gridCropPlan = getGridCropPlan(selectedGrid);
 
   const handleViewGridInActiveCases = () => {
     if (!selectedGrid) return;
@@ -1468,6 +1591,28 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                   {selectedGrid.cellArea} m²
                 </strong>
               </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaSeedling className="grid-popup-row-icon icon-moisture" />
+                  <span>Crop Harvest Plan</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  Based on current grid readings
+                </strong>
+              </div>
+
+              {gridCropPlan.map((crop, index) => (
+                <div className="grid-popup-row" key={crop.name}>
+                  <div className="grid-popup-row-label">
+                    <FaSeedling className="grid-popup-row-icon icon-moisture" />
+                    <span>{`Crop ${index + 1}: ${crop.name}`}</span>
+                  </div>
+                  <strong className="grid-popup-row-value">
+                    Harvest: {crop.harvestMonth} | Expected: {crop.expectedTime}
+                  </strong>
+                </div>
+              ))}
             </div>
 
             <button
