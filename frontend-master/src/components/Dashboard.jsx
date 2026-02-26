@@ -22,6 +22,11 @@ import {
   FaTachometerAlt,
   FaWind,
   FaSun,
+  FaLeaf,
+  FaVial,
+  FaFlask,
+  FaMicroscope,
+  FaDna,
 } from "react-icons/fa";
 
 import { AlertTriangle, MapPin, Clock } from "lucide-react";
@@ -65,6 +70,10 @@ const getSeededNumber = (seed, min, max) => {
   return Math.round(min + getSeededUnit(seed) * (max - min));
 };
 
+const getSeededFloat = (seed, min, max, precision = 2) => {
+  return Number((min + getSeededUnit(seed) * (max - min)).toFixed(precision));
+};
+
 const getMedianValue = (values, fallback = 0) => {
   const validValues = values.filter((value) => Number.isFinite(value));
   if (validValues.length === 0) return fallback;
@@ -103,6 +112,11 @@ const getCaseGridMetrics = (caseData) => {
   const pressure = getSeededNumber(`${seedPrefix}-pressure`, 98, 103);
   const windSpeed = getSeededNumber(`${seedPrefix}-wind`, 1, 12);
   const solarRadiation = getSeededNumber(`${seedPrefix}-solar`, 150, 950);
+  const ndvi = getSeededFloat(`${seedPrefix}-ndvi`, 0.2, 0.95, 2);
+  const soilPh = getSeededFloat(`${seedPrefix}-ph`, 5.4, 8.2, 1);
+  const nitrogen = getSeededNumber(`${seedPrefix}-nitrogen`, 20, 120);
+  const phosphorus = getSeededNumber(`${seedPrefix}-phosphorus`, 5, 60);
+  const potassium = getSeededNumber(`${seedPrefix}-potassium`, 40, 220);
   const risk = getGridRisk(temperature, humidity, moisture);
 
   return {
@@ -113,6 +127,11 @@ const getCaseGridMetrics = (caseData) => {
     pressure,
     windSpeed,
     solarRadiation,
+    ndvi,
+    soilPh,
+    nitrogen,
+    phosphorus,
+    potassium,
     risk,
   };
 };
@@ -470,6 +489,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             const pressure = getSeededNumber(`${seedPrefix}-pressure`, 98, 103);
             const windSpeed = getSeededNumber(`${seedPrefix}-wind`, 1, 12);
             const solarRadiation = getSeededNumber(`${seedPrefix}-solar`, 150, 950);
+            const ndvi = getSeededFloat(`${seedPrefix}-ndvi`, 0.2, 0.95, 2);
+            const soilPh = getSeededFloat(`${seedPrefix}-ph`, 5.4, 8.2, 1);
+            const nitrogen = getSeededNumber(`${seedPrefix}-nitrogen`, 20, 120);
+            const phosphorus = getSeededNumber(`${seedPrefix}-phosphorus`, 5, 60);
+            const potassium = getSeededNumber(`${seedPrefix}-potassium`, 40, 220);
             const risk = getGridRisk(temperature, humidity, moisture);
 
             return {
@@ -480,6 +504,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               pressure,
               windSpeed,
               solarRadiation,
+              ndvi,
+              soilPh,
+              nitrogen,
+              phosphorus,
+              potassium,
               risk,
               cellArea: Math.round(areaSqM),
               metricScope,
@@ -816,6 +845,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         pressure: selectedGrid.pressure,
         windSpeed: selectedGrid.windSpeed,
         solarRadiation: selectedGrid.solarRadiation,
+        ndvi: selectedGrid.ndvi,
+        soilPh: selectedGrid.soilPh,
+        nitrogen: selectedGrid.nitrogen,
+        phosphorus: selectedGrid.phosphorus,
+        potassium: selectedGrid.potassium,
         risk: selectedGrid.risk,
       },
     };
@@ -839,12 +873,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     });
 
     setSelectedGrid(null);
-    requestAnimationFrame(() => {
-      activeCasesRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
+    setActiveCase(linkedCase);
   };
 
   return (
@@ -1190,6 +1219,56 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
                     <div className="case-grid-pill">
                       <div className="case-grid-pill-label">
+                        <FaLeaf className="case-grid-pill-icon icon-ndvi" />
+                        <span>NDVI</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.ndvi}
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaVial className="case-grid-pill-icon icon-ph" />
+                        <span>Soil pH</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.soilPh} pH
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaFlask className="case-grid-pill-icon icon-nitrogen" />
+                        <span>Nitrogen</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.nitrogen} mg/kg
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaMicroscope className="case-grid-pill-icon icon-phosphorus" />
+                        <span>Phosphorus</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.phosphorus} mg/kg
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaDna className="case-grid-pill-icon icon-potassium" />
+                        <span>Potassium</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.potassium} mg/kg
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
                         <FaRulerCombined className="case-grid-pill-icon icon-area" />
                         <span>Cell Area</span>
                       </div>
@@ -1313,6 +1392,56 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 </div>
                 <strong className="grid-popup-row-value">
                   {selectedGrid.solarRadiation} W/m2
+                </strong>
+              </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaLeaf className="grid-popup-row-icon icon-ndvi" />
+                  <span>NDVI</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.ndvi}
+                </strong>
+              </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaVial className="grid-popup-row-icon icon-ph" />
+                  <span>Soil pH</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.soilPh} pH
+                </strong>
+              </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaFlask className="grid-popup-row-icon icon-nitrogen" />
+                  <span>Nitrogen</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.nitrogen} mg/kg
+                </strong>
+              </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaMicroscope className="grid-popup-row-icon icon-phosphorus" />
+                  <span>Phosphorus</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.phosphorus} mg/kg
+                </strong>
+              </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaDna className="grid-popup-row-icon icon-potassium" />
+                  <span>Potassium</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.potassium} mg/kg
                 </strong>
               </div>
 
