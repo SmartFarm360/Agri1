@@ -1196,6 +1196,12 @@ html {
   transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
+.popup-close svg {
+  width: 15px;
+  height: 15px;
+  color: #ffffff;
+}
+
 .popup-close:hover {
   background: #000000;
   transform: scale(1.06);
@@ -1248,6 +1254,18 @@ html {
 
 .icon-area {
   color: #8b5cf6;
+}
+
+.icon-pressure {
+  color: #0f766e;
+}
+
+.icon-wind {
+  color: #2563eb;
+}
+
+.icon-solar {
+  color: #ca8a04;
 }
 
 .grid-popup-row-value {

@@ -1130,10 +1130,49 @@ textarea:focus {
   font-weight: 700;
 }
 
+.modal-header {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.history-grid-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+}
+
+.history-grid-status-chip.pending {
+  color: #b91c1c;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.history-grid-status-chip.in-progress {
+  color: #b45309;
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+
+.history-grid-status-chip.solved {
+  color: #047857;
+  background: #d1fae5;
+  border-color: #a7f3d0;
+}
+
 /* ===== GRID DETAILS BOX ===== */
 .grid-details-box {
   margin-top: 16px;
-  background: #f0fdf4;
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
   border: 1px solid #bbf7d0;
   padding: 20px;
   border-radius: 16px;
@@ -1145,18 +1184,40 @@ textarea:focus {
 .grid-detail-item {
   font-size: 0.875rem;
   color: #065f46;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(167, 243, 208, 0.7);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+}
+
+.grid-detail-item strong {
+  color: #064e3b;
+  margin-right: 0.2rem;
 }
 
 .modal-back-btn {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: none;
-  border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #059669;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: #111827;
+  border: 1px solid #111827;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.modal-back-btn:hover {
+  background: #000000;
+  transform: scale(1.04);
 }
 
 .submit-action-btn.submitted {

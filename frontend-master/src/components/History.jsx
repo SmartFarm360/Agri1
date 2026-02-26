@@ -45,6 +45,37 @@ const translations = {
   },
 };
 
+const API_URL = import.meta.env.VITE_API_URL || "https://agri1-32qq.onrender.com";
+const HECTARE_TO_ACRE = 2.4710538147;
+
+const getSeededUnit = (seed) => {
+  let hash = 2166136261;
+  const text = String(seed);
+
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+
+  return ((hash >>> 0) % 10000) / 10000;
+};
+
+const getSeededNumber = (seed, min, max) =>
+  Math.round(min + getSeededUnit(seed) * (max - min));
+
+const getGridRisk = (temperature, humidity, moisture) => {
+  if (temperature > 32 || humidity > 78 || moisture < 35) return "high";
+  if (temperature > 28 || humidity > 65 || moisture < 50) return "moderate";
+  return "low";
+};
+
+const getStatusFromRisk = (risk) => {
+  if (risk === "high") return "pending";
+  if (risk === "moderate") return "in-progress";
+  return "solved";
+};
+
 const History = ({ currentLanguage = "en" }) => {
   const [historyData, setHistoryData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -153,6 +184,140 @@ const History = ({ currentLanguage = "en" }) => {
     });
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHistoryContext = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      let farms = [];
+      let ownerName = "Farm Owner";
+
+      try {
+        const [farmRes, profileRes] = await Promise.all([
+          fetch(`${API_URL}/api/farm/my`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_URL}/api/auth/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (farmRes.ok) {
+          const farmPayload = await farmRes.json();
+          farms = Array.isArray(farmPayload) ? farmPayload : [];
+        }
+
+        if (profileRes.ok) {
+          const profilePayload = await profileRes.json();
+          if (profilePayload?.name) {
+            ownerName = profilePayload.name;
+          }
+        }
+      } catch (error) {
+        console.error("History data fetch error:", error);
+      }
+
+      if (cancelled || farms.length === 0) return;
+
+      const recordsPerFarm = 8;
+      const problems = Object.keys(problemDescriptions);
+
+      const generatedData = farms.flatMap((farm, farmIndex) => {
+        const farmKey = farm.farm_id || `${farm.farm_name || "FARM"}-${farmIndex}`;
+        const farmName = farm.farm_name || `Farm ${farmIndex + 1}`;
+        const latitude = Number(farm.latitude);
+        const longitude = Number(farm.longitude);
+        const areaHectares = Number(farm.area_hectares || farm.land_size || 0);
+        const areaAcres = areaHectares > 0 ? areaHectares * HECTARE_TO_ACRE : 0;
+
+        return Array.from({ length: recordsPerFarm }, (_, gridIndex) => {
+          const seed = `${farmKey}-${gridIndex + 1}`;
+          const problemIndex = Math.min(
+            problems.length - 1,
+            Math.floor(getSeededUnit(`${seed}-problem`) * problems.length),
+          );
+          const problem = problems[problemIndex];
+          const temperature = getSeededNumber(`${seed}-temp`, 21, 37);
+          const humidity = getSeededNumber(`${seed}-hum`, 40, 90);
+          const moisture = getSeededNumber(`${seed}-soil`, 25, 85);
+          const pressure = getSeededNumber(`${seed}-pressure`, 1006, 1018);
+          const severity = getGridRisk(temperature, humidity, moisture);
+          const status = getStatusFromRisk(severity);
+          const ageDays = getSeededNumber(`${seed}-age`, 1, 30);
+          const createdDate = new Date(
+            Date.now() - ageDays * 24 * 60 * 60 * 1000,
+          );
+          const recommendation =
+            severity === "high"
+              ? "Immediate field visit recommended. Apply corrective treatment and monitor this grid daily."
+              : severity === "moderate"
+                ? "Schedule treatment and monitor on alternate days to prevent escalation."
+                : "Maintain current practices and continue weekly monitoring for this grid.";
+
+          return {
+            id: `${farmKey}-${gridIndex + 1}`,
+            gridId: `GRID-${String(farmIndex * recordsPerFarm + gridIndex + 1).padStart(3, "0")}`,
+            problem,
+            description: problemDescriptions[problem],
+            recommendation,
+            status,
+            createdDate,
+            severity,
+            resolvedDate:
+              status === "solved"
+                ? new Date(
+                    createdDate.getTime() +
+                      getSeededNumber(`${seed}-resolved`, 1, 5) *
+                        24 *
+                        60 *
+                        60 *
+                        1000,
+                  )
+                : null,
+            temperature,
+            humidity,
+            moisture,
+            pressure,
+            gridArea: farmName,
+            ownerName,
+            latitude: Number.isFinite(latitude) ? latitude : null,
+            longitude: Number.isFinite(longitude) ? longitude : null,
+            areaAcres,
+          };
+        });
+      });
+
+      const firstFarm = farms[0];
+      const firstLat = Number(firstFarm?.latitude);
+      const firstLng = Number(firstFarm?.longitude);
+
+      const grids = generatedData.slice(0, 64).map((item, index) => ({
+        id: item.gridId,
+        status: item.status,
+        row: Math.floor(index / 8),
+        col: index % 8,
+        issueCount: item.status === "solved" ? 0 : item.severity === "high" ? 3 : 1,
+      }));
+
+      setFarmLocation({
+        lat: Number.isFinite(firstLat) ? firstLat : 20.5937,
+        lng: Number.isFinite(firstLng) ? firstLng : 78.9629,
+        name: firstFarm?.farm_name || "Farm Location",
+      });
+      setHistoryData(generatedData);
+      setFilteredData(generatedData);
+      setGridData(grids);
+    };
+
+    loadHistoryContext();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Filter data based on search and status
   useEffect(() => {
     let filtered = historyData;
@@ -210,6 +375,18 @@ const History = ({ currentLanguage = "en" }) => {
     const today = new Date();
     const diffTime = Math.abs(today - new Date(createdDate));
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const formatCoordinate = (value) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue.toFixed(6) : "N/A";
+  };
+
+  const formatAreaAcres = (value) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0
+      ? `${numericValue.toFixed(2)} Acres`
+      : "N/A";
   };
 
   const handleGridClick = (grid) => {
@@ -552,6 +729,7 @@ const History = ({ currentLanguage = "en" }) => {
             {/* Close Button */}
             <button
               className="modal-back-btn"
+              aria-label="Close details"
               onClick={() => {
                 setShowDetailsModal(false);
                 setShowResponseBox(false);
@@ -559,7 +737,7 @@ const History = ({ currentLanguage = "en" }) => {
                 setIsSubmitted(false);
               }}
             >
-              ← Back
+              �
             </button>
 
             {/* GRID STATUS */}
@@ -574,25 +752,29 @@ const History = ({ currentLanguage = "en" }) => {
                   {selectedHistoryItem.severity.toUpperCase()} RISK
                 </span>
               </div>
+              <span className={`history-grid-status-chip ${selectedHistoryItem.status}`}>
+                {(t?.[selectedHistoryItem.status] || selectedHistoryItem.status).toUpperCase()}
+              </span>
             </div>
 
             {/* GRID DETAILS */}
             <div className="modal-section grid-details-box">
               <div className="grid-detail-item">
-                <strong>Grid Area:</strong> Athagarh , Cuttack
-              </div>
-                <div className="grid-detail-item">
-                <strong>Owner:</strong> Ravi Behera
+                <strong>Grid Area:</strong> {selectedHistoryItem.gridArea || "N/A"}
               </div>
               <div className="grid-detail-item">
-                <strong>Latitude:</strong> 20.52
+                <strong>Owner:</strong> {selectedHistoryItem.ownerName || "N/A"}
               </div>
               <div className="grid-detail-item">
-                <strong>Longitude:</strong> 85.63
+                <strong>Latitude:</strong>{" "}
+                {formatCoordinate(selectedHistoryItem.latitude)}
               </div>
-          
               <div className="grid-detail-item">
-                <strong>Area:</strong>3 Acres
+                <strong>Longitude:</strong>{" "}
+                {formatCoordinate(selectedHistoryItem.longitude)}
+              </div>
+              <div className="grid-detail-item">
+                <strong>Area:</strong> {formatAreaAcres(selectedHistoryItem.areaAcres)}
               </div>
             </div>
 
@@ -606,22 +788,22 @@ const History = ({ currentLanguage = "en" }) => {
             <div className="modal-flex">
               <div className="env-box">
                 <p>
-                  <strong>Temperature:</strong> 32°C
+                  <strong>Temperature:</strong> {selectedHistoryItem.temperature}&deg;C
                 </p>
                 <p>
-                  <strong>Pressure:</strong> 1012 hPa
+                  <strong>Pressure:</strong> {selectedHistoryItem.pressure} hPa
                 </p>
                 <p>
-                  <strong>Humidity:</strong> 68%
+                  <strong>Humidity:</strong> {selectedHistoryItem.humidity}%
+                </p>
+                <p>
+                  <strong>Moisture:</strong> {selectedHistoryItem.moisture}%
                 </p>
               </div>
 
               <div className="recommend-box">
                 <h4>Recommendation</h4>
-                <p>
-                  Maintain proper irrigation and monitor crop stress regularly.
-                  Early action can prevent escalation.
-                </p>
+                <p>{selectedHistoryItem.recommendation}</p>
               </div>
             </div>
 
@@ -693,3 +875,4 @@ const History = ({ currentLanguage = "en" }) => {
 };
 
 export default History;
+

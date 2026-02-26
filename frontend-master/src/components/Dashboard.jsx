@@ -19,6 +19,9 @@ import {
   FaSeedling,
   FaRulerCombined,
   FaExclamationTriangle,
+  FaTachometerAlt,
+  FaWind,
+  FaSun,
 } from "react-icons/fa";
 
 import { AlertTriangle, MapPin, Clock } from "lucide-react";
@@ -97,6 +100,9 @@ const getCaseGridMetrics = (caseData) => {
   const humidity = getSeededNumber(`${seedPrefix}-hum`, 40, 90);
   const moisture = getSeededNumber(`${seedPrefix}-soil`, 25, 85);
   const cellArea = getSeededNumber(`${seedPrefix}-area`, 180, 980);
+  const pressure = getSeededNumber(`${seedPrefix}-pressure`, 98, 103);
+  const windSpeed = getSeededNumber(`${seedPrefix}-wind`, 1, 12);
+  const solarRadiation = getSeededNumber(`${seedPrefix}-solar`, 150, 950);
   const risk = getGridRisk(temperature, humidity, moisture);
 
   return {
@@ -104,6 +110,9 @@ const getCaseGridMetrics = (caseData) => {
     humidity,
     moisture,
     cellArea,
+    pressure,
+    windSpeed,
+    solarRadiation,
     risk,
   };
 };
@@ -458,6 +467,9 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             const temperature = getSeededNumber(`${seedPrefix}-temp`, 21, 37);
             const humidity = getSeededNumber(`${seedPrefix}-hum`, 40, 90);
             const moisture = getSeededNumber(`${seedPrefix}-soil`, 25, 85);
+            const pressure = getSeededNumber(`${seedPrefix}-pressure`, 98, 103);
+            const windSpeed = getSeededNumber(`${seedPrefix}-wind`, 1, 12);
+            const solarRadiation = getSeededNumber(`${seedPrefix}-solar`, 150, 950);
             const risk = getGridRisk(temperature, humidity, moisture);
 
             return {
@@ -465,6 +477,9 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               temperature,
               humidity,
               moisture,
+              pressure,
+              windSpeed,
+              solarRadiation,
               risk,
               cellArea: Math.round(areaSqM),
               metricScope,
@@ -798,6 +813,9 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         humidity: selectedGrid.humidity,
         moisture: selectedGrid.moisture,
         cellArea: selectedGrid.cellArea,
+        pressure: selectedGrid.pressure,
+        windSpeed: selectedGrid.windSpeed,
+        solarRadiation: selectedGrid.solarRadiation,
         risk: selectedGrid.risk,
       },
     };
@@ -1142,6 +1160,36 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
                     <div className="case-grid-pill">
                       <div className="case-grid-pill-label">
+                        <FaTachometerAlt className="case-grid-pill-icon icon-pressure" />
+                        <span>Pressure</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.pressure} kPa
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaWind className="case-grid-pill-icon icon-wind" />
+                        <span>Wind Speed</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.windSpeed} m/s
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaSun className="case-grid-pill-icon icon-solar" />
+                        <span>Solar Radiation</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.solarRadiation} W/m2
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
                         <FaRulerCombined className="case-grid-pill-icon icon-area" />
                         <span>Cell Area</span>
                       </div>
@@ -1235,6 +1283,36 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 </div>
                 <strong className="grid-popup-row-value">
                   {selectedGrid.moisture}%
+                </strong>
+              </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaTachometerAlt className="grid-popup-row-icon icon-pressure" />
+                  <span>Pressure</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.pressure} kPa
+                </strong>
+              </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaWind className="grid-popup-row-icon icon-wind" />
+                  <span>Wind Speed</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.windSpeed} m/s
+                </strong>
+              </div>
+
+              <div className="grid-popup-row">
+                <div className="grid-popup-row-label">
+                  <FaSun className="grid-popup-row-icon icon-solar" />
+                  <span>Solar Radiation</span>
+                </div>
+                <strong className="grid-popup-row-value">
+                  {selectedGrid.solarRadiation} W/m2
                 </strong>
               </div>
 
