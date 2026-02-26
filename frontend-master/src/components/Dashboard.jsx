@@ -62,6 +62,20 @@ const getSeededNumber = (seed, min, max) => {
   return Math.round(min + getSeededUnit(seed) * (max - min));
 };
 
+const getMedianValue = (values, fallback = 0) => {
+  const validValues = values.filter((value) => Number.isFinite(value));
+  if (validValues.length === 0) return fallback;
+
+  const sorted = [...validValues].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 0) {
+    return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  }
+
+  return sorted[mid];
+};
+
 const getGridRisk = (temperature, humidity, moisture) => {
   if (temperature > 32 || humidity > 78 || moisture < 35) return "high";
   if (temperature > 28 || humidity > 65 || moisture < 50) return "moderate";
@@ -74,10 +88,31 @@ const gridRiskColor = {
   low: "#9ca3af",
 };
 
+const getCaseGridMetrics = (caseData) => {
+  if (!caseData) return null;
+  if (caseData.gridDetails) return caseData.gridDetails;
+
+  const seedPrefix = `${caseData.gridId || "GRID"}-${caseData.caseId || "CASE"}`;
+  const temperature = getSeededNumber(`${seedPrefix}-temp`, 21, 37);
+  const humidity = getSeededNumber(`${seedPrefix}-hum`, 40, 90);
+  const moisture = getSeededNumber(`${seedPrefix}-soil`, 25, 85);
+  const cellArea = getSeededNumber(`${seedPrefix}-area`, 180, 980);
+  const risk = getGridRisk(temperature, humidity, moisture);
+
+  return {
+    temperature,
+    humidity,
+    moisture,
+    cellArea,
+    risk,
+  };
+};
+
 const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   const [dashboardData, setDashboardData] = useState({
     temperature: 0,
     moisture: 0,
+    humidity: 0,
     nutrients: 0,
     ph: 0,
     waterLevel: 0,
@@ -96,9 +131,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     message: "",
   });
   const [selectedGrid, setSelectedGrid] = useState(null);
+  const [linkedGridCase, setLinkedGridCase] = useState(null);
 
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
+  const activeCasesRef = useRef(null);
 
   const fallbackText = translations[currentLanguage] || translations.en;
   const t = new Proxy(translatedText || fallbackText, {
@@ -178,6 +215,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
         const latitude = Number(selectedFarm.latitude);
         const longitude = Number(selectedFarm.longitude);
+        const farmSeed = selectedFarm.farm_id || `${latitude}-${longitude}`;
 
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
           throw new Error("Invalid farm coordinates");
@@ -433,16 +471,24 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             };
           };
 
-          const drawCells = (cells, layerGroup, styleConfig, idPrefix, metricScope) => {
+          const drawCells = (
+            cells,
+            layerGroup,
+            styleConfig,
+            idPrefix,
+            metricScope,
+            payloads,
+          ) => {
             cells.forEach(({ cell, intersectionArea }, index) => {
               const coords = cell.geometry.coordinates[0].map((c) => [c[1], c[0]]);
-              const seedPrefix = `${selectedFarm.farm_id}-${idPrefix}-${index}`;
-              const payload = buildMetricPayload(
-                seedPrefix,
-                `${idPrefix}-${index + 1}`,
-                intersectionArea,
-                metricScope,
-              );
+              const payload =
+                payloads?.[index] ||
+                buildMetricPayload(
+                  `${selectedFarm.farm_id}-${idPrefix}-${index}`,
+                  `${idPrefix}-${index + 1}`,
+                  intersectionArea,
+                  metricScope,
+                );
 
               const gridPolygon = L.polygon(coords, {
                 color: styleConfig.strokeColor,
@@ -470,12 +516,43 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             "overall",
           );
 
+          const smallCells = getIntersectingCells(smallCellSizeKm, 0.51);
+          const smallCellPayloads = smallCells.map(({ intersectionArea }, index) =>
+            buildMetricPayload(
+              `${selectedFarm.farm_id}-GRID-${index}`,
+              `GRID-${index + 1}`,
+              intersectionArea,
+              "individual",
+            ),
+          );
+
+          const medianTemperature = getMedianValue(
+            smallCellPayloads.map((payload) => payload.temperature),
+            getSeededNumber(`${farmSeed}-temp`, 21, 37),
+          );
+          const medianHumidity = getMedianValue(
+            smallCellPayloads.map((payload) => payload.humidity),
+            getSeededNumber(`${farmSeed}-hum`, 40, 90),
+          );
+          const medianMoisture = getMedianValue(
+            smallCellPayloads.map((payload) => payload.moisture),
+            getSeededNumber(`${farmSeed}-soil`, 25, 85),
+          );
+
+          if (!isCancelled) {
+            setDashboardData((prev) => ({
+              ...prev,
+              temperature: medianTemperature,
+              humidity: medianHumidity,
+              moisture: medianMoisture,
+            }));
+          }
+
           let smallGridDrawn = false;
           const ensureSmallGrid = () => {
             if (smallGridDrawn) return;
             smallGridDrawn = true;
 
-            const smallCells = getIntersectingCells(smallCellSizeKm, 0.51);
             drawCells(
               smallCells,
               smallGridLayer,
@@ -486,6 +563,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               },
               "GRID",
               "individual",
+              smallCellPayloads,
             );
           };
 
@@ -518,6 +596,15 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             fillColor: "#16a34a",
             fillOpacity: 0.15,
           }).addTo(map);
+
+          if (!isCancelled) {
+            setDashboardData((prev) => ({
+              ...prev,
+              temperature: getSeededNumber(`${farmSeed}-temp`, 21, 37),
+              humidity: getSeededNumber(`${farmSeed}-hum`, 40, 90),
+              moisture: getSeededNumber(`${farmSeed}-soil`, 25, 85),
+            }));
+          }
         }
 
         if (farmBoundary) {
@@ -556,11 +643,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
     const generateData = () => {
       const newData = {
-        temperature: Math.floor(Math.random() * 18) + 18,
-        moisture: Math.floor(Math.random() * 50) + 30,
+        temperature: 0,
+        moisture: 0,
         nutrients: Math.floor(Math.random() * 60) + 30,
         ph: (Math.random() * 3 + 5).toFixed(1),
-        humidity: Math.floor(Math.random() * 40) + 40,
+        humidity: 0,
         waterLevel: Math.floor(Math.random() * 70) + 20,
 
         cases: [
@@ -619,13 +706,31 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         ],
       };
 
-      setDashboardData(newData);
+      setDashboardData((prev) => {
+        const nextData = {
+          ...newData,
+          temperature: prev.temperature,
+          humidity: prev.humidity,
+          moisture: prev.moisture,
+        };
+
+        if (linkedGridCase) {
+          nextData.cases = [
+            linkedGridCase,
+            ...nextData.cases.filter(
+              (caseItem) => caseItem.gridId !== linkedGridCase.gridId,
+            ),
+          ];
+        }
+
+        return nextData;
+      });
     };
 
     generateData();
     const interval = setInterval(generateData, 10000);
     return () => clearInterval(interval);
-  }, [activeCase]);
+  }, [activeCase, linkedGridCase]);
 
   const getRiskLevel = (value, type) => {
     if (type === "temperature") {
@@ -665,6 +770,65 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         return null;
     }
   };
+
+  const activeCaseGridMetrics = getCaseGridMetrics(activeCase);
+
+  const handleViewGridInActiveCases = () => {
+    if (!selectedGrid) return;
+
+    const linkedCase = {
+      caseId: `CASE-${selectedGrid.gridId}`,
+      gridId: selectedGrid.gridId,
+      urgency: selectedGrid.risk,
+      problem:
+        selectedGrid.metricScope === "overall"
+          ? "Zone condition alert"
+          : "Grid condition alert",
+      recommendations:
+        "Review this grid and continue monitoring temperature, humidity, and soil moisture.",
+      location: selectedFarm
+        ? {
+            lat: Number(selectedFarm.latitude),
+            lng: Number(selectedFarm.longitude),
+          }
+        : null,
+      status: "Active",
+      gridDetails: {
+        temperature: selectedGrid.temperature,
+        humidity: selectedGrid.humidity,
+        moisture: selectedGrid.moisture,
+        cellArea: selectedGrid.cellArea,
+        risk: selectedGrid.risk,
+      },
+    };
+    setLinkedGridCase(linkedCase);
+
+    setDashboardData((prev) => {
+      const existingIndex = prev.cases.findIndex(
+        (caseItem) => caseItem.gridId === selectedGrid.gridId,
+      );
+
+      if (existingIndex !== -1) {
+        const updatedCases = [...prev.cases];
+        updatedCases[existingIndex] = {
+          ...updatedCases[existingIndex],
+          ...linkedCase,
+        };
+        return { ...prev, cases: updatedCases };
+      }
+
+      return { ...prev, cases: [linkedCase, ...prev.cases] };
+    });
+
+    setSelectedGrid(null);
+    requestAnimationFrame(() => {
+      activeCasesRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-content">
@@ -867,7 +1031,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         </div>
 
         <div className="bottom-section">
-          <div className="cases-container">
+          <div className="cases-container" ref={activeCasesRef}>
             <div className="cases-header">
               <h3 className="cases-title">{t.activeCases}</h3>
             </div>
@@ -930,6 +1094,64 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 <span>Status</span>
                 <strong>{activeCase.status}</strong>
               </div>
+
+              {activeCaseGridMetrics && (
+                <div className="case-grid-scroll-wrap">
+                  <div className="case-grid-scroll">
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaExclamationTriangle className="case-grid-pill-icon icon-risk" />
+                        <span>Risk</span>
+                      </div>
+                      <strong
+                        className={`case-grid-pill-value risk-${activeCaseGridMetrics.risk}`}
+                      >
+                        {activeCaseGridMetrics.risk.toUpperCase()}
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaTemperatureHigh className="case-grid-pill-icon icon-temp" />
+                        <span>Temperature</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.temperature} °C
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaTint className="case-grid-pill-icon icon-humidity" />
+                        <span>Humidity</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.humidity}%
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaSeedling className="case-grid-pill-icon icon-moisture" />
+                        <span>Soil Moisture</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.moisture}%
+                      </strong>
+                    </div>
+
+                    <div className="case-grid-pill">
+                      <div className="case-grid-pill-label">
+                        <FaRulerCombined className="case-grid-pill-icon icon-area" />
+                        <span>Cell Area</span>
+                      </div>
+                      <strong className="case-grid-pill-value">
+                        {activeCaseGridMetrics.cellArea} m²
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="modal-section problem">
                 <h4>Problem</h4>
@@ -1026,6 +1248,13 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 </strong>
               </div>
             </div>
+
+            <button
+              className="resolve-btn grid-link-btn"
+              onClick={handleViewGridInActiveCases}
+            >
+              View In Active Cases
+            </button>
 
             <button
               className="resolve-btn grid-resolve-btn"
