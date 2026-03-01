@@ -1159,7 +1159,7 @@ html {
   box-shadow: 0 25px 45px rgba(0, 0, 0, 0.28);
   animation: fadeInUp 0.3s ease;
   max-height: calc(100vh - 104px);
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -1218,6 +1218,7 @@ html {
   flex-direction: column;
   gap: 0.55rem;
   margin-top: 0.45rem;
+  overflow-x: hidden;
 }
 
 .grid-popup-row {
@@ -1298,7 +1299,9 @@ html {
   color: #111827;
   font-size: 1.05rem;
   font-weight: 800;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  text-align: right;
 }
 
 .risk-low {
