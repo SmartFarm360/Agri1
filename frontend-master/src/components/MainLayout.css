@@ -26,6 +26,12 @@
   min-height: 72px;
 }
 
+body.dashboard-modal-open .navbar {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .nav-left {
   display: flex;
   align-items: center;

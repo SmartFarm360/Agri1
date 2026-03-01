@@ -349,7 +349,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   }, [mapToast]);
 
   useEffect(() => {
-    const isAnyPopupOpen = Boolean(selectedGrid || activeCase);
+    const isAnyPopupOpen = Boolean(selectedGrid || activeCase || showAddFarmModal);
 
     if (isAnyPopupOpen) {
       document.body.classList.add("dashboard-modal-open");
@@ -360,7 +360,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
     return () => {
       document.body.classList.remove("dashboard-modal-open");
     };
-  }, [selectedGrid, activeCase]);
+  }, [selectedGrid, activeCase, showAddFarmModal]);
 
   useEffect(() => {
     if (!selectedFarm) return;

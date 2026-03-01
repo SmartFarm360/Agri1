@@ -1351,7 +1351,7 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 11000;
 }
 
 .case-modal {
@@ -1404,17 +1404,16 @@ html {
 }
 
 .case-grid-scroll {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  align-items: stretch;
   gap: 0.6rem;
-  max-height: 260px;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding: 0.65rem;
 }
 
 .case-grid-scroll::-webkit-scrollbar {
-  width: 6px;
+  height: 6px;
 }
 
 .case-grid-scroll::-webkit-scrollbar-track {
@@ -1428,7 +1427,8 @@ html {
 }
 
 .case-grid-pill {
-  min-width: 0;
+  flex: 0 0 154px;
+  min-width: 154px;
   border-radius: 0.65rem;
   border: 1px solid #e5e7eb;
   background: #ffffff;
