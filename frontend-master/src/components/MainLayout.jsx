@@ -14,6 +14,7 @@ const baseText = {
   login: "Login",
   logout: "Logout",
   blog: "Blog",
+  traceability: "Traceability",
   accountInfo: "Account Information",
   help: "Help",
   helpSupport: "Help & Support",
@@ -36,6 +37,7 @@ const fallbackTranslations = {
     login: "\u0932\u0949\u0917\u093f\u0928",
     logout: "\u0932\u0949\u0917\u0906\u0909\u091f",
     blog: "\u092c\u094d\u0932\u0949\u0917",
+    traceability: "\u091f\u094d\u0930\u0947\u0938\u0947\u092c\u093f\u0932\u093f\u091f\u0940",
     accountInfo: "\u0916\u093e\u0924\u093e \u091c\u093e\u0928\u0915\u093e\u0930\u0940",
     help: "\u0938\u0939\u093e\u092f\u0924\u093e",
     helpSupport: "\u0938\u0939\u093e\u092f\u0924\u093e \u0914\u0930 \u0938\u092e\u0930\u094d\u0925\u0928",
@@ -140,6 +142,14 @@ const MainLayout = ({
           <Link to="/blog" className={location.pathname === "/blog" ? "nav-link active" : "nav-link"}>
             {t.blog}
           </Link>
+          <a
+            href="https://nova-app-zone.base44.app"
+            className="nav-link traceability-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t.traceability}
+          </a>
 
           <div className="language-dropdown" ref={langRef}>
             <button

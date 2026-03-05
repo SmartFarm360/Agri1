@@ -120,6 +120,15 @@ body.dashboard-modal-open .navbar {
   color: white;
 }
 
+.traceability-link {
+  border: 1px solid #2e7d32;
+  background: #ffffff;
+}
+
+.traceability-link:hover {
+  background: #e8f5e9;
+}
+
 .login-btn {
   background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
   color: white !important;
