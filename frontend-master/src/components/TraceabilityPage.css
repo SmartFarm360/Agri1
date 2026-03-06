@@ -1,7 +1,7 @@
 /* Base Layout & Reset */
 .ta-page-wrapper {
   margin: 0;
-  padding: 0;
+  padding: 80 rem;
   box-sizing: border-box;
   font-family: "Inter", -apple-system, sans-serif;
   color: #000000;
