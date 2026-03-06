@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Sprout,
   Menu,
@@ -38,6 +38,18 @@ const yieldData = [
 
 export default function TraceabilityPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.add("traceability-page-active");
+    document.getElementById("root")?.classList.add("traceability-root-active");
+
+    return () => {
+      document.body.classList.remove("traceability-page-active");
+      document
+        .getElementById("root")
+        ?.classList.remove("traceability-root-active");
+    };
+  }, []);
 
   return (
     <div className="ta-page-wrapper">

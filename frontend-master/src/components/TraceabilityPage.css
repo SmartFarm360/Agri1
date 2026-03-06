@@ -1,11 +1,34 @@
 /* Base Layout & Reset */
+body.traceability-page-active {
+  display: block !important;
+  place-items: initial !important;
+  padding-top: 0 !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+#root.traceability-root-active {
+  display: block !important;
+  place-items: initial !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .ta-page-wrapper {
   margin: 0;
-  padding: 120 rem;
+  padding: 0;
+  width: 100%;
+  min-width: 100%;
+  min-height: 100vh;
   box-sizing: border-box;
   font-family: "Inter", -apple-system, sans-serif;
   color: #000000;
   background-color: #ffffff;
+  overflow-x: hidden;
 }
 
 .ta-container {
