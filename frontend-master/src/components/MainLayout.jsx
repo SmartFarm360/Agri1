@@ -142,14 +142,16 @@ const MainLayout = ({
           <Link to="/blog" className={location.pathname === "/blog" ? "nav-link active" : "nav-link"}>
             {t.blog}
           </Link>
-          <a
-            href="https://nova-app-zone.base44.app"
-            className="nav-link traceability-link"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            to="/traceability"
+            className={
+              location.pathname === "/traceability"
+                ? "nav-link traceability-link active"
+                : "nav-link traceability-link"
+            }
           >
             {t.traceability}
-          </a>
+          </Link>
 
           <div className="language-dropdown" ref={langRef}>
             <button

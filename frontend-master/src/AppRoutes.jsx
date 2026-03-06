@@ -13,6 +13,7 @@ import Language from "./components/Language";
 import Profile from "./components/Profile";
 import FarmBlog from "./components/Farm Blog";
 import Help from "./components/Help";
+import TraceabilityPage from "./components/TraceabilityPage";
 
 
 import axios from "axios";
@@ -251,6 +252,9 @@ function AppRoutes() {
             </MainLayout>
           }
         />
+
+        {/* TRACEABILITY */}
+        <Route path="/traceability" element={<TraceabilityPage />} />
 
         {/* FARMER DASHBOARD */}
         <Route
