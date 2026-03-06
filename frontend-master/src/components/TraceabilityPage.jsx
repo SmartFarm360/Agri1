@@ -28,6 +28,13 @@ const yieldData = [
 ];
 
 export default function TraceabilityPage() {
+  const scrollToDemo = () => {
+    const videoSection = document.getElementById("ta-video-section");
+    if (videoSection) {
+      videoSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   useEffect(() => {
     document.body.classList.add("traceability-page-active");
     document.getElementById("root")?.classList.add("traceability-root-active");
@@ -63,8 +70,12 @@ export default function TraceabilityPage() {
               >
                 Start Monitoring <ArrowRight size={18} />
               </a>
-              <button className="ta-btn-outline ta-btn-lg">
-                Request a Demo
+              <button
+                className="ta-btn-outline ta-btn-lg"
+                type="button"
+                onClick={scrollToDemo}
+              >
+                Show a Demo
               </button>
             </div>
           </div>
@@ -147,7 +158,7 @@ export default function TraceabilityPage() {
       </section>
 
       {/* Video Section */}
-      <section className="ta-video-section">
+      <section className="ta-video-section" id="ta-video-section">
         <div className="ta-container ta-video-inner">
           <h2 className="ta-section-title">See TraceAgri in Action</h2>
           <p className="ta-section-desc">
