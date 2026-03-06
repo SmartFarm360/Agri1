@@ -5,7 +5,6 @@ body.traceability-page-active {
   margin: 0 !important;
   padding-top: 0 !important;
   min-width: 0 !important;
-  min-height: 100vh !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   background: #ffffff !important;
@@ -17,10 +16,19 @@ body.traceability-page-active {
   place-items: initial !important;
   width: 100% !important;
   min-width: 100% !important;
-  min-height: 100% !important;
+  min-height: auto !important;
   margin: 0 !important;
   padding: 0 !important;
   background: #ffffff !important;
+}
+
+body.traceability-page-active .main-content {
+  min-height: auto !important;
+  padding-bottom: 0 !important;
+}
+
+body.traceability-page-active .footer {
+  margin-top: 0 !important;
 }
 
 .ta-page-wrapper {
@@ -28,7 +36,7 @@ body.traceability-page-active {
   padding: 0;
   width: 100%;
   min-width: 100%;
-  min-height: 100vh;
+  min-height: auto;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
