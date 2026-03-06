@@ -2,10 +2,14 @@
 body.traceability-page-active {
   display: block !important;
   place-items: initial !important;
-  padding-top: 5.8rem !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
   min-width: 0 !important;
+  min-height: 100vh !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
+  background: #ffffff !important;
+  background-image: none !important;
 }
 
 #root.traceability-root-active {
@@ -16,6 +20,7 @@ body.traceability-page-active {
   min-height: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
+  background: #ffffff !important;
 }
 
 .ta-page-wrapper {
@@ -24,6 +29,8 @@ body.traceability-page-active {
   width: 100%;
   min-width: 100%;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
   font-family: "Inter", -apple-system, sans-serif;
   color: #000000;
@@ -138,6 +145,10 @@ body.traceability-page-active {
 .ta-btn-lg {
   padding: 14px 32px;
   font-size: 16px;
+}
+
+.ta-btn-link {
+  text-decoration: none;
 }
 
 /* Hero Section */

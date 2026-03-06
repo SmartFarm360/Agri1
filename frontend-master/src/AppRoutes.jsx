@@ -254,7 +254,19 @@ function AppRoutes() {
         />
 
         {/* TRACEABILITY */}
-        <Route path="/traceability" element={<TraceabilityPage />} />
+        <Route
+          path="/traceability"
+          element={
+            <MainLayout
+              isAuthenticated={isAuthenticated}
+              onLogout={handleLogout}
+              currentLanguage={currentLanguage}
+              setCurrentLanguage={setCurrentLanguage}
+            >
+              <TraceabilityPage />
+            </MainLayout>
+          }
+        />
 
         {/* FARMER DASHBOARD */}
         <Route

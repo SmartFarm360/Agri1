@@ -1,20 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import {
-  Sprout,
-  Menu,
-  X,
   ArrowRight,
   Play,
   Wheat,
   CheckCircle,
   TrendingUp,
   Clock,
-  Mail,
-  Phone,
-  MapPin,
-  Twitter,
-  Github,
-  Linkedin,
 } from "lucide-react";
 import {
   LineChart,
@@ -37,8 +28,6 @@ const yieldData = [
 ];
 
 export default function TraceabilityPage() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   useEffect(() => {
     document.body.classList.add("traceability-page-active");
     document.getElementById("root")?.classList.add("traceability-root-active");
@@ -53,49 +42,6 @@ export default function TraceabilityPage() {
 
   return (
     <div className="ta-page-wrapper">
-      {/* Navbar */}
-      <nav className="ta-navbar">
-        <div className="ta-container ta-nav-inner">
-          <div className="ta-logo">
-            <div className="ta-logo-icon">
-              <Sprout size={20} />
-            </div>
-            <span className="ta-logo-text">TraceAgri</span>
-          </div>
-
-          <div className={`ta-nav-links ${isMenuOpen ? "active" : ""}`}>
-            <a href="#" className="ta-nav-link active">
-              Summary
-            </a>
-            <a href="#" className="ta-nav-link">
-              Features
-            </a>
-            <a href="#" className="ta-nav-link">
-              Lifecycle
-            </a>
-            <a href="#" className="ta-nav-link">
-              Analytics
-            </a>
-            <div className="ta-mobile-actions">
-              <button className="ta-btn-text">Login</button>
-              <button className="ta-btn-black">Get Started</button>
-            </div>
-          </div>
-
-          <div className="ta-nav-actions">
-            <button className="ta-btn-text">Login</button>
-            <button className="ta-btn-black">Get Started</button>
-          </div>
-
-          <button
-            className="ta-menu-toggle"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X /> : <Menu />}
-          </button>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="ta-hero">
         <div className="ta-container ta-hero-inner">
@@ -111,9 +57,12 @@ export default function TraceabilityPage() {
               with total transparency.
             </p>
             <div className="ta-hero-btns">
-              <button className="ta-btn-black ta-btn-lg">
+              <a
+                className="ta-btn-black ta-btn-lg ta-btn-link"
+                href="https://traceability1.lovable.app"
+              >
                 Start Monitoring <ArrowRight size={18} />
-              </button>
+              </a>
               <button className="ta-btn-outline ta-btn-lg">
                 Request a Demo
               </button>
@@ -216,58 +165,6 @@ export default function TraceabilityPage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="ta-footer">
-        <div className="ta-container">
-          <div className="ta-footer-grid">
-            <div className="ta-footer-brand">
-              <div className="ta-logo">
-                <div className="ta-logo-icon">
-                  <Sprout size={18} />
-                </div>
-                <span className="ta-logo-text">TraceAgri</span>
-              </div>
-              <p className="ta-footer-tagline">
-                Complete lifecycle management for modern agriculture.
-              </p>
-              <div className="ta-socials">
-                <Twitter size={20} />
-                <Github size={20} />
-                <Linkedin size={20} />
-              </div>
-            </div>
-            <div className="ta-footer-links">
-              <h4>Product</h4>
-              <a href="#">Summary</a>
-              <a href="#">Features</a>
-              <a href="#">Lifecycle</a>
-            </div>
-            <div className="ta-footer-contact">
-              <h4>Contact</h4>
-              <p>
-                <MapPin size={14} /> 123 Agri Valley Way
-              </p>
-              <p>
-                <Phone size={14} /> +1 (555) 123-4567
-              </p>
-              <p>
-                <Mail size={14} /> hello@traceagri.ai
-              </p>
-            </div>
-            <div className="ta-footer-news">
-              <h4>Stay Updated</h4>
-              <div className="ta-input-group">
-                <input type="email" placeholder="Email" />
-                <button>Join</button>
-              </div>
-            </div>
-          </div>
-          <div className="ta-footer-bottom">
-            &copy; {new Date().getFullYear()} TraceAgri. All rights reserved.
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
