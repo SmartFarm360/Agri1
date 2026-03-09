@@ -144,11 +144,7 @@ const MainLayout = ({
           </Link>
           <Link
             to="/traceability"
-            className={
-              location.pathname === "/traceability"
-                ? "nav-link traceability-link active"
-                : "nav-link traceability-link"
-            }
+            className={location.pathname === "/traceability" ? "nav-link active" : "nav-link"}
           >
             {t.traceability}
           </Link>
