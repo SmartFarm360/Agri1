@@ -300,31 +300,86 @@ body.traceability-page-active .footer {
 
 .ta-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 40px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
 
 .ta-stat-item {
-  text-align: center;
+  background: #f2f4f5;
+  border: 1px solid #dce2e5;
+  border-radius: 14px;
+  padding: 18px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ta-stat-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .ta-stat-icon {
-  color: #14a236;
-  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .ta-stat-val {
-  font-size: 32px;
-  font-weight: 900;
+  font-size: 34px;
+  font-weight: 800;
   margin: 0;
+  color: #111827;
+  line-height: 1;
 }
 
 .ta-stat-label {
-  font-size: 12px;
-  text-transform: uppercase;
+  font-size: 27px;
   font-weight: 700;
-  color: #999999;
-  letter-spacing: 1px;
+  color: #374151;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.ta-icon-risk {
+  color: #e08a00;
+}
+
+.ta-value-risk {
+  color: #d97706;
+}
+
+.ta-icon-temp {
+  color: #ef4444;
+}
+
+.ta-icon-humidity {
+  color: #0ea5e9;
+}
+
+.ta-icon-moisture {
+  color: #16a34a;
+}
+
+.ta-icon-pressure {
+  color: #0f766e;
+}
+
+.ta-icon-wind {
+  color: #2563eb;
+}
+
+.ta-icon-solar {
+  color: #d97706;
+}
+
+.ta-icon-ndvi {
+  color: #15803d;
+}
+
+.ta-icon-ph {
+  color: #7c3aed;
 }
 
 /* Video Section */
@@ -514,5 +569,19 @@ body.traceability-page-active .footer {
   .ta-video-link {
     margin-top: 16px;
     font-size: 14px;
+  }
+}
+
+@media (max-width: 680px) {
+  .ta-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ta-stat-label {
+    font-size: 20px;
+  }
+
+  .ta-stat-val {
+    font-size: 26px;
   }
 }
