@@ -15,6 +15,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import maatiLogo from "../assets/Maati AI.jpg";
 import "./TraceabilityPage.css";
 
 const yieldData = [
@@ -172,6 +173,9 @@ export default function TraceabilityPage() {
               allow="autoplay; fullscreen; picture-in-picture"
               allowFullScreen
             />
+            <div className="ta-video-brand-overlay" aria-hidden="true">
+              <img src={maatiLogo} alt="" />
+            </div>
           </div>
           <a
             className="ta-video-link"

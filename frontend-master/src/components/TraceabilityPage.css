@@ -367,6 +367,24 @@ body.traceability-page-active .footer {
   border: 0;
 }
 
+.ta-video-brand-overlay {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  z-index: 3;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 8px;
+  padding: 3px 8px;
+}
+
+.ta-video-brand-overlay img {
+  display: block;
+  height: 24px;
+  width: auto;
+  border-radius: 4px;
+}
+
 .ta-video-link {
   margin-top: 20px;
   display: inline-block;
@@ -514,5 +532,15 @@ body.traceability-page-active .footer {
   .ta-video-link {
     margin-top: 16px;
     font-size: 14px;
+  }
+
+  .ta-video-brand-overlay {
+    right: 8px;
+    bottom: 6px;
+    padding: 2px 6px;
+  }
+
+  .ta-video-brand-overlay img {
+    height: 20px;
   }
 }
