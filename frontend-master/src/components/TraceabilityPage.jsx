@@ -1,15 +1,10 @@
 import React, { useEffect } from "react";
 import {
   ArrowRight,
-  AlertTriangle,
-  Thermometer,
-  Droplets,
-  Sprout,
-  Gauge,
-  Wind,
-  Sun,
-  Leaf,
-  FlaskConical,
+  Wheat,
+  CheckCircle,
+  TrendingUp,
+  Clock,
 } from "lucide-react";
 import {
   LineChart,
@@ -29,64 +24,6 @@ const yieldData = [
   { name: "W4", yield: 800 },
   { name: "W5", yield: 500 },
   { name: "W6", yield: 900 },
-];
-
-const gridParameters = [
-  {
-    name: "Risk",
-    value: "MODERATE",
-    icon: AlertTriangle,
-    iconClass: "ta-icon-risk",
-    valueClass: "ta-value-risk",
-  },
-  {
-    name: "Temperature",
-    value: "27°C",
-    icon: Thermometer,
-    iconClass: "ta-icon-temp",
-  },
-  {
-    name: "Humidity",
-    value: "47%",
-    icon: Droplets,
-    iconClass: "ta-icon-humidity",
-  },
-  {
-    name: "Soil Moisture",
-    value: "36%",
-    icon: Sprout,
-    iconClass: "ta-icon-moisture",
-  },
-  {
-    name: "Pressure",
-    value: "102 kPa",
-    icon: Gauge,
-    iconClass: "ta-icon-pressure",
-  },
-  {
-    name: "Wind Speed",
-    value: "10 m/s",
-    icon: Wind,
-    iconClass: "ta-icon-wind",
-  },
-  {
-    name: "Solar Radiation",
-    value: "637 W/m2",
-    icon: Sun,
-    iconClass: "ta-icon-solar",
-  },
-  {
-    name: "NDVI",
-    value: "0.69",
-    icon: Leaf,
-    iconClass: "ta-icon-ndvi",
-  },
-  {
-    name: "Soil pH",
-    value: "8.1 pH",
-    icon: FlaskConical,
-    iconClass: "ta-icon-ph",
-  },
 ];
 
 export default function TraceabilityPage() {
@@ -195,20 +132,26 @@ export default function TraceabilityPage() {
 
       {/* Stats Bar */}
       <section className="ta-stats-bar">
-        <div className="ta-container">
-          <div className="ta-stats-grid">
-            {gridParameters.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div className="ta-stat-item" key={item.name}>
-                  <div className="ta-stat-left">
-                    <Icon className={`ta-stat-icon ${item.iconClass}`} size={18} />
-                    <p className="ta-stat-label">{item.name}</p>
-                  </div>
-                  <h3 className={`ta-stat-val ${item.valueClass || ""}`}>{item.value}</h3>
-                </div>
-              );
-            })}
+        <div className="ta-container ta-stats-grid">
+          <div className="ta-stat-item">
+            <Wheat className="ta-stat-icon" />
+            <h3 className="ta-stat-val">1,240</h3>
+            <p className="ta-stat-label">Total Batches</p>
+          </div>
+          <div className="ta-stat-item">
+            <CheckCircle className="ta-stat-icon" />
+            <h3 className="ta-stat-val">99.8%</h3>
+            <p className="ta-stat-label">Compliance</p>
+          </div>
+          <div className="ta-stat-item">
+            <TrendingUp className="ta-stat-icon" />
+            <h3 className="ta-stat-val">45.2k</h3>
+            <p className="ta-stat-label">Metric Tons</p>
+          </div>
+          <div className="ta-stat-item">
+            <Clock className="ta-stat-icon" />
+            <h3 className="ta-stat-val">24/7</h3>
+            <p className="ta-stat-label">Real-time Alerts</p>
           </div>
         </div>
       </section>
