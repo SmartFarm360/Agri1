@@ -173,8 +173,9 @@ export default function TraceabilityPage() {
               allow="autoplay; fullscreen; picture-in-picture"
               allowFullScreen
             />
-            <div className="ta-video-brand-overlay" aria-hidden="true">
-              <img src={maatiLogo} alt="" />
+            <div className="ta-video-brand-overlay">
+              <span className="ta-video-brand-text">Maati Ai</span>
+              <img src={maatiLogo} alt="Maati AI logo" />
             </div>
           </div>
           <a

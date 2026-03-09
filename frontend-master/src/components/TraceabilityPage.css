@@ -373,16 +373,29 @@ body.traceability-page-active .footer {
   bottom: 8px;
   z-index: 3;
   pointer-events: none;
-  background: rgba(0, 0, 0, 0.55);
-  border-radius: 8px;
-  padding: 3px 8px;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.ta-video-brand-text {
+  color: #8b5a2b;
+  font-family: "Segoe UI", sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.4px;
 }
 
 .ta-video-brand-overlay img {
   display: block;
-  height: 24px;
+  height: 30px;
   width: auto;
-  border-radius: 4px;
+  border-radius: 999px;
 }
 
 .ta-video-link {
@@ -537,10 +550,15 @@ body.traceability-page-active .footer {
   .ta-video-brand-overlay {
     right: 8px;
     bottom: 6px;
-    padding: 2px 6px;
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .ta-video-brand-text {
+    font-size: 16px;
   }
 
   .ta-video-brand-overlay img {
-    height: 20px;
+    height: 24px;
   }
 }
