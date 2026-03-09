@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import {
   ArrowRight,
-  Play,
   Wheat,
   CheckCircle,
   TrendingUp,
@@ -166,14 +165,22 @@ export default function TraceabilityPage() {
             insights.
           </p>
           <div className="ta-video-player">
-            <img
-              src="https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?q=80&w=1600"
-              alt="Agri Tech"
+            <iframe
+              src="https://go.screenpal.com/player/cOeQQmnZOLf"
+              title="TraceAgri demo video"
+              loading="lazy"
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
             />
-            <div className="ta-play-btn">
-              <Play fill="white" size={32} />
-            </div>
           </div>
+          <a
+            className="ta-video-link"
+            href="https://go.screenpal.com/watch/cOeQQmnZOLf"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open video in new tab
+          </a>
         </div>
       </section>
     </div>
