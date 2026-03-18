@@ -171,6 +171,13 @@ html, body {
   box-shadow: 0 10px 20px rgba(74, 124, 89, 0.35);
 }
 
+.login-btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Footer */
 .login-footer {
   text-align: center;

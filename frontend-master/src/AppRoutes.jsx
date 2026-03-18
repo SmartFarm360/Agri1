@@ -1,19 +1,19 @@
-import { useState, useEffect } from "react";
+import { Suspense, lazy, useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
-import Home from "./components/Home";
-import Login from "./components/Login";
-import Register from "./components/Register";
-import MainLayout from "./components/MainLayout";
-import About from "./components/About";
-import Dashboard from "./components/Dashboard";
-import DroneDashboard from "./components/DroneDashboard";
-import History from "./components/History";
-import Language from "./components/Language";
-import Profile from "./components/Profile";
-import FarmBlog from "./components/Farm Blog";
-import Help from "./components/Help";
-import TraceabilityPage from "./components/TraceabilityPage";
+const Home = lazy(() => import("./components/Home"));
+const Login = lazy(() => import("./components/Login"));
+const Register = lazy(() => import("./components/Register"));
+const MainLayout = lazy(() => import("./components/MainLayout"));
+const About = lazy(() => import("./components/About"));
+const Dashboard = lazy(() => import("./components/Dashboard"));
+const DroneDashboard = lazy(() => import("./components/DroneDashboard"));
+const History = lazy(() => import("./components/History"));
+const Language = lazy(() => import("./components/Language"));
+const Profile = lazy(() => import("./components/Profile"));
+const FarmBlog = lazy(() => import("./components/Farm Blog"));
+const Help = lazy(() => import("./components/Help"));
+const TraceabilityPage = lazy(() => import("./components/TraceabilityPage"));
 
 
 import axios from "axios";
@@ -30,6 +30,8 @@ function AppRoutes() {
   });
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL || "https://agri1-32qq.onrender.com";
+  const API_TIMEOUT_MS = 30000;
+  const TRANSLATION_API_URL = "https://frontend-k-backend.onrender.com";
 
   const showToast = (message, type = "success") => {
     setToast({
@@ -62,7 +64,28 @@ function AppRoutes() {
   }, [toast.visible]);
 
   useEffect(() => {
-    fetch(API_URL, { method: "GET", mode: "no-cors" }).catch(() => {});
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    Promise.allSettled([
+      fetch(API_URL, {
+        method: "GET",
+        mode: "no-cors",
+        signal: controller.signal,
+      }),
+      fetch(TRANSLATION_API_URL, {
+        method: "GET",
+        mode: "no-cors",
+        signal: controller.signal,
+      }),
+    ]).finally(() => {
+      clearTimeout(timeoutId);
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [API_URL]);
 
   const handleLogin = async (credentials) => {
@@ -74,6 +97,7 @@ function AppRoutes() {
           headers: {
             "Content-Type": "application/json",
           },
+          timeout: API_TIMEOUT_MS,
         },
       );
 
@@ -97,8 +121,15 @@ function AppRoutes() {
         throw new Error("Invalid login response");
       }
     } catch (error) {
+      const timeoutMessage =
+        error.code === "ECONNABORTED"
+          ? "Login is taking longer than expected. Please try again in a few seconds."
+          : null;
       showToast(
-        error.response?.data?.message || error.message || "Login failed.",
+        timeoutMessage ||
+          error.response?.data?.message ||
+          error.message ||
+          "Login failed.",
         "error",
       );
       throw error;
@@ -114,6 +145,7 @@ function AppRoutes() {
           headers: {
             "Content-Type": "application/json",
           },
+          timeout: API_TIMEOUT_MS,
         },
       );
 
@@ -127,7 +159,9 @@ function AppRoutes() {
       console.error("Registration error:", error);
       showToast(
         "Registration failed: " +
-          (error.response?.data?.message || "Server error"),
+          (error.code === "ECONNABORTED"
+            ? "Request timed out. Please retry."
+            : error.response?.data?.message || "Server error"),
         "error",
       );
     }
@@ -164,7 +198,22 @@ function AppRoutes() {
             {toast.message}
           </div>
         )}
-        <Routes>
+        <Suspense
+          fallback={
+            <div
+              style={{
+                minHeight: "50vh",
+                display: "grid",
+                placeItems: "center",
+                color: "#14532d",
+                fontWeight: 600,
+              }}
+            >
+              Loading page...
+            </div>
+          }
+        >
+          <Routes>
         {/* ✅ HOME PAGE - always show */}
         <Route
           path="/"
@@ -352,7 +401,8 @@ function AppRoutes() {
 
         {/* CATCH-ALL */}
         <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </>
     )
   );

@@ -135,6 +135,8 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       const submissionData = new FormData();
@@ -165,6 +167,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         body: submissionData,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -185,15 +188,21 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
       navigate("/login");
     } catch (registerError) {
       console.error("Registration error:", registerError);
+      const isTimedOut = registerError.name === "AbortError";
       showGlobalToast?.(
-        registerError.message || "Registration failed. Please try again.",
+        isTimedOut
+          ? "Registration request timed out. Please retry in a few seconds."
+          : registerError.message || "Registration failed. Please try again.",
         "error",
       );
       setErrors({
         submit:
-          registerError.message || "Registration failed. Please try again.",
+          isTimedOut
+            ? "Registration request timed out. Please retry in a few seconds."
+            : registerError.message || "Registration failed. Please try again.",
       });
     } finally {
+      clearTimeout(timeoutId);
       setIsSubmitting(false);
     }
   };

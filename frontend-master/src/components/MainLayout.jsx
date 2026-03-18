@@ -65,6 +65,7 @@ const MainLayout = ({
   const [translatedText, setTranslatedText] = useState(baseText);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const translationCacheRef = useRef(new Map());
   const location = useLocation();
   const langRef = useRef(null);
 
@@ -84,6 +85,16 @@ const MainLayout = ({
 
   const translateUI = async (targetLang) => {
     const fallbackForLang = fallbackTranslations[targetLang] || baseText;
+    if (targetLang === "en") {
+      setTranslatedText(baseText);
+      return;
+    }
+
+    const cachedTranslation = translationCacheRef.current.get(targetLang);
+    if (cachedTranslation) {
+      setTranslatedText(cachedTranslation);
+      return;
+    }
 
     try {
       const res = await axios.post(
@@ -93,6 +104,7 @@ const MainLayout = ({
           source: "en",
           target: targetLang,
         },
+        { timeout: 8000 },
       );
 
       const translated = {};
@@ -100,6 +112,7 @@ const MainLayout = ({
         translated[key] = res.data.translatedTexts[idx] || fallbackForLang[key];
       });
 
+      translationCacheRef.current.set(targetLang, translated);
       setTranslatedText(translated);
     } catch (err) {
       console.error("Translation failed:", err.message);
@@ -107,11 +120,11 @@ const MainLayout = ({
     }
   };
 
-  const handleLanguageChange = async (langCode) => {
+  const handleLanguageChange = (langCode) => {
     setCurrentLanguage(langCode);
     localStorage.setItem("selectedLanguage", langCode);
     setShowLangMenu(false);
-    await translateUI(langCode);
+    translateUI(langCode);
   };
 
   useEffect(() => {

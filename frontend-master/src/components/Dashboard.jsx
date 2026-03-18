@@ -52,6 +52,18 @@ const translations = {
 const GRID_CELL_SIZE_METERS = 20;
 const SMALL_GRID_ZOOM_THRESHOLD = 17;
 const LARGE_GRID_TARGET_CELLS = 420;
+const MAX_LARGE_GRID_CELLS = 520;
+const MAX_SMALL_GRID_CELLS = 650;
+const GRID_REFINEMENT_ATTEMPTS = 4;
+
+const runWhenBrowserIdle = () =>
+  new Promise((resolve) => {
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      window.requestIdleCallback(() => resolve(), { timeout: 300 });
+      return;
+    }
+    setTimeout(resolve, 0);
+  });
 
 const getSeededUnit = (seed) => {
   let hash = 2166136261;
@@ -293,12 +305,16 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
   });
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const fetchFarms = async () => {
       try {
         const API_URL = "https://agri1-32qq.onrender.com";
         const token = localStorage.getItem("token");
 
         const res = await fetch(`${API_URL}/api/farm/my`, {
+          signal: controller.signal,
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -313,14 +329,22 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           setSelectedFarm(data[0]);
         }
       } catch (err) {
-        console.error("Farm fetch error:", err);
+        if (err.name !== "AbortError") {
+          console.error("Farm fetch error:", err);
+        }
         setFarms([]);
       } finally {
         setLoadingFarms(false);
+        clearTimeout(timeoutId);
       }
     };
 
     fetchFarms();
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -451,22 +475,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           .addTo(map)
           .bindPopup(selectedFarm.farm_name);
 
-        const rawLandSizeHectares = Number(
-          selectedFarm.area_hectares || selectedFarm.landSize || 1,
-        );
-        const landSizeHectares =
-          Number.isFinite(rawLandSizeHectares) && rawLandSizeHectares > 0
-            ? rawLandSizeHectares
-            : 1;
-        const areaSqMeters = landSizeHectares * 10000;
-        const sideMeters = Math.sqrt(areaSqMeters);
-        const metersToLat = (m) => m / 111320;
-        const metersToLng = (m, lat) =>
-          m / (111320 * Math.cos((lat * Math.PI) / 180));
-        const halfSideMeters = sideMeters / 2;
-        const halfLat = metersToLat(halfSideMeters);
-        const halfLng = metersToLng(halfSideMeters, latitude);
-
         let farmBoundary;
 
         let polygonCoords = selectedFarm.polygon_coordinates;
@@ -580,39 +588,77 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               1000,
           );
 
-          const getIntersectingCells = (cellSizeKm, ratioThreshold = 0.51) => {
-            const grid = turf.squareGrid(bbox, cellSizeKm, {
-              units: "kilometers",
-            });
+          const getIntersectingCells = (
+            baseCellSizeKm,
+            ratioThreshold = 0.51,
+            maxCells = MAX_SMALL_GRID_CELLS,
+          ) => {
+            let refinedCellSizeKm = baseCellSizeKm;
+            let keptCells = [];
 
-            const keptCells = [];
+            for (
+              let attempt = 0;
+              attempt < GRID_REFINEMENT_ATTEMPTS;
+              attempt += 1
+            ) {
+              const grid = turf.squareGrid(bbox, refinedCellSizeKm, {
+                units: "kilometers",
+              });
 
-            grid.features.forEach((cell) => {
-              const cellArea = turf.area(cell);
-              let intersectionArea = 0;
-
-              if (turf.booleanWithin(cell, farmPolygon)) {
-                intersectionArea = cellArea;
-              } else {
-                if (!turf.booleanIntersects(cell, farmPolygon)) return;
-
-                let intersection;
-                try {
-                  intersection = turf.intersect(
-                    turf.featureCollection([cell, farmPolygon]),
-                  );
-                } catch {
-                  return;
-                }
-                if (!intersection) return;
-                intersectionArea = turf.area(intersection);
+              if (!grid.features.length) {
+                return { cells: [], cellSizeKm: refinedCellSizeKm };
               }
 
-              if (intersectionArea / cellArea < ratioThreshold) return;
-              keptCells.push({ cell, intersectionArea });
-            });
+              if (
+                grid.features.length > maxCells * 5 &&
+                attempt < GRID_REFINEMENT_ATTEMPTS - 1
+              ) {
+                const scaleFactor = Math.sqrt(grid.features.length / maxCells);
+                refinedCellSizeKm *= Math.max(1.2, scaleFactor);
+                continue;
+              }
 
-            return keptCells;
+              keptCells = [];
+
+              grid.features.forEach((cell) => {
+                const cellArea = turf.area(cell);
+                const center = turf.center(cell);
+                const isCenterInside = turf.booleanPointInPolygon(
+                  center,
+                  farmPolygon,
+                );
+
+                if (!isCenterInside && !turf.booleanIntersects(cell, farmPolygon)) {
+                  return;
+                }
+
+                const estimatedIntersectionArea = isCenterInside
+                  ? cellArea
+                  : cellArea * 0.6;
+
+                if (estimatedIntersectionArea / cellArea < ratioThreshold) return;
+
+                keptCells.push({
+                  cell,
+                  intersectionArea: estimatedIntersectionArea,
+                });
+              });
+
+              if (
+                keptCells.length <= maxCells ||
+                attempt === GRID_REFINEMENT_ATTEMPTS - 1
+              ) {
+                break;
+              }
+
+              const scaleFactor = Math.sqrt(keptCells.length / maxCells);
+              refinedCellSizeKm *= Math.max(1.2, scaleFactor);
+            }
+
+            return {
+              cells: keptCells.slice(0, maxCells),
+              cellSizeKm: refinedCellSizeKm,
+            };
           };
 
           const largeGridLayer = L.layerGroup().addTo(map);
@@ -683,7 +729,20 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             });
           };
 
-          const largeCells = getIntersectingCells(largeCellSizeKm, 0.45);
+          const { cells: largeCells } = getIntersectingCells(
+            largeCellSizeKm,
+            0.45,
+            MAX_LARGE_GRID_CELLS,
+          );
+          const largeCellPayloads = largeCells.map(({ intersectionArea }, index) =>
+            buildMetricPayload(
+              `${selectedFarm.farm_id}-ZONE-${index}`,
+              `ZONE-${index + 1}`,
+              intersectionArea,
+              "overall",
+            ),
+          );
+
           drawCells(
             largeCells,
             largeGridLayer,
@@ -694,68 +753,118 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             },
             "ZONE",
             "overall",
+            largeCellPayloads,
           );
 
-          const smallCells = getIntersectingCells(smallCellSizeKm, 0.51);
-          const smallCellPayloads = smallCells.map(({ intersectionArea }, index) =>
-            buildMetricPayload(
-              `${selectedFarm.farm_id}-GRID-${index}`,
-              `GRID-${index + 1}`,
-              intersectionArea,
-              "individual",
-            ),
-          );
+          const updateFarmMetrics = (payloads) => {
+            const medianTemperature = getMedianValue(
+              payloads.map((payload) => payload.temperature),
+              getSeededNumber(`${farmSeed}-temp`, 21, 37),
+            );
+            const medianHumidity = getMedianValue(
+              payloads.map((payload) => payload.humidity),
+              getSeededNumber(`${farmSeed}-hum`, 40, 90),
+            );
+            const medianMoisture = getMedianValue(
+              payloads.map((payload) => payload.moisture),
+              getSeededNumber(`${farmSeed}-soil`, 25, 85),
+            );
 
-          const medianTemperature = getMedianValue(
-            smallCellPayloads.map((payload) => payload.temperature),
-            getSeededNumber(`${farmSeed}-temp`, 21, 37),
-          );
-          const medianHumidity = getMedianValue(
-            smallCellPayloads.map((payload) => payload.humidity),
-            getSeededNumber(`${farmSeed}-hum`, 40, 90),
-          );
-          const medianMoisture = getMedianValue(
-            smallCellPayloads.map((payload) => payload.moisture),
-            getSeededNumber(`${farmSeed}-soil`, 25, 85),
-          );
+            if (!isCancelled) {
+              setDashboardData((prev) => ({
+                ...prev,
+                temperature: medianTemperature,
+                humidity: medianHumidity,
+                moisture: medianMoisture,
+              }));
+            }
+          };
 
-          if (!isCancelled) {
-            setDashboardData((prev) => ({
-              ...prev,
-              temperature: medianTemperature,
-              humidity: medianHumidity,
-              moisture: medianMoisture,
-            }));
-          }
+          updateFarmMetrics(largeCellPayloads);
 
           let smallGridDrawn = false;
-          const ensureSmallGrid = () => {
-            if (smallGridDrawn) return;
-            smallGridDrawn = true;
+          let smallGridBuildPromise = null;
 
-            drawCells(
-              smallCells,
-              smallGridLayer,
-              {
-                strokeColor: "#4b5563",
-                weight: 1,
-                fillOpacity: 0.45,
-              },
-              "GRID",
-              "individual",
-              smallCellPayloads,
-            );
+          const ensureSmallGrid = async () => {
+            if (smallGridDrawn) return;
+            if (smallGridBuildPromise) {
+              await smallGridBuildPromise;
+              return;
+            }
+
+            smallGridBuildPromise = (async () => {
+              if (!isCancelled) {
+                setMapToast({
+                  visible: true,
+                  type: "loading",
+                  message: "Preparing detailed grid...",
+                });
+              }
+
+              await runWhenBrowserIdle();
+              if (isCancelled) return;
+
+              const { cells: smallCells } = getIntersectingCells(
+                smallCellSizeKm,
+                0.51,
+                MAX_SMALL_GRID_CELLS,
+              );
+              const smallCellPayloads = smallCells.map(
+                ({ intersectionArea }, index) =>
+                  buildMetricPayload(
+                    `${selectedFarm.farm_id}-GRID-${index}`,
+                    `GRID-${index + 1}`,
+                    intersectionArea,
+                    "individual",
+                  ),
+              );
+
+              drawCells(
+                smallCells,
+                smallGridLayer,
+                {
+                  strokeColor: "#4b5563",
+                  weight: 1,
+                  fillOpacity: 0.45,
+                },
+                "GRID",
+                "individual",
+                smallCellPayloads,
+              );
+
+              updateFarmMetrics(smallCellPayloads);
+              smallGridDrawn = true;
+
+              if (!isCancelled) {
+                setMapToast({
+                  visible: true,
+                  type: "success",
+                  message: "Detailed grid loaded.",
+                });
+              }
+            })();
+
+            try {
+              await smallGridBuildPromise;
+            } finally {
+              smallGridBuildPromise = null;
+            }
           };
 
           const syncGridLayersByZoom = () => {
             if (map.getZoom() >= SMALL_GRID_ZOOM_THRESHOLD) {
-              ensureSmallGrid();
-              if (map.hasLayer(largeGridLayer)) {
-                map.removeLayer(largeGridLayer);
-              }
-              if (!map.hasLayer(smallGridLayer)) {
-                smallGridLayer.addTo(map);
-              }
+              ensureSmallGrid()
+                .then(() => {
+                  if (isCancelled || !leafletMapRef.current) return;
+
+                  if (map.hasLayer(largeGridLayer)) {
+                    map.removeLayer(largeGridLayer);
+                  }
+                  if (!map.hasLayer(smallGridLayer)) {
+                    smallGridLayer.addTo(map);
+                  }
+                })
+                .catch(() => {});
               return;
             }
 
