@@ -1064,6 +1064,101 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
   const activeCaseGridMetrics = getCaseGridMetrics(activeCase);
   const gridCropPlan = getGridCropPlan(selectedGrid);
+  const gridPopupMetricCards = selectedGrid
+    ? [
+        {
+          id: "risk",
+          label: "Risk",
+          icon: <FaExclamationTriangle className="case-grid-pill-icon icon-risk" />,
+          value: selectedGrid.risk.toUpperCase(),
+          valueClass: `risk-${selectedGrid.risk}`,
+        },
+        {
+          id: "temperature",
+          label: "Temperature",
+          icon: <FaTemperatureHigh className="case-grid-pill-icon icon-temp" />,
+          value: `${selectedGrid.temperature} °C`,
+        },
+        {
+          id: "humidity",
+          label: "Humidity",
+          icon: <FaTint className="case-grid-pill-icon icon-humidity" />,
+          value: `${selectedGrid.humidity}%`,
+        },
+        {
+          id: "moisture",
+          label: "Soil Moisture",
+          icon: <FaSeedling className="case-grid-pill-icon icon-moisture" />,
+          value: `${selectedGrid.moisture}%`,
+        },
+        {
+          id: "pressure",
+          label: "Pressure",
+          icon: <FaTachometerAlt className="case-grid-pill-icon icon-pressure" />,
+          value: `${selectedGrid.pressure} kPa`,
+        },
+        {
+          id: "wind",
+          label: "Wind Speed",
+          icon: <FaWind className="case-grid-pill-icon icon-wind" />,
+          value: `${selectedGrid.windSpeed} m/s`,
+        },
+        {
+          id: "solar",
+          label: "Solar Radiation",
+          icon: <FaSun className="case-grid-pill-icon icon-solar" />,
+          value: `${selectedGrid.solarRadiation} W/m2`,
+        },
+        {
+          id: "ndvi",
+          label: "NDVI",
+          icon: <FaLeaf className="case-grid-pill-icon icon-ndvi" />,
+          value: `${selectedGrid.ndvi}`,
+        },
+        {
+          id: "ph",
+          label: "Soil pH",
+          icon: <FaVial className="case-grid-pill-icon icon-ph" />,
+          value: `${selectedGrid.soilPh} pH`,
+        },
+        {
+          id: "nitrogen",
+          label: "Nitrogen",
+          icon: <FaFlask className="case-grid-pill-icon icon-nitrogen" />,
+          value: `${selectedGrid.nitrogen} mg/kg`,
+        },
+        {
+          id: "phosphorus",
+          label: "Phosphorus",
+          icon: <FaMicroscope className="case-grid-pill-icon icon-phosphorus" />,
+          value: `${selectedGrid.phosphorus} mg/kg`,
+        },
+        {
+          id: "potassium",
+          label: "Potassium",
+          icon: <FaDna className="case-grid-pill-icon icon-potassium" />,
+          value: `${selectedGrid.potassium} mg/kg`,
+        },
+        {
+          id: "cell-area",
+          label: "Cell Area",
+          icon: <FaRulerCombined className="case-grid-pill-icon icon-area" />,
+          value: `${selectedGrid.cellArea} m2`,
+        },
+        {
+          id: "crop-plan",
+          label: "Crop Harvest Plan",
+          icon: <FaSeedling className="case-grid-pill-icon icon-moisture" />,
+          value: "Based on current grid readings",
+        },
+        ...gridCropPlan.map((crop, index) => ({
+          id: `crop-${crop.name}-${index}`,
+          label: `Crop ${index + 1}: ${crop.name}`,
+          icon: <FaSeedling className="case-grid-pill-icon icon-moisture" />,
+          value: `Harvest: ${crop.harvestMonth} | Expected: ${crop.expectedTime}`,
+        })),
+      ]
+    : [];
 
   const handleViewGridInActiveCases = () => {
     if (!selectedGrid) return;
@@ -1573,157 +1668,21 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
             </div>
 
             <div className="grid-popup-body">
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaExclamationTriangle className="grid-popup-row-icon icon-risk" />
-                  <span>Risk</span>
-                </div>
-                <strong className={`grid-popup-row-value risk-${selectedGrid.risk}`}>
-                  {selectedGrid.risk.toUpperCase()}
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaTemperatureHigh className="grid-popup-row-icon icon-temp" />
-                  <span>Temperature</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.temperature} °C
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaTint className="grid-popup-row-icon icon-humidity" />
-                  <span>Humidity</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.humidity}%
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaSeedling className="grid-popup-row-icon icon-moisture" />
-                  <span>Soil Moisture</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.moisture}%
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaTachometerAlt className="grid-popup-row-icon icon-pressure" />
-                  <span>Pressure</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.pressure} kPa
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaWind className="grid-popup-row-icon icon-wind" />
-                  <span>Wind Speed</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.windSpeed} m/s
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaSun className="grid-popup-row-icon icon-solar" />
-                  <span>Solar Radiation</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.solarRadiation} W/m2
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaLeaf className="grid-popup-row-icon icon-ndvi" />
-                  <span>NDVI</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.ndvi}
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaVial className="grid-popup-row-icon icon-ph" />
-                  <span>Soil pH</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.soilPh} pH
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaFlask className="grid-popup-row-icon icon-nitrogen" />
-                  <span>Nitrogen</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.nitrogen} mg/kg
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaMicroscope className="grid-popup-row-icon icon-phosphorus" />
-                  <span>Phosphorus</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.phosphorus} mg/kg
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaDna className="grid-popup-row-icon icon-potassium" />
-                  <span>Potassium</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.potassium} mg/kg
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaRulerCombined className="grid-popup-row-icon icon-area" />
-                  <span>Cell Area</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  {selectedGrid.cellArea} m²
-                </strong>
-              </div>
-
-              <div className="grid-popup-row">
-                <div className="grid-popup-row-label">
-                  <FaSeedling className="grid-popup-row-icon icon-moisture" />
-                  <span>Crop Harvest Plan</span>
-                </div>
-                <strong className="grid-popup-row-value">
-                  Based on current grid readings
-                </strong>
-              </div>
-
-              {gridCropPlan.map((crop, index) => (
-                <div className="grid-popup-row" key={crop.name}>
-                  <div className="grid-popup-row-label">
-                    <FaSeedling className="grid-popup-row-icon icon-moisture" />
-                    <span>{`Crop ${index + 1}: ${crop.name}`}</span>
+              <div className="grid-popup-metrics-grid">
+                {gridPopupMetricCards.map((card) => (
+                  <div className="case-grid-pill" key={card.id}>
+                    <div className="case-grid-pill-label">
+                      {card.icon}
+                      <span>{card.label}</span>
+                    </div>
+                    <strong
+                      className={`case-grid-pill-value ${card.valueClass || ""}`.trim()}
+                    >
+                      {card.value}
+                    </strong>
                   </div>
-                  <strong className="grid-popup-row-value">
-                    Harvest: {crop.harvestMonth} | Expected: {crop.expectedTime}
-                  </strong>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             <button
@@ -1756,4 +1715,5 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 };
 
 export default Dashboard;
+
 

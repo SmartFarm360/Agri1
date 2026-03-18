@@ -1221,6 +1221,22 @@ html {
   overflow-x: hidden;
 }
 
+.grid-popup-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.grid-popup-metrics-grid .case-grid-pill {
+  min-width: 0;
+  height: 100%;
+}
+
+.grid-popup-metrics-grid .case-grid-pill-value {
+  white-space: normal;
+  word-break: break-word;
+}
+
 .grid-popup-row {
   display: flex;
   justify-content: space-between;
