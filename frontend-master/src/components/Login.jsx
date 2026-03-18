@@ -11,7 +11,6 @@ const Login = ({ onLogin, currentLanguage }) => {
     email: "",
     password: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fallback to 'en' if currentLanguage is not defined or translation not found
   const t = translations[currentLanguage] || translations["en"];
@@ -25,8 +24,6 @@ const Login = ({ onLogin, currentLanguage }) => {
 
 const handleSubmit = async (e) => {
   e.preventDefault();
-  if (isSubmitting) return;
-  setIsSubmitting(true);
 
   try {
     await onLogin({
@@ -35,8 +32,6 @@ const handleSubmit = async (e) => {
     });
   } catch (error) {
     // Toast is handled globally in AppRoutes.
-  } finally {
-    setIsSubmitting(false);
   }
 };
 
@@ -84,8 +79,8 @@ const handleSubmit = async (e) => {
             />
           </div>
 
-          <button type="submit" className="login-btn" disabled={isSubmitting}>
-            {isSubmitting ? "Signing in..." : t.login}
+          <button type="submit" className="login-btn">
+            {t.login}
           </button>
         </form>
 

@@ -51,9 +51,9 @@ const translations = {
 
 const GRID_CELL_SIZE_METERS = 20;
 const SMALL_GRID_ZOOM_THRESHOLD = 17;
-const LARGE_GRID_TARGET_CELLS = 420;
-const MAX_LARGE_GRID_CELLS = 520;
-const MAX_SMALL_GRID_CELLS = 650;
+const LARGE_GRID_TARGET_CELLS = 320;
+const MAX_LARGE_GRID_CELLS = 320;
+const MAX_SMALL_GRID_CELLS = 480;
 const GRID_REFINEMENT_ATTEMPTS = 4;
 
 const runWhenBrowserIdle = () =>
@@ -728,6 +728,8 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               });
             });
           };
+
+          await runWhenBrowserIdle();
 
           const { cells: largeCells } = getIntersectingCells(
             largeCellSizeKm,
