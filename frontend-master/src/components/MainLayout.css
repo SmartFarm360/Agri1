@@ -59,6 +59,11 @@ body.dashboard-modal-open .navbar {
   line-height: 1;
 }
 
+.brand-name-link {
+  text-decoration: none;
+  color: inherit;
+}
+
 .product-name {
   display: flex;
   align-items: center;
@@ -210,6 +215,27 @@ body.dashboard-modal-open .navbar {
   box-sizing: border-box;
 }
 
+.back-arrow-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #2e7d32;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #2e7d32;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.9rem;
+}
+
+.back-arrow-btn:hover {
+  background: #e8f5e9;
+}
+
 .footer {
   background: #2e7d32;
   color: white;
@@ -283,6 +309,12 @@ body.dashboard-modal-open .navbar {
   .main-content {
     margin-top: 0;
     padding: 0.75rem 1rem 1.5rem;
+  }
+
+  .back-arrow-btn {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 0.75rem;
   }
 
   .nav-right {

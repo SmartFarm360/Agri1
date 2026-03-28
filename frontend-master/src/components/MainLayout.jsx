@@ -1,6 +1,6 @@
-// MainLayout.jsx
+﻿// MainLayout.jsx
 import { useEffect, useState, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import navLogo from "../assets/Maati AI.jpg";
 import "./MainLayout.css";
@@ -66,6 +66,7 @@ const MainLayout = ({
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const langRef = useRef(null);
 
   const toggleProfileMenu = () => setShowProfileMenu(!showProfileMenu);
@@ -122,6 +123,14 @@ const MainLayout = ({
     setShowProfileMenu(false);
   }, [location.pathname]);
 
+  const handleBackClick = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/");
+  };
+
   const t = new Proxy(translatedText, {
     get: (target, prop) => target[prop] || baseText[prop] || prop,
   });
@@ -132,7 +141,9 @@ const MainLayout = ({
         <div className="nav-left">
           <div className="product-name">
             <img src={navLogo} alt="Maati AI logo" className="navbar-logo" />
-            <h3 id="smart_name">Maati AI</h3>
+            <Link to="/" className="brand-name-link">
+              <h3 id="smart_name">Maati AI</h3>
+            </Link>
           </div>
         </div>
 
@@ -161,8 +172,8 @@ const MainLayout = ({
               aria-label="Change language"
               title="Change language"
             >
-              <span className="language-icon" aria-hidden="true">🌐</span>
-              <span className="language-caret" aria-hidden="true">▾</span>
+              <span className="language-icon" aria-hidden="true">ðŸŒ</span>
+              <span className="language-caret" aria-hidden="true">â–¾</span>
             </button>
             {showLangMenu && (
               <div className="dropdown-menu">
@@ -190,7 +201,7 @@ const MainLayout = ({
             </Link>
           ) : (
             <div className="profile-section">
-              <div className="profile-circle" onClick={toggleProfileMenu}>👤</div>
+              <div className="profile-circle" onClick={toggleProfileMenu}>ðŸ‘¤</div>
               {showProfileMenu && (
                 <div className="profile-menu">
                   <Link to="/profile" className="profile-menu-item">{t.accountInfo}</Link>
@@ -205,7 +216,20 @@ const MainLayout = ({
         </div>
       </nav>
 
-      <main className="main-content">{children}</main>
+      <main className="main-content">
+        {location.pathname !== "/" && (
+          <button
+            type="button"
+            className="back-arrow-btn"
+            onClick={handleBackClick}
+            aria-label="Go back"
+            title="Go back"
+          >
+            {"\u2190"}
+          </button>
+        )}
+        {children}
+      </main>
 
       <footer className="footer">
         <div className="footer-content">
@@ -219,13 +243,13 @@ const MainLayout = ({
           </div>
           <div className="footer-section">
             <h4>{t.contactUs}</h4>
-            <p>📧 info.maatiai@gmail.com</p>
-            <p>📞 +91 xxxxxxxx</p>
-            <p>📍 Bhubaneswar, India</p>
+            <p>ðŸ“§ info.maatiai@gmail.com</p>
+            <p>ðŸ“ž +91 xxxxxxxx</p>
+            <p>ðŸ“ Bhubaneswar, India</p>
           </div>
         </div>
         <div className="footer-bottom">
-          <p>© 2025 MAATI AI. {t.allRightsReserved}</p>
+          <p>Â© 2025 MAATI AI. {t.allRightsReserved}</p>
         </div>
       </footer>
     </div>
