@@ -1,6 +1,6 @@
 ﻿// MainLayout.jsx
 import { useEffect, useState, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import navLogo from "../assets/Maati AI.jpg";
 import "./MainLayout.css";
@@ -66,7 +66,6 @@ const MainLayout = ({
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const langRef = useRef(null);
 
   const toggleProfileMenu = () => setShowProfileMenu(!showProfileMenu);
@@ -119,18 +118,6 @@ const MainLayout = ({
     translateUI(currentLanguage);
   }, [currentLanguage]);
 
-  useEffect(() => {
-    setShowProfileMenu(false);
-  }, [location.pathname]);
-
-  const handleBackClick = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate("/");
-  };
-
   const t = new Proxy(translatedText, {
     get: (target, prop) => target[prop] || baseText[prop] || prop,
   });
@@ -141,9 +128,7 @@ const MainLayout = ({
         <div className="nav-left">
           <div className="product-name">
             <img src={navLogo} alt="Maati AI logo" className="navbar-logo" />
-            <Link to="/" className="brand-name-link">
-              <h3 id="smart_name">Maati AI</h3>
-            </Link>
+            <h3 id="smart_name">Maati AI</h3>
           </div>
         </div>
 
@@ -216,20 +201,7 @@ const MainLayout = ({
         </div>
       </nav>
 
-      <main className="main-content">
-        {location.pathname !== "/" && (
-          <button
-            type="button"
-            className="back-arrow-btn"
-            onClick={handleBackClick}
-            aria-label="Go back"
-            title="Go back"
-          >
-            {"\u2190"}
-          </button>
-        )}
-        {children}
-      </main>
+      <main className="main-content">{children}</main>
 
       <footer className="footer">
         <div className="footer-content">
