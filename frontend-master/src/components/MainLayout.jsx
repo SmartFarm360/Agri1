@@ -221,13 +221,13 @@ const MainLayout = ({
           </div>
           <div className="footer-section">
             <h4>{t.contactUs}</h4>
-            <p>ðŸ“§ info.maatiai@gmail.com</p>
-            <p>ðŸ“ž +91 xxxxxxxx</p>
-            <p>ðŸ“ Bhubaneswar, India</p>
+            <p>info.maatiai@gmail.com</p>
+            <p>+91 xxxxxxxx</p>
+            <p>Bhubaneswar, India</p>
           </div>
         </div>
         <div className="footer-bottom">
-          <p>Â© 2025 MAATI AI. {t.allRightsReserved}</p>
+          <p>{"\u00A9"} 2025 MAATI AI. {t.allRightsReserved}</p>
         </div>
       </footer>
     </div>
