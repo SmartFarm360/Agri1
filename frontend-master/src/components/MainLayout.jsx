@@ -118,6 +118,10 @@ const MainLayout = ({
     translateUI(currentLanguage);
   }, [currentLanguage]);
 
+  useEffect(() => {
+    setShowProfileMenu(false);
+  }, [location.pathname]);
+
   const t = new Proxy(translatedText, {
     get: (target, prop) => target[prop] || baseText[prop] || prop,
   });
@@ -128,7 +132,9 @@ const MainLayout = ({
         <div className="nav-left">
           <div className="product-name">
             <img src={navLogo} alt="Maati AI logo" className="navbar-logo" />
-            <h3 id="smart_name">Maati AI</h3>
+            <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
+              <h3 id="smart_name">Maati AI</h3>
+            </Link>
           </div>
         </div>
 
@@ -157,8 +163,8 @@ const MainLayout = ({
               aria-label="Change language"
               title="Change language"
             >
-              <span className="language-icon" aria-hidden="true">ðŸŒ</span>
-              <span className="language-caret" aria-hidden="true">â–¾</span>
+              <span className="language-icon" aria-hidden="true">{"\uD83C\uDF10"}</span>
+              <span className="language-caret" aria-hidden="true">{"\u25BE"}</span>
             </button>
             {showLangMenu && (
               <div className="dropdown-menu">
@@ -186,7 +192,7 @@ const MainLayout = ({
             </Link>
           ) : (
             <div className="profile-section">
-              <div className="profile-circle" onClick={toggleProfileMenu}>ðŸ‘¤</div>
+              <div className="profile-circle" onClick={toggleProfileMenu}>{"\uD83D\uDC64"}</div>
               {showProfileMenu && (
                 <div className="profile-menu">
                   <Link to="/profile" className="profile-menu-item">{t.accountInfo}</Link>
