@@ -118,6 +118,10 @@ const MainLayout = ({
     translateUI(currentLanguage);
   }, [currentLanguage]);
 
+  useEffect(() => {
+    setShowProfileMenu(false);
+  }, [location.pathname]);
+
   const t = new Proxy(translatedText, {
     get: (target, prop) => target[prop] || baseText[prop] || prop,
   });
