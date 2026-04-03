@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext, createContext } from "react";
+import { FiLock, FiCheckCircle } from "react-icons/fi";
 import "./traceconnect.css";
 
 const AuthContext = createContext(null);
@@ -181,9 +182,9 @@ function useRouter() {
 function useToast() {
   const [toasts, setToasts] = useState([]);
   const toast = (message, type = "success") => {
-    const id = Date.now();
-    setToasts((t) => [...t, { id, type, message }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2800);
+    const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((t) => [{ id, type, message }, ...t]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 1500);
   };
   return { toasts, toast };
 }
@@ -505,7 +506,8 @@ function PlantationDetail({ plantationId, toast }) {
       <div className="step-bar">
         {names.map((n, i) => (
           <button key={n} className={`step ${step === i ? "active" : ""} ${done[i] ? "done" : ""} ${!unlocked[i] ? "locked" : ""}`} onClick={() => openStep(i)}>
-            {done[i] ? "Done" : !unlocked[i] ? "Locked" : i + 1}. {n}
+            {done[i] ? <FiCheckCircle className="step-icon" /> : !unlocked[i] ? <FiLock className="step-icon" /> : <span className="step-index">{i + 1}</span>}
+            <span>{n}</span>
           </button>
         ))}
       </div>
