@@ -9,6 +9,10 @@
   --danger: #c0392b;
   font-family: "Poppins", "Segoe UI", sans-serif;
   color: var(--text);
+  width: 100vw;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
 .tc-root * {
@@ -16,6 +20,7 @@
 }
 
 .tc-root .app-root {
+  width: 100%;
   min-height: 100vh;
   background: linear-gradient(180deg, #edf9ef 0%, #f7fbff 100%);
 }
@@ -65,8 +70,9 @@
 }
 
 .tc-root main {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 18px;
 }
 
