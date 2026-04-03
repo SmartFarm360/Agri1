@@ -151,6 +151,9 @@ function AuthModal({ onClose, toast }) {
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-box auth-modal">
+        <button className="auth-close-btn" onClick={onClose} aria-label="Close">
+          X
+        </button>
         <div className="auth-tabs">
           <button className={mode === "signin" ? "auth-tab active" : "auth-tab"} onClick={() => setMode("signin")}>Sign In</button>
           <button className={mode === "signup" ? "auth-tab active" : "auth-tab"} onClick={() => setMode("signup")}>Sign Up</button>
@@ -175,25 +178,18 @@ function AuthModal({ onClose, toast }) {
 }
 
 function HomePage({ navigate, toast }) {
-  const [showAuth, setShowAuth] = useState(false);
+  const [showAuth, setShowAuth] = useState(true);
   const { user } = useAuth();
   useEffect(() => { if (user) navigate(user.role === "grower" ? "/grower" : "/supplier"); }, [user, navigate]);
   return (
-    <div className="home-page">
-      <div className="home-nav">
-        <div className="brand">Seed-to-Batch</div>
-        <button className="btn btn-primary" onClick={() => setShowAuth(true)}>Sign In</button>
-      </div>
-      <div className="hero">
-        <h1>From Seed to Batch</h1>
-        <p>Complete agricultural lifecycle management and traceability.</p>
-        <button className="btn btn-primary" onClick={() => setShowAuth(true)}>Get Started</button>
-      </div>
-      <div className="features-grid">
-        <div className="card"><h3>Crop Lifecycle</h3><p>Track from sowing to harvest.</p></div>
-        <div className="card"><h3>Batch Management</h3><p>Create traceable supplier batches.</p></div>
-        <div className="card"><h3>Analytics</h3><p>Get actionable operational insights.</p></div>
-      </div>
+    <div className="auth-entry-page">
+      {!showAuth && (
+        <div className="auth-entry-card">
+          <h2>Seed-to-Batch</h2>
+          <p>Continue to login or create your account.</p>
+          <button className="btn btn-primary" onClick={() => setShowAuth(true)}>Open Sign In / Sign Up</button>
+        </div>
+      )}
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} toast={toast} />}
     </div>
   );
@@ -536,3 +532,4 @@ export default function TraceConnect() {
     </div>
   );
 }
+

@@ -287,18 +287,45 @@
 }
 
 .tc-root .modal-box {
-  width: min(460px, 100%);
+  width: min(620px, 96vw);
   display: grid;
   gap: 10px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 14px;
+  padding: 22px 20px 18px;
 }
 
 .tc-root .auth-modal .auth-tabs {
   display: flex;
   gap: 6px;
+}
+
+.tc-root .auth-modal {
+  position: relative;
+}
+
+.tc-root .auth-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d1ddd5;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #4f6056;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tc-root .auth-close-btn:hover {
+  border-color: #bfcfc5;
+  background: #f3f8f5;
 }
 
 .tc-root .auth-tab {
@@ -325,6 +352,22 @@
 .tc-root .auth-error {
   color: #b93a2a;
   font-size: 13px;
+}
+
+.tc-root .auth-entry-page {
+  min-height: calc(100vh - 36px);
+}
+
+.tc-root .auth-entry-card {
+  max-width: 560px;
+  margin: 52px auto 0;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  text-align: center;
 }
 
 @media (max-width: 768px) {
