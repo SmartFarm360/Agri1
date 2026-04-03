@@ -1125,41 +1125,240 @@ function ProfilePage() {
 function TracePage({ patchId }) {
   const { batches, packings, harvests, crops, plantations } = useData();
   const batch = batches.find((b) => b.id === patchId);
-  if (!batch) return <div className="page-container"><h1>Batch Not Found</h1></div>;
-  const pk = packings.find((p) => p.id === batch.packingIds[0]);
-  const har = pk ? harvests.find((h) => h.id === pk.harvestId) : null;
-  const crop = har ? crops.find((c) => c.id === har.cropId) : null;
-  const plantation = pk ? plantations.find((p) => p.id === pk.plantationId) : null;
+
+  if (!batch) {
+    return (
+      <div className="trace-page trace-public">
+        <div className="trace-card" style={{ textAlign: "center", padding: 36 }}>
+          <div style={{ fontSize: 40 }}>🔍</div>
+          <h2>Batch Not Found</h2>
+          <p className="muted">Batch ID: <code>{patchId}</code> does not exist.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const firstPacking = packings.find((p) => p.id === batch.packingIds[0]);
+  const harvestRecord = firstPacking ? harvests.find((h) => h.id === firstPacking.harvestId) : null;
+  const cropRecord = harvestRecord ? crops.find((c) => c.id === harvestRecord.cropId) : null;
+  const plantation = firstPacking ? plantations.find((p) => p.id === firstPacking.plantationId) : null;
   const isShrimp = plantation?.type === "shrimp";
-  const retailSizeMap = { Tomato: 1, Spinach: 0.5, Coriander: 0.25, Lettuce: 0.3, Cabbage: 1, Cauliflower: 1, Carrot: 0.5, Beetroot: 0.5, Capsicum: 0.5, Okra: 0.5, Brinjal: 0.5, "French Beans": 0.5, "Green Gram": 1 };
-  const retailSize = isShrimp ? 1 : (retailSizeMap[crop?.name] || 1);
-  const totalRetail = Math.floor((batch.totalWeight || 0) / retailSize);
-  const xMap = {
-    Tomato: ["Fruit Firmness: 7.2 N", "Brix Sweetness: 4.8 Bx", "Lycopene: 85 mg/kg", "Pest Resistance: 0.89"],
-    Brinjal: ["Glossiness: 92%", "Anthocyanin: 120 mg/kg", "Pest Resistance: 0.82"],
-    Spinach: ["Iron: 27 mg/kg", "Nitrate: 1800 mg/kg", "Chlorophyll: 48 SPAD"],
-    "Green Gram": ["Protein: 24.5%", "Germination: 95%", "Moisture: 10.2%"],
+
+  const cropKey = (cropRecord?.name || "").toLowerCase();
+  const xfactorMap = {
+    tomato: [{ label: "Fruit Firmness", val: "7.2 N" }, { label: "Brix Sweetness", val: "4.8 °Bx" }, { label: "Lycopene", val: "85 mg/kg" }, { label: "Pest Resistance", val: "0.89" }],
+    brinjal: [{ label: "Glossiness", val: "92%" }, { label: "Anthocyanin", val: "120 mg/kg" }, { label: "Pest Resistance", val: "0.82" }],
+    spinach: [{ label: "Iron", val: "27 mg/kg" }, { label: "Nitrate", val: "1800 mg/kg" }, { label: "Chlorophyll", val: "48 SPAD" }],
+    palak: [{ label: "Iron", val: "27 mg/kg" }, { label: "Nitrate", val: "1800 mg/kg" }, { label: "Chlorophyll", val: "48 SPAD" }],
+    "green gram": [{ label: "Protein", val: "24.5%" }, { label: "Germination", val: "95%" }, { label: "Moisture", val: "10.2%" }],
+    moong: [{ label: "Protein", val: "24.5%" }, { label: "Germination", val: "95%" }, { label: "Moisture", val: "10.2%" }],
+    lettuce: [{ label: "Crispness", val: "8.4 N" }, { label: "Nutrient Efficiency", val: "92%" }, { label: "Chlorophyll", val: "42 SPAD" }],
+    cabbage: [{ label: "Head Density", val: "1.05 g/cm³" }, { label: "Compactness", val: "88%" }, { label: "Vitamin C", val: "36 mg/100g" }],
+    cauliflower: [{ label: "Curd Compactness", val: "91%" }, { label: "Whiteness", val: "85" }, { label: "Vitamin C", val: "48 mg/100g" }],
+    carrot: [{ label: "Beta Carotene", val: "8.3 mg/100g" }, { label: "Root Length", val: "18 cm" }, { label: "Sugar", val: "6.2 °Bx" }],
+    beetroot: [{ label: "Betanin", val: "95 mg/100g" }, { label: "Diameter", val: "7.5 cm" }, { label: "Sugar", val: "8.1 °Bx" }],
+    okra: [{ label: "Tenderness", val: "6.8 N" }, { label: "Fiber", val: "3.2 g/100g" }, { label: "Mucilage", val: "18 mL/100g" }],
+    bhindi: [{ label: "Tenderness", val: "6.8 N" }, { label: "Fiber", val: "3.2 g/100g" }, { label: "Mucilage", val: "18 mL/100g" }],
+    "french beans": [{ label: "Pod Length", val: "14 cm" }, { label: "Protein", val: "7.1 g/100g" }, { label: "Fiber", val: "3.4 g/100g" }],
+    coriander: [{ label: "Essential Oil", val: "0.8%" }, { label: "Aroma", val: "8.5/10" }, { label: "Chlorophyll", val: "45 SPAD" }],
+    fenugreek: [{ label: "Trigonelline", val: "0.36%" }, { label: "Bitterness", val: "4.2/10" }, { label: "Protein", val: "23 g/100g" }],
+    methi: [{ label: "Trigonelline", val: "0.36%" }, { label: "Bitterness", val: "4.2/10" }, { label: "Protein", val: "23 g/100g" }],
+    capsicum: [{ label: "Capsanthin", val: "125 mg/kg" }, { label: "Thickness", val: "6.5 mm" }, { label: "Vitamin C", val: "128 mg/100g" }],
+    default: [{ label: "Quality Score", val: "A+" }, { label: "Pest Resistance", val: "0.85" }],
   };
-  const xfactor = isShrimp ? ["Avg Size: 30-40 count/kg", "FCR: 1.4:1", "Culture Period: 90-120 days", "Survival Rate: 80-85%"] : (xMap[crop?.name] || ["Quality Score: A+", "Pest Resistance: 0.85"]);
+  const xfactor = isShrimp ? [{ label: "Avg Size", val: "30-40 count/kg" }, { label: "FCR", val: "1.4:1" }, { label: "Culture Period", val: "90-120 days" }, { label: "Survival Rate", val: "80-85%" }] : (xfactorMap[cropKey] || xfactorMap.default);
+
+  const retailSizes = {
+    tomato: 1, spinach: 0.5, palak: 0.5, coriander: 0.25, lettuce: 0.3, cabbage: 1, cauliflower: 1,
+    carrot: 0.5, beetroot: 0.5, capsicum: 0.5, okra: 0.5, bhindi: 0.5, brinjal: 0.5, "french beans": 0.5,
+    "green gram": 1, moong: 1, shrimp: 1,
+  };
+  const retailSize = isShrimp ? 1 : (retailSizes[cropKey] || 1);
+  const totalRetail = Math.floor((batch.totalWeight || 0) / retailSize);
+
+  const timeline = [
+    { label: "Crop Planted", date: cropRecord?.sowingDate, done: !!cropRecord },
+    { label: "Harvested", date: harvestRecord?.harvestDate, done: !!harvestRecord },
+    { label: "Bulk Packed", date: firstPacking?.packingDate, done: !!firstPacking },
+    { label: "Supplier Packing", date: batch.createdAt, done: true },
+    { label: "Transported", date: batch.createdAt, done: true },
+    { label: "Delivered", date: null, done: false },
+  ];
 
   return (
     <div className="trace-page trace-public">
-      <div className="trace-card hero-card">
-        <h2>{crop?.name || "Agricultural Product"}</h2>
-        <p>Variety: {crop?.variety || "-"} | Harvested: {har?.harvestDate || "-"} | Origin: {plantation?.location || "-"} | Batch: {batch.id}</p>
+      <div className="trace-hero">
+        <div className="trace-hero-img">
+          <div className="trace-hero-overlay">
+            <h2 className="trace-product-name">{cropRecord?.name || "Agricultural Product"}</h2>
+          </div>
+          <div className="trace-info-bar">
+            <div className="trace-info-item"><span className="amber-dot">●</span><span>Variety</span><strong>{cropRecord?.variety || "-"}</strong></div>
+            <div className="trace-info-item"><span className="amber-dot">●</span><span>Harvested</span><strong>{harvestRecord?.harvestDate || "-"}</strong></div>
+            <div className="trace-info-item"><span className="amber-dot">●</span><span>Origin</span><strong>{plantation?.location || "-"}</strong></div>
+            <div className="trace-info-item"><span className="amber-dot">●</span><span>Batch ID</span><strong className="mono">{batch.id}</strong></div>
+          </div>
+        </div>
       </div>
-      <div className="trace-card"><h3>Farmer Information</h3><p>{plantation?.name || "Unknown Farm"} | {isShrimp ? "Aquaculture Farm" : "Organic Farming Cooperative"}</p></div>
-      <div className="trace-card"><h3>Farm Location</h3><p>{plantation?.location || "-"} | Area: 2.5 hectares | Active</p></div>
-      <div className="trace-card"><h3>{isShrimp ? "Water & Environment Data" : "Sustainability Data"}</h3><p>{isShrimp ? "pH 7.5-8.5, O2 >= 5mg/L, Salinity 15-25ppt, Antibiotic: Passed" : "Water 1100 L/kg, Soil pH 6.8, Organic Carbon 1.2%, NDVI 0.78, CO2 0.4 kg CO2e"}</p></div>
-      <div className="trace-card"><h3>Crop-Specific X-Factor</h3><ul className="records">{xfactor.map((x) => <li key={x}>{x}</li>)}</ul></div>
-      <div className="trace-card"><h3>Certifications</h3><p>{isShrimp ? "MPEDA / BAP Certified" : "India Organic Certified"} | Valid Until: Dec 2025</p></div>
-      <div className="trace-card"><h3>Harvest Data</h3><p>{har?.harvestDate || "-"} | Total: {har?.total || 0} {har?.unit || "kg"} | Accepted: {har?.accepted || 0} | Rejected: {har?.rejected || 0}</p></div>
-      <div className="trace-card"><h3>Bulk Packing Details</h3><p>{pk?.packingDate || "-"} | {pk?.numPackages || 0} x {pk?.packingSize || "-"} | Net: {pk?.netWeight || 0} kg | {pk?.warehouse || "-"}</p></div>
-      <div className="trace-card"><h3>Supplier Packing (Retail)</h3><p>Batch: {batch.id} | Bulk: {batch.totalWeight} kg | Packet Size: {retailSize} kg | Total Retail Packets: {totalRetail} | Type: {isShrimp ? "IQF / Frozen Pack" : "Consumer Ready"} | QC: Passed</p></div>
-      <div className="trace-card"><h3>Traceability Timeline</h3><p>Crop Planted: {crop?.sowingDate || "Pending"} | Harvested: {har?.harvestDate || "Pending"} | Bulk Packed: {pk?.packingDate || "Pending"} | Supplier Packing: {batch.createdAt} | Transported: {batch.createdAt} | Delivered: Pending</p></div>
-      <div className="trace-card"><h3>Batch Summary</h3><p>{batch.id} | {batch.totalWeight} kg | {batch.description || "-"} | {batch.createdAt} | Items: {batch.packingIds.length}</p></div>
-      <div className="trace-card"><h3>Data Verification</h3><p>Verified By: MaatiAI System | Last Updated: {new Date().toLocaleString()} | Status: Verified</p></div>
-      <div className="actions"><button className="btn btn-primary">View Harvest Photos</button><button className="btn btn-outline">Watch Farmer Story</button></div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">👨‍🌾 Farmer Information</div>
+        <div className="farmer-row">
+          <div className="farmer-avatar">{isShrimp ? "🦐" : "🌾"}</div>
+          <div>
+            <div className="farmer-name">{plantation?.name || "Unknown Farm"}</div>
+            <div className="farmer-sub">{isShrimp ? "Aquaculture Farm" : "Organic Farming Cooperative"}</div>
+            <div className="farmer-badges">
+              <span className="badge badge-green">{isShrimp ? "MPEDA Registered" : "Certified Organic Farmer"}</span>
+              <span className="badge badge-blue">{isShrimp ? "Aquaculture Expert" : "Experienced Farmer"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">📍 Farm Location</div>
+        <div className="location-row">
+          <div>
+            <div className="location-name">{plantation?.location || "-"}</div>
+            <div className="location-meta">Area: 2.5 hectares · <span className="badge badge-green">Active</span></div>
+          </div>
+        </div>
+        <div style={{ padding: "0 16px 14px" }}>
+          <button className="btn btn-dark">🎬 View Farm Media</button>
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header" style={{ background: isShrimp ? "#1a5276" : "#2d6a2e" }}>
+          {isShrimp ? "💧 Water & Environment Data" : "🌱 Sustainability Data"}
+        </div>
+        {isShrimp ? (
+          <div className="sustain-grid">
+            {[{ l: "Water Quality", v: "pH 7.5-8.5" }, { l: "Water Temp", v: "28-32°C" }, { l: "Dissolved O₂", v: "≥ 5 mg/L" }, { l: "Ammonia", v: "< 0.1 mg/L" }, { l: "Antibiotic Test", v: "Passed ✓" }, { l: "Salinity", v: "15-25 ppt" }].map((i) => (
+              <div key={i.l} className="sustain-item"><div className="sustain-label">{i.l}</div><div className="sustain-val">{i.v}</div></div>
+            ))}
+          </div>
+        ) : (
+          <div className="sustain-grid">
+            {[{ l: "Water Used", v: "1100 L/kg" }, { l: "Soil Health", v: "pH 6.8" }, { l: "Organic Carbon", v: "1.2%" }, { l: "NPK", v: "N:45 P:30 K:35 kg/ha" }, { l: "NDVI Score", v: "0.78" }, { l: "CO₂ Footprint", v: "0.4 kg CO₂e" }].map((i) => (
+              <div key={i.l} className="sustain-item"><div className="sustain-label">{i.l}</div><div className="sustain-val">{i.v}</div></div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">{isShrimp ? "🦐 Shrimp Product Details" : "⭐ Crop-Specific Quality X-Factor"}</div>
+        <div className="xfactor-grid">
+          {xfactor.map((x) => (
+            <div key={x.label} className="xfactor-item">
+              <span className="star">★★★★★</span>
+              <div className="xfactor-label">{x.label}</div>
+              <div className="xfactor-val">{x.val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">🏅 Certifications</div>
+        <div className="cert-row">
+          <span className="cert-badge">🌿</span>
+          <div>
+            <div style={{ fontWeight: 600 }}>{isShrimp ? "MPEDA / BAP Certified" : "India Organic Certified"}</div>
+            <div style={{ fontSize: 13 }} className="muted">Valid Until: Dec 2025</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">🚚 Harvest & Supply Chain</div>
+        <div className="supply-chain">
+          {["Harvested", "Bulk Packed", "Supplier Packing", "Transported", "At Store"].map((s, i) => (
+            <div key={s} className="chain-item">
+              <div className={`chain-dot ${i < 4 ? "chain-active" : "chain-inactive"}`}>{i < 4 ? "✓" : "○"}</div>
+              <div className={`chain-label ${i < 4 ? "" : "muted"}`}>{s}</div>
+              {i < 4 && <div className="chain-line" />}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">🌾 Harvest Data</div>
+        <div className="kv-grid">
+          <div className="kv-item"><span>Harvest Date</span><strong>{harvestRecord?.harvestDate || "-"}</strong></div>
+          <div className="kv-item"><span>Total Quantity</span><strong>{harvestRecord?.total || 0} {harvestRecord?.unit || "kg"}</strong></div>
+          <div className="kv-item"><span>Accepted</span><strong style={{ color: "#2d6a2e" }}>{harvestRecord?.accepted || 0} {harvestRecord?.unit || "kg"}</strong></div>
+          {harvestRecord?.rejected > 0 && <div className="kv-item"><span>Rejected</span><strong style={{ color: "#e53935" }}>{harvestRecord.rejected} {harvestRecord.unit}</strong></div>}
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">📦 Bulk Packing Details</div>
+        <div className="kv-grid">
+          <div className="kv-item"><span>Packed On</span><strong>{firstPacking?.packingDate || "-"}</strong></div>
+          <div className="kv-item"><span>Packages</span><strong>{firstPacking?.numPackages || 0} × {firstPacking?.packingSize || "-"}</strong></div>
+          <div className="kv-item"><span>Net Weight</span><strong>{firstPacking?.netWeight || 0} kg</strong></div>
+          <div className="kv-item"><span>Warehouse</span><strong>{firstPacking?.warehouse || "-"}</strong></div>
+          <div className="kv-item"><span>Location</span><strong>{firstPacking ? `${firstPacking.city}, ${firstPacking.state}` : "-"}</strong></div>
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header" style={{ background: "linear-gradient(90deg, #1a5276, #2980b9)" }}>🏪 Supplier Packing (Retail)</div>
+        <div className="kv-grid">
+          <div className="kv-item"><span>Batch ID</span><code className="mono">{batch.id}</code></div>
+          <div className="kv-item"><span>Bulk Weight</span><strong>{batch.totalWeight} kg</strong></div>
+          <div className="kv-item"><span>Retail Packet Size</span><strong>{retailSize} kg</strong></div>
+          <div className="kv-item"><span>Total Retail Packets</span><strong>{totalRetail} pcs</strong></div>
+          <div className="kv-item"><span>Packaging Type</span><strong>{isShrimp ? "IQF / Frozen Pack" : "Consumer Ready"}</strong></div>
+          <div className="kv-item"><span>QC Status</span><strong style={{ color: "#2d6a2e" }}>Passed ✓</strong></div>
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">📅 Traceability Timeline</div>
+        <div className="v-timeline">
+          {timeline.map((t, i) => (
+            <div key={t.label} className="v-tl-item">
+              <div className={`v-tl-dot ${t.done ? "v-tl-done" : "v-tl-pending"}`} />
+              {i < timeline.length - 1 && <div className={`v-tl-line ${t.done ? "v-tl-line-done" : ""}`} />}
+              <div className="v-tl-content">
+                <span className="v-tl-label">{t.label}</span>
+                <span className="v-tl-date">{t.date || "Pending"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">📋 Batch Summary</div>
+        <div className="kv-grid">
+          <div className="kv-item"><span>Batch ID</span><code className="mono">{batch.id}</code></div>
+          <div className="kv-item"><span>Total Weight</span><strong>{batch.totalWeight} kg</strong></div>
+          <div className="kv-item"><span>Description</span><strong>{batch.description || "-"}</strong></div>
+          <div className="kv-item"><span>Created</span><strong>{batch.createdAt}</strong></div>
+          <div className="kv-item"><span>Items</span><strong>{batch.packingIds.length}</strong></div>
+        </div>
+      </div>
+
+      <div className="trace-card">
+        <div className="trace-section-header">✅ Data Verification</div>
+        <div className="kv-grid">
+          <div className="kv-item"><span>Verified By</span><strong>MaatiAI System</strong></div>
+          <div className="kv-item"><span>Last Updated</span><strong>{new Date().toLocaleString()}</strong></div>
+          <div className="kv-item"><span>Status</span><strong style={{ color: "#2d6a2e" }}>Verified ✓</strong></div>
+        </div>
+      </div>
+
+      <div className="trace-actions">
+        <button className="btn btn-primary">📸 View Harvest Photos</button>
+        <button className="btn btn-outline">▶ Watch Farmer Story</button>
+      </div>
+
       <div className="trace-footer">Powered by <strong>MaatiAI</strong> Traceability</div>
     </div>
   );
