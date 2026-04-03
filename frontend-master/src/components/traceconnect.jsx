@@ -1,5 +1,5 @@
-import { useState, useEffect, useContext, createContext } from "react";
-import { FiLock, FiCheckCircle } from "react-icons/fi";
+import { useState, useEffect, useContext, createContext, useRef } from "react";
+import { FiLock, FiCheckCircle, FiUser, FiChevronDown, FiLogOut } from "react-icons/fi";
 import "./traceconnect.css";
 
 const AuthContext = createContext(null);
@@ -321,16 +321,43 @@ function HomePage({ navigate, toast }) {
 
 function Header({ route, navigate }) {
   const { user, signOut } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
   if (!user) return null;
   const links = user.role === "grower"
-    ? [{ label: "Dashboard", path: "/grower" }, { label: "Plantations", path: "/plantations" }, { label: "Reports", path: "/reports" }, { label: "Profile", path: "/profile" }]
-    : [{ label: "Dashboard", path: "/supplier" }, { label: "Reports", path: "/reports" }, { label: "Profile", path: "/profile" }];
+    ? [{ label: "Dashboard", path: "/grower" }, { label: "Plantations", path: "/plantations" }, { label: "Reports", path: "/reports" }]
+    : [{ label: "Dashboard", path: "/supplier" }, { label: "Reports", path: "/reports" }];
   return (
     <header className="app-header">
       <button className="brand" onClick={() => navigate(user.role === "grower" ? "/grower" : "/supplier")}>Seed-to-Batch</button>
       <nav>
         {links.map((l) => <button key={l.path} className={route === l.path ? "nav-pill active" : "nav-pill"} onClick={() => navigate(l.path)}>{l.label}</button>)}
-        <button className="btn btn-ghost" onClick={() => { signOut(); navigate("/"); }}>Logout</button>
+        <div className="profile-menu-wrap" ref={menuRef}>
+          <button className={`profile-trigger ${menuOpen ? "open" : ""}`} onClick={() => setMenuOpen((x) => !x)}>
+            <span className="profile-avatar"><FiUser /></span>
+            <span className="profile-short">{(user?.name || "User").split(" ")[0]}</span>
+            <FiChevronDown className="chevron" />
+          </button>
+          {menuOpen && (
+            <div className="profile-dropdown">
+              <button className="profile-item" onClick={() => { setMenuOpen(false); navigate("/profile"); }}>
+                <FiUser /> Profile
+              </button>
+              <button className="profile-item danger" onClick={() => { setMenuOpen(false); signOut(); navigate("/"); }}>
+                <FiLogOut /> Logout
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
     </header>
   );
