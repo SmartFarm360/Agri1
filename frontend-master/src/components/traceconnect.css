@@ -1,0 +1,336 @@
+.tc-root {
+  --bg: #f5fbf6;
+  --card: #ffffff;
+  --text: #12301b;
+  --muted: #5e6d65;
+  --line: #dce8df;
+  --green: #1f8a43;
+  --blue: #1e5c9a;
+  --danger: #c0392b;
+  font-family: "Poppins", "Segoe UI", sans-serif;
+  color: var(--text);
+}
+
+.tc-root * {
+  box-sizing: border-box;
+}
+
+.tc-root .app-root {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #edf9ef 0%, #f7fbff 100%);
+}
+
+.tc-root .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+}
+
+.tc-root .brand {
+  border: 0;
+  background: transparent;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--green);
+}
+
+.tc-root nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tc-root .nav-pill {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.tc-root .nav-pill.active {
+  border-color: #c4dfcc;
+  background: #ebf6ee;
+  color: var(--green);
+}
+
+.tc-root main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.tc-root .page-container {
+  display: grid;
+  gap: 14px;
+}
+
+.tc-root .home-page {
+  display: grid;
+  gap: 20px;
+}
+
+.tc-root .home-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+
+.tc-root .hero {
+  background: linear-gradient(135deg, #1f8a43, #2e6fa5);
+  color: #fff;
+  border-radius: 16px;
+  padding: 36px 24px;
+}
+
+.tc-root .hero h1 {
+  margin: 0 0 8px;
+}
+
+.tc-root .hero p {
+  margin: 0 0 16px;
+  max-width: 700px;
+}
+
+.tc-root .features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.tc-root .card,
+.tc-root .stat,
+.tc-root .trace-card,
+.tc-root .plantation-card,
+.tc-root .batch-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.tc-root .card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.tc-root .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.tc-root .form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.tc-root .input {
+  width: 100%;
+  border: 1px solid #ccd9d0;
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: #fff;
+  color: #1c2d24;
+}
+
+.tc-root .btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tc-root .btn-primary {
+  background: var(--green);
+  color: #fff;
+}
+
+.tc-root .btn-outline {
+  border: 1px solid #bfd9c7;
+  background: #eef8f1;
+  color: #1a6e35;
+}
+
+.tc-root .btn-ghost {
+  border: 1px solid #c8d6cd;
+  background: #fff;
+  color: #43544a;
+}
+
+.tc-root .btn-danger {
+  background: #fdf0ef;
+  color: var(--danger);
+  border: 1px solid #f4d0cc;
+}
+
+.tc-root .actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tc-root .step-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tc-root .step {
+  border: 1px solid #d0ded5;
+  border-radius: 10px;
+  background: #fff;
+  color: #4c6055;
+  padding: 8px 12px;
+}
+
+.tc-root .step.active {
+  background: #ebf6ee;
+  color: var(--green);
+  border-color: #bfd9c7;
+}
+
+.tc-root .records {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.tc-root .accepted-box {
+  border: 1px dashed #b8d2c1;
+  border-radius: 10px;
+  padding: 10px;
+  background: #f1f8f4;
+  color: #1f7d3f;
+  font-weight: 600;
+}
+
+.tc-root .link-danger {
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.tc-root .check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.tc-root .trace-page {
+  display: grid;
+  gap: 12px;
+}
+
+.tc-root .toast-container {
+  position: fixed;
+  top: 80px;
+  right: 16px;
+  display: grid;
+  gap: 8px;
+  z-index: 1200;
+}
+
+.tc-root .toast {
+  color: #fff;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.tc-root .toast-success {
+  background: #1f8a43;
+}
+
+.tc-root .toast-error {
+  background: #b93a2a;
+}
+
+.tc-root .modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 1300;
+  padding: 12px;
+}
+
+.tc-root .modal-box {
+  width: min(460px, 100%);
+  display: grid;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.tc-root .auth-modal .auth-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.tc-root .auth-tab {
+  flex: 1;
+  border: 1px solid #cedbd2;
+  background: #fff;
+  color: #5a6b61;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.tc-root .auth-tab.active {
+  background: #eaf5ee;
+  color: var(--green);
+  border-color: #bdd8c5;
+}
+
+.tc-root .auth-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.tc-root .auth-error {
+  color: #b93a2a;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .tc-root main {
+    padding: 12px;
+  }
+
+  .tc-root .hero {
+    padding: 22px 16px;
+  }
+
+  .tc-root .app-header {
+    padding: 10px 12px;
+  }
+}

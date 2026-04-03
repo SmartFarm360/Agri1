@@ -14,6 +14,7 @@ import Profile from "./components/Profile";
 import FarmBlog from "./components/Farm Blog";
 import Help from "./components/Help";
 import TraceabilityPage from "./components/TraceabilityPage";
+import TraceConnect from "./components/traceconnect";
 
 
 import axios from "axios";
@@ -267,6 +268,8 @@ function AppRoutes() {
             </MainLayout>
           }
         />
+
+        <Route path="/traceconnect" element={<TraceConnect />} />
 
         {/* FARMER DASHBOARD */}
         <Route
