@@ -81,6 +81,27 @@
   gap: 14px;
 }
 
+.tc-root .row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.tc-root .muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tc-root .empty-state {
+  border: 1px dashed #c8d9cd;
+  border-radius: 12px;
+  background: #f4faf6;
+  color: var(--muted);
+  padding: 14px;
+  text-align: center;
+}
+
 .tc-root .home-page {
   display: grid;
   gap: 20px;
@@ -165,6 +186,11 @@
   cursor: pointer;
 }
 
+.tc-root .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .tc-root .btn-primary {
   background: var(--green);
   color: #fff;
@@ -215,6 +241,16 @@
   border-color: #bfd9c7;
 }
 
+.tc-root .step.done {
+  border-color: #a9d1b4;
+  background: #f1f8f4;
+}
+
+.tc-root .step.locked {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .tc-root .records {
   margin: 10px 0 0;
   padding-left: 18px;
@@ -249,6 +285,26 @@
 .tc-root .trace-page {
   display: grid;
   gap: 12px;
+}
+
+.tc-root .trace-public {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.tc-root .hero-card {
+  background: linear-gradient(135deg, #1f8a43, #2e6fa5);
+  color: #fff;
+}
+
+.tc-root .hero-card p {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.tc-root .trace-footer {
+  text-align: center;
+  color: #3c4f45;
+  font-size: 14px;
 }
 
 .tc-root .toast-container {
@@ -294,6 +350,15 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 22px 20px 18px;
+}
+
+.tc-root .qr-box {
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1px dashed #c8d7ce;
+  border-radius: 10px;
+  background: #fff;
 }
 
 .tc-root .auth-modal .auth-tabs {
@@ -368,6 +433,51 @@
   display: grid;
   gap: 10px;
   text-align: center;
+}
+
+.tc-root .video-card {
+  border-left: 4px solid #1f8a43;
+}
+
+.tc-root .process-card {
+  background: #fbfefc;
+}
+
+.tc-root .actions.right {
+  justify-content: flex-end;
+}
+
+.tc-root .packing-selected {
+  border-radius: 8px;
+  background: #eef8f1;
+  border: 1px solid #bdd8c5;
+  padding: 6px 8px;
+}
+
+.tc-root .table-wrap {
+  overflow-x: auto;
+}
+
+.tc-root .data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tc-root .data-table th,
+.tc-root .data-table td {
+  text-align: left;
+  border-bottom: 1px solid #dde8e0;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.tc-root .data-table th {
+  background: #f6fbf8;
+  font-weight: 700;
+}
+
+.tc-root .gallery-group {
+  margin-top: 12px;
 }
 
 @media (max-width: 768px) {
