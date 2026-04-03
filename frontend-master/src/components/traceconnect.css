@@ -13,7 +13,7 @@
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  line-height: 1.45;
+  line-height: 1.35;
 }
 
 .tc-root * {
@@ -98,29 +98,29 @@
 
 .tc-root h1 {
   margin: 0;
-  font-size: clamp(38px, 6vw, 56px);
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
 }
 
 .tc-root h2 {
   margin: 0;
-  font-size: clamp(26px, 4vw, 34px);
+  font-size: clamp(22px, 3vw, 30px);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .tc-root h3 {
   margin: 0 0 6px;
-  font-size: clamp(24px, 2.3vw, 28px);
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 600;
+  letter-spacing: -0.005em;
 }
 
 .tc-root h4 {
   margin: 0 0 4px;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -129,7 +129,7 @@
 .tc-root td,
 .tc-root th,
 .tc-root label {
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .tc-root .row-between {
@@ -141,8 +141,8 @@
 
 .tc-root .muted {
   color: var(--muted);
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .tc-root .empty-state {
@@ -198,9 +198,9 @@
 .tc-root .batch-card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 10px 24px rgba(14, 52, 28, 0.05);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 6px 14px rgba(14, 52, 28, 0.04);
 }
 
 .tc-root .card-grid {
@@ -226,19 +226,19 @@
   width: 100%;
   border: 1px solid #ccd9d0;
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   background: #fff;
   color: #1c2d24;
-  font-size: 19px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .tc-root .btn {
   border: 0;
   border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 18px;
-  font-weight: 700;
+  padding: 9px 14px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.18s ease;
 }
@@ -297,7 +297,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -402,9 +402,9 @@
 
 .tc-root .toast {
   color: #fff;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-radius: 10px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
@@ -552,8 +552,8 @@
 .tc-root .data-table td {
   text-align: left;
   border-bottom: 1px solid #dde8e0;
-  padding: 10px 12px;
-  font-size: 16px;
+  padding: 9px 11px;
+  font-size: 14px;
 }
 
 .tc-root .data-table th {
