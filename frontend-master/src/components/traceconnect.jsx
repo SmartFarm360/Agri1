@@ -1095,10 +1095,30 @@ function GrowerDashboard({ navigate, toast }) {
   return (
     <div className="page-container">
       {dialog}
-      <div className="page-header">
-        <div>
-          <h1>Grower Dashboard</h1>
-          <p className="page-subtitle">Welcome back, <strong>{user?.name}</strong> - manage your plantations below</p>
+      <h1>Grower Dashboard</h1>
+      <p className="muted">Welcome back, {user?.name}</p>
+      {backendError && <div className="inline-alert error">{backendError}</div>}
+      {farms.length > 0 && (
+        <div className="inline-alert" style={{ marginBottom: 12 }}>
+          Active Farm: <strong>#{selectedFarmId}</strong> ({farms[0]?.farm_name || "Farm"})
+        </div>
+      )}
+      <div className="stats-grid">
+        <div className="stat">Plantations: {mine.length}</div>
+        <div className="stat">Crops: {crops.filter((c) => mineIds.includes(c.plantationId)).length}</div>
+        <div className="stat">Harvested: {totalHarvested} kg</div>
+        <div className="stat">Packings: {packings.filter((p) => mineIds.includes(p.plantationId)).length}</div>
+      </div>
+      <div className="card">
+        <h3>Create New Plantation</h3>
+        <div className="form-row">
+          <select className="input" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
+            <option value="crop">Crop Farming</option>
+            <option value="shrimp">Shrimp / Prawn Farming</option>
+          </select>
+          <input className="input" placeholder="Plantation Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          <input className="input" placeholder="Location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
+          <button className="btn btn-primary" onClick={create}>Create</button>
         </div>
       </div>
       {backendError && <div className="inline-alert error">{backendError}</div>}
@@ -1260,12 +1280,8 @@ function PlantationDetail({ plantationId, toast }) {
   return (
     <div className="page-container">
       {dialog}
-      <div className="page-header">
-        <div>
-          <h1>{plantation.name}</h1>
-          <p className="page-subtitle"><FiMapPin /> {plantation.location} &nbsp;|&nbsp; <span className="status-chip active">{plantation.status}</span></p>
-        </div>
-      </div>
+      <h1>{plantation.name}</h1>
+      <p className="muted">{plantation.location} | {plantation.status}</p>
 
       {stageImages.length > 0 && (
         <div className="card">
@@ -1454,28 +1470,26 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
         }}
         toast={toast}
       />
-      <div className="card-title"><FiCamera /> Process Entries - {stage}</div>
-      <div className="form-grid two-col">
-        <div className="field-wrap">
-          <input className="input" placeholder={`Describe this ${stage.toLowerCase()} process step...`} value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <button className="btn btn-outline" onClick={add}><FiCamera /> Capture</button>
+      <h4>Process Entries - {stage}</h4>
+      <div className="form-row">
+        <input className="input" placeholder="Enter process / field name" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="btn btn-outline" onClick={add}>Capture</button>
       </div>
       {list.length > 0 && (
         <div className="record-list">
           {list.map((it) => (
-            <div key={it.id} className="record-row">
-              <span className="record-text" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                {it.imageUrl ? <img className="tc-thumb" src={it.imageUrl} alt={`${it.name} capture`} /> : <FiCheck />}
-                <span>{it.name} <span className="muted">({it.date})</span></span>
-                {it.imageUrl && (
-                  <a className="link" href={it.imageUrl} target="_blank" rel="noreferrer">
-                    View
-                  </a>
-                )}
+            <li key={it.id}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                {it.imageUrl && <img className="tc-thumb" src={it.imageUrl} alt={`${it.name} capture`} />}
+                <span>{it.name} ({it.date})</span>
               </span>
-              <button className="icon-btn danger" onClick={() => remove(it.id)}><FiTrash2 /></button>
-            </div>
+              {it.imageUrl && (
+                <a className="link" href={it.imageUrl} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
+                  View
+                </a>
+              )}
+              <button className="link-danger" onClick={() => remove(it.id)}>Delete</button>
+            </li>
           ))}
         </div>
       )}
@@ -1647,17 +1661,13 @@ function CropsStep({ L, pCrops, addCrop, delCrop, confirm, plantationId, pImgs, 
   const [f, setF] = useState({ name: "", customName: "", variety: "", sowingDate: TODAY, expectedHarvest: "" });
   const add = async () => {
     const name = f.name === "Other" ? f.customName : f.name;
-    if (!name || !f.variety || !f.sowingDate) {
-      toast("Fill all required fields", "error");
-      return;
-    }
-    try {
-      await addCrop({ plantationId, name, variety: f.variety, sowingDate: f.sowingDate, expectedHarvest: f.expectedHarvest });
-      setF({ name: "", customName: "", variety: "", sowingDate: TODAY, expectedHarvest: "" });
-      toast(`${L.crop} added!`, "success");
-    } catch (e) {
-      toast(getTraceabilityErrorMessage(e), "error");
-    }
+    if (!name || !f.variety || !f.sowingDate) return;
+    void addCrop({ plantationId, name, variety: f.variety, sowingDate: f.sowingDate, expectedHarvest: f.expectedHarvest })
+      .then(() => {
+        setF({ name: "", customName: "", variety: "", sowingDate: TODAY, expectedHarvest: "" });
+        toast("Saved", "success");
+      })
+      .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
   };
   const remove = async (id) => {
     const ok = await confirm(`Delete this ${L.crop.toLowerCase()}?`);
@@ -1722,24 +1732,21 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
   const [f, setF] = useState({ date: TODAY, inputType: "", customType: "", cropId: "", remarks: "" });
   const add = async () => {
     const inputType = f.inputType === "Other" ? f.customType : f.inputType;
-    if (!inputType || !f.cropId) {
-      toast("Select input type and crop", "error");
-      return;
-    }
+    if (!inputType || !f.cropId) return;
+    void addMonitoring({ plantationId, date: f.date, inputType, cropId: f.cropId, remarks: f.remarks })
+      .then(() => {
+        setF({ date: TODAY, inputType: "", customType: "", cropId: "", remarks: "" });
+        toast("Saved", "success");
+      })
+      .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
+  };
+  const remove = async (id) => {
+    const ok = await confirm("Delete this record?");
+    if (!ok) return;
     try {
       await addMonitoring({ plantationId, date: f.date, inputType, cropId: f.cropId, remarks: f.remarks });
       setF({ date: TODAY, inputType: "", customType: "", cropId: "", remarks: "" });
       toast("Monitoring record added!", "success");
-    } catch (e) {
-      toast(getTraceabilityErrorMessage(e), "error");
-    }
-  };
-  const remove = async (id) => {
-    const ok = await confirm("Delete this monitoring record?");
-    if (!ok) return;
-    try {
-      await delMonitoring(id);
-      toast("Monitoring record deleted", "success");
     } catch (e) {
       toast(getTraceabilityErrorMessage(e), "error");
     }
@@ -1798,25 +1805,22 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
 
 function VerificationStep({ pVer, addVerification, delVerification, pCrops, confirm, plantationId, pImgs, addProcessImage, delProcessImage, toast, L }) {
   const [f, setF] = useState({ inspectionDate: TODAY, cropId: "", health: "Good", approved: true });
-  const add = async () => {
-    if (!f.cropId) {
-      toast(`Select a ${L.crop.toLowerCase()}`, "error");
-      return;
-    }
+  const add = () => {
+    if (!f.cropId) return;
+    void addVerification({ plantationId, ...f })
+      .then(() => {
+        setF({ inspectionDate: TODAY, cropId: "", health: "Good", approved: true });
+        toast("Saved", "success");
+      })
+      .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
+  };
+  const remove = async (id) => {
+    const ok = await confirm("Delete verification?");
+    if (!ok) return;
     try {
       await addVerification({ plantationId, ...f });
       setF({ inspectionDate: TODAY, cropId: "", health: "Good", approved: true });
       toast("Verification added!", "success");
-    } catch (e) {
-      toast(getTraceabilityErrorMessage(e), "error");
-    }
-  };
-  const remove = async (id) => {
-    const ok = await confirm("Delete this verification?");
-    if (!ok) return;
-    try {
-      await delVerification(id);
-      toast("Verification deleted", "success");
     } catch (e) {
       toast(getTraceabilityErrorMessage(e), "error");
     }
@@ -1876,25 +1880,22 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
 function HarvestStep({ pHar, addHarvest, delHarvest, pCrops, confirm, plantationId, pImgs, addProcessImage, delProcessImage, toast, L }) {
   const [f, setF] = useState({ harvestDate: TODAY, cropId: "", total: "", unit: "kg", rejected: "" });
   const accepted = Math.max(0, (Number(f.total) || 0) - (Number(f.rejected) || 0));
-  const add = async () => {
-    if (!f.cropId || !f.total) {
-      toast("Select crop and enter total quantity", "error");
-      return;
-    }
+  const add = () => {
+    if (!f.cropId || !f.total) return;
+    void addHarvest({ plantationId, ...f, total: Number(f.total), rejected: Number(f.rejected) || 0, accepted })
+      .then(() => {
+        setF({ harvestDate: TODAY, cropId: "", total: "", unit: "kg", rejected: "" });
+        toast("Saved", "success");
+      })
+      .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
+  };
+  const remove = async (id) => {
+    const ok = await confirm("Delete harvest?");
+    if (!ok) return;
     try {
       await addHarvest({ plantationId, ...f, total: Number(f.total), rejected: Number(f.rejected) || 0, accepted });
       setF({ harvestDate: TODAY, cropId: "", total: "", unit: "kg", rejected: "" });
       toast("Harvest recorded!", "success");
-    } catch (e) {
-      toast(getTraceabilityErrorMessage(e), "error");
-    }
-  };
-  const remove = async (id) => {
-    const ok = await confirm("Delete this harvest record?");
-    if (!ok) return;
-    try {
-      await delHarvest(id);
-      toast("Harvest record deleted", "success");
     } catch (e) {
       toast(getTraceabilityErrorMessage(e), "error");
     }
@@ -1970,25 +1971,22 @@ function PackingStep({ pPack, pHar, addPacking, delPacking, confirm, plantationI
     pincode: "",
     country: "India",
   });
-  const add = async () => {
-    if (!f.harvestId || !f.packingSize || !f.netWeight) {
-      toast("Fill all required fields", "error");
-      return;
-    }
+  const add = () => {
+    if (!f.harvestId || !f.packingSize || !f.netWeight) return;
+    void addPacking({ plantationId, ...f, numPackages: Number(f.numPackages) || 0, netWeight: Number(f.netWeight) })
+      .then(() => {
+        setF({ packingDate: TODAY, harvestId: "", packingSize: "", numPackages: "", netWeight: "", warehouse: "", street: "", city: "", state: "", pincode: "", country: "India" });
+        toast("Saved", "success");
+      })
+      .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
+  };
+  const remove = async (id) => {
+    const ok = await confirm("Delete packing?");
+    if (!ok) return;
     try {
       await addPacking({ plantationId, ...f, numPackages: Number(f.numPackages) || 0, netWeight: Number(f.netWeight) });
       setF({ packingDate: TODAY, harvestId: "", packingSize: "", numPackages: "", netWeight: "", warehouse: "", street: "", city: "", state: "", pincode: "", country: "India" });
       toast("Packing recorded!", "success");
-    } catch (e) {
-      toast(getTraceabilityErrorMessage(e), "error");
-    }
-  };
-  const remove = async (id) => {
-    const ok = await confirm("Delete this packing record?");
-    if (!ok) return;
-    try {
-      await delPacking(id);
-      toast("Packing record deleted", "success");
     } catch (e) {
       toast(getTraceabilityErrorMessage(e), "error");
     }
