@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, createContext, useRef } from "react";
 import {
-  FiLock, FiCheckCircle, FiUser, FiChevronDown, FiLogOut,
+  FiLock, FiCheckCircle, FiUser, FiLogOut,
   FiHome, FiList, FiBarChart2, FiPackage, FiAlertTriangle,
   FiTrash2, FiEdit2, FiPlus, FiArrowRight, FiMapPin,
   FiCalendar, FiDroplet, FiVideo, FiCamera, FiCheck,
@@ -445,8 +445,6 @@ function Header({ route, navigate }) {
         <div className="profile-menu-wrap" ref={menuRef}>
           <button className={`profile-trigger ${menuOpen ? "open" : ""}`} onClick={() => setMenuOpen((x) => !x)}>
             <span className="profile-avatar"><FiUser /></span>
-            <span className="profile-short">{(user?.name || "User").split(" ")[0]}</span>
-            <FiChevronDown className="chevron" />
           </button>
           {menuOpen && (
             <div className="profile-dropdown">
