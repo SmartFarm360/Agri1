@@ -473,7 +473,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     try {
       setSaving(true);
       const API_URL =
-        import.meta.env.VITE_API_URL || "https://agri1-32qq.onrender.com";
+        import.meta.env.VITE_API_URL || "http://localhost:5000";
 
       const response = await fetch(`${API_URL}/api/farm/create`, {
         method: "POST",

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import "./Dashboard.css";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -310,7 +310,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 
     const fetchFarms = async () => {
       try {
-        const API_URL = "https://agri1-32qq.onrender.com";
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
         const token = localStorage.getItem("token");
 
         const res = await fetch(`${API_URL}/api/farm/my`, {
@@ -420,14 +420,14 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
         const tileLayer = L.tileLayer(
           "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
           {
-            attribution: "Tiles © Esri",
+            attribution: "Tiles Â© Esri",
           },
         );
 
         // L.tileLayer(
         //   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         //   {
-        //     attribution: "Tiles © Esri"
+        //     attribution: "Tiles Â© Esri"
         //   }
         // ).addTo(map);
 
@@ -1077,7 +1077,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           id: "temperature",
           label: "Temperature",
           icon: <FaTemperatureHigh className="case-grid-pill-icon icon-temp" />,
-          value: `${selectedGrid.temperature} °C`,
+          value: `${selectedGrid.temperature} Â°C`,
         },
         {
           id: "humidity",
@@ -1253,11 +1253,11 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                   >
                     {farms.map((farm) => (
                       <option key={farm.farm_id} value={farm.farm_id}>
-                        🌾 {farm.farm_name}
+                        ðŸŒ¾ {farm.farm_name}
                       </option>
                     ))}
 
-                    <option value="add-new">➕ Add New Land</option>
+                    <option value="add-new">âž• Add New Land</option>
                   </select>
                 </div>
               </div>
@@ -1350,7 +1350,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                         <span className="parameter-value">{value}</span>
                         <span className="parameter-unit">
                           {type === "temperature"
-                            ? "°C"
+                            ? "Â°C"
                             : type === "ph"
                               ? "pH"
                               : "%"}
@@ -1367,7 +1367,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                         <div className="progress-labels">
                           <span>0</span>
                           <span>
-                            {type === "temperature" ? "40°C" : "100%"}
+                            {type === "temperature" ? "40Â°C" : "100%"}
                           </span>
                         </div>
                       </div>
@@ -1386,7 +1386,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
           </div>
           <div className="recommendations-grid">
             <div className="recommendation-card irrigation">
-              <div className="recommendation-icon">💧</div>
+              <div className="recommendation-icon">ðŸ’§</div>
               <h4 className="recommendation-title">Irrigation Schedule</h4>
               <p className="recommendation-text">
                 Based on current soil moisture levels, consider adjusting
@@ -1394,7 +1394,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               </p>
             </div>
             <div className="recommendation-card health">
-              <div className="recommendation-icon">🌱</div>
+              <div className="recommendation-icon">ðŸŒ±</div>
               <h4 className="recommendation-title">Crop Health</h4>
               <p className="recommendation-text">
                 Monitor for early signs of disease given current humidity
@@ -1402,7 +1402,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               </p>
             </div>
             <div className="recommendation-card weather">
-              <div className="recommendation-icon">🌤️</div>
+              <div className="recommendation-icon">ðŸŒ¤ï¸</div>
               <h4 className="recommendation-title">Weather Alert</h4>
               <p className="recommendation-text">
                 Temperature fluctuations expected. Prepare protective measures
@@ -1410,7 +1410,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
               </p>
             </div>
             <div className="recommendation-card fertilizer">
-              <div className="recommendation-icon">🧪</div>
+              <div className="recommendation-icon">ðŸ§ª</div>
               <h4 className="recommendation-title">Fertilizer Application</h4>
               <p className="recommendation-text">
                 Soil analysis suggests nitrogen deficiency in some areas.
@@ -1470,7 +1470,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                 className="case-modal-close"
                 onClick={() => setActiveCase(null)}
               >
-                ×
+                Ã—
               </button>
             </div>
 
@@ -1506,7 +1506,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                         <span>Temperature</span>
                       </div>
                       <strong className="case-grid-pill-value">
-                        {activeCaseGridMetrics.temperature} °C
+                        {activeCaseGridMetrics.temperature} Â°C
                       </strong>
                     </div>
 
@@ -1616,7 +1616,7 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
                         <span>Cell Area</span>
                       </div>
                       <strong className="case-grid-pill-value">
-                        {activeCaseGridMetrics.cellArea} m²
+                        {activeCaseGridMetrics.cellArea} mÂ²
                       </strong>
                     </div>
                   </div>
@@ -1715,5 +1715,6 @@ const Dashboard = ({ currentLanguage = "en", translatedText }) => {
 };
 
 export default Dashboard;
+
 
 

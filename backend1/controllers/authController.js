@@ -225,7 +225,7 @@ exports.getProfile = async (req, res) => {
     const userNameColumn = await resolveUserNameColumn(pool);
 
     const result = await pool.query(
-      `SELECT ${userNameColumn} AS username, email, created_at FROM users WHERE user_id = $1`,
+      `SELECT ${userNameColumn} AS username, email, role, created_at FROM users WHERE user_id = $1`,
       [userId]
     );
 
@@ -236,6 +236,8 @@ exports.getProfile = async (req, res) => {
     const user = result.rows[0];
 
     res.json({
+      user_id: userId,
+      role: user.role,
       name: user.username,
       email: user.email,
       created_at: user.created_at,

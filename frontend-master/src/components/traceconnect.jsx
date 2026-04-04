@@ -7,15 +7,11 @@ import {
   FiX, FiMail, FiShield, FiStar, FiTrendingUp, FiGrid
 } from "react-icons/fi";
 import "./traceconnect.css";
+import { getApiUrl, traceabilityApi } from "../api/traceabilityApi";
 
 const AuthContext = createContext(null);
 const DataContext = createContext(null);
 const TODAY = new Date().toISOString().split("T")[0];
-
-const DUMMY_ACCOUNTS = [
-  { id: "u1", name: "John Farmer", email: "john@farm.com", password: "password123", role: "grower" },
-  { id: "u2", name: "Supply Corp", email: "supplier@batch.com", password: "password123", role: "supplier" },
-];
 
 const INITIAL_DATA = {
   plantations: [
@@ -66,47 +62,729 @@ const INITIAL_DATA = {
   processImages: [],
 };
 
+const API_URL = getApiUrl();
+
+function toISODate(value) {
+  if (!value) return "";
+  const s = String(value);
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
+function safeJson(value, fallback) {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function getTraceabilityErrorMessage(err) {
+  const raw = (err?.message || "").toLowerCase();
+  const status = err?.status;
+
+  if (status === 413 || raw.includes("entity too large") || raw.includes("payload too large")) {
+    return "Image is too large to upload. Please try again (or reduce image size).";
+  }
+
+  if (status === 401 || raw.includes("no token") || raw.includes("token")) {
+    return "Your session expired. Please login again.";
+  }
+
+  if (raw.includes("no farm found") || raw.includes("create a farm first")) {
+    return "No farm found for your account. Please add a Farm first (Dashboard → Add Farm), then retry.";
+  }
+
+  if (raw.includes("failed to fetch") || raw.includes("networkerror")) {
+    return "Cannot reach the backend. Ensure it is running on http://localhost:5000.";
+  }
+
+  if (raw.includes("not logged in")) {
+    return "Please login to MaatiAI to use Traceability.";
+  }
+
+  return err?.message || "Something went wrong. Please try again.";
+}
+
+function fromDbPlantation(row) {
+  return {
+    id: Number(row.id),
+    userId: Number(row.user_id),
+    name: row.name || "",
+    location: row.location_description || "",
+    type: "crop",
+    status: (row.status || "active").toLowerCase() === "active" ? "Active" : String(row.status),
+    createdAt: toISODate(row.created_at),
+  };
+}
+
+function fromDbCrop(row) {
+  return {
+    id: Number(row.id),
+    plantationId: Number(row.plantation_id),
+    name: row.crop_name || "",
+    variety: row.crop_variety || "",
+    sowingDate: toISODate(row.sowing_date),
+    expectedHarvest: toISODate(row.expected_harvest_date),
+  };
+}
+
+function fromDbMonitoring(row) {
+  return {
+    id: Number(row.id),
+    plantationId: Number(row.plantation_id),
+    date: toISODate(row.date),
+    inputType: row.input_type || "",
+    cropId: row.crop_id === null || row.crop_id === undefined ? "" : Number(row.crop_id),
+    remarks: row.remarks || "",
+    photoUrl: row.photo_url || "",
+  };
+}
+
+function fromDbVerification(row) {
+  return {
+    id: Number(row.id),
+    plantationId: Number(row.plantation_id),
+    inspectionDate: toISODate(row.inspection_date),
+    cropId: row.crop_id === null || row.crop_id === undefined ? "" : Number(row.crop_id),
+    health: row.crop_health || "",
+    approved: Boolean(row.approved_for_harvest),
+  };
+}
+
+function fromDbHarvest(row) {
+  return {
+    id: Number(row.id),
+    plantationId: Number(row.plantation_id),
+    harvestDate: toISODate(row.harvest_date),
+    cropId: row.crop_id === null || row.crop_id === undefined ? "" : Number(row.crop_id),
+    total: Number(row.total_quantity) || 0,
+    accepted: Number(row.accepted_quantity) || 0,
+    rejected: Number(row.rejected_quantity) || 0,
+    unit: row.unit || "kg",
+  };
+}
+
+function fromDbPacking(row) {
+  return {
+    id: Number(row.id),
+    plantationId: Number(row.plantation_id),
+    harvestId: row.harvest_id === null || row.harvest_id === undefined ? "" : Number(row.harvest_id),
+    packingDate: toISODate(row.packing_date),
+    packingSize: row.packing_size || "",
+    numPackages: Number(row.number_of_packages) || 0,
+    netWeight: Number(row.net_weight) || 0,
+    warehouse: row.warehouse_name || "",
+    street: row.street || "",
+    city: row.city || "",
+    state: row.state || "",
+    pincode: row.pincode || "",
+    country: row.country || "",
+  };
+}
+
+function fromDbProcessImage(row) {
+  return {
+    id: Number(row.id),
+    plantationId: Number(row.plantation_id),
+    stage: row.stage || "",
+    name: row.process_name || "",
+    date: toISODate(row.created_at),
+    imageUrl: row.image_url || "",
+  };
+}
+
+function fromDbPatch(row) {
+  const items = safeJson(row.items, []);
+  const packingIds = Array.isArray(items)
+    ? items
+        .map((it) => it?.packing_id ?? it?.packingId)
+        .map((v) => Number(v))
+        .filter((n) => Number.isFinite(n))
+    : [];
+
+  return {
+    id: row.patch_id,
+    dbId: Number(row.id),
+    supplierId: Number(row.user_id),
+    packingIds,
+    description: row.description || "",
+    totalWeight: Number(row.total_weight) || 0,
+    unit: row.unit || "kg",
+    createdAt: toISODate(row.created_at),
+  };
+}
+
+async function requestBackCameraStream() {
+  const base = {
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    frameRate: { ideal: 30 },
+  };
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { ...base, facingMode: { exact: "environment" } },
+      audio: false,
+    });
+  } catch {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { ...base, facingMode: { ideal: "environment" } },
+      audio: false,
+    });
+  }
+}
+
+async function applyCameraTuning(track) {
+  if (!track?.getCapabilities || !track?.applyConstraints) return;
+  const caps = track.getCapabilities();
+  const advanced = [];
+
+  if (caps.focusMode?.includes("continuous")) advanced.push({ focusMode: "continuous" });
+  if (caps.exposureMode?.includes("continuous")) advanced.push({ exposureMode: "continuous" });
+  if (caps.whiteBalanceMode?.includes("continuous")) advanced.push({ whiteBalanceMode: "continuous" });
+
+  if (!advanced.length) return;
+  try {
+    await track.applyConstraints({ advanced });
+  } catch {
+    // ignore
+  }
+}
+
+function stopMediaStream(stream) {
+  if (!stream) return;
+  try {
+    stream.getTracks().forEach((t) => t.stop());
+  } catch {
+    // ignore
+  }
+}
+
+function getCurrentLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation not supported"));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(pos.coords),
+      (err) => reject(err),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  });
+}
+
+function formatCoords(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(6) : "—";
+}
+
+function formatDateTime(date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).formatToParts(date);
+  const lookup = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const weekday = lookup.weekday || "";
+  const day = lookup.day || "";
+  const month = lookup.month || "";
+  const year = lookup.year || "";
+  const hour = lookup.hour || "";
+  const minute = lookup.minute || "";
+  const second = lookup.second || "";
+  const dayPeriod = lookup.dayPeriod || "";
+  return `${weekday}, ${day}/${month}/${year}, ${hour}:${minute}:${second} ${dayPeriod}`;
+}
+
+function drawRoundedRect(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxHeight, maxLines) {
+  const words = String(text || "").split(" ");
+  let line = "";
+  const lines = [];
+
+  for (let i = 0; i < words.length; i++) {
+    const testLine = line + words[i] + " ";
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && i > 0) {
+      lines.push(line.trim());
+      line = words[i] + " ";
+    } else {
+      line = testLine;
+    }
+  }
+  if (line.trim()) lines.push(line.trim());
+
+  let clipped = lines;
+  if (maxLines && lines.length > maxLines) {
+    clipped = lines.slice(0, maxLines);
+    let last = clipped[maxLines - 1];
+    while (ctx.measureText(last + "…").width > maxWidth && last.length > 0) {
+      last = last.slice(0, -1).trim();
+    }
+    clipped[maxLines - 1] = last ? `${last}…` : "…";
+  }
+
+  let cursorY = y;
+  for (let i = 0; i < clipped.length; i++) {
+    if (maxHeight && cursorY + lineHeight > y + maxHeight) break;
+    ctx.fillText(clipped[i], x, cursorY);
+    cursorY += lineHeight;
+  }
+}
+
+function drawMapPlaceholder(ctx, x, y, size, radius) {
+  ctx.save();
+  drawRoundedRect(ctx, x, y, size, size, radius);
+  ctx.fillStyle = "rgba(15, 22, 30, 0.85)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.font = `${Math.max(10, size * 0.12)}px Manrope, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Map unavailable", x + size / 2, y + size / 2);
+  ctx.restore();
+}
+
+function drawGeoOverlay(ctx, width, topY, panelHeight, details) {
+  const padding = Math.round(width * 0.04);
+  const boxHeight = panelHeight;
+  const boxY = topY;
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.65)";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, boxY, width, boxHeight);
+  ctx.restore();
+
+  const gradient = ctx.createLinearGradient(0, boxY, 0, boxY + boxHeight);
+  gradient.addColorStop(0, "rgba(0,0,0,0.0)");
+  gradient.addColorStop(1, "rgba(0,0,0,0.45)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, boxY, width, boxHeight);
+
+  const mapSize = Math.max(80, Math.min(Math.round(boxHeight * 0.72), boxHeight - padding * 2));
+  const mapRadius = Math.round(mapSize * 0.12);
+  const mapX = padding;
+  const mapY = boxY + Math.round((boxHeight - mapSize) / 2);
+  drawMapPlaceholder(ctx, mapX, mapY, mapSize, mapRadius);
+
+  const lineX = mapX + mapSize + Math.round(padding * 0.6);
+  const lineY = mapY + 8;
+  const lineHeight = mapSize - 16;
+  ctx.save();
+  ctx.strokeStyle = "rgba(178, 255, 70, 0.95)";
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  ctx.shadowColor = "rgba(178, 255, 70, 0.45)";
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(lineX, lineY);
+  ctx.lineTo(lineX, lineY + lineHeight);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  const nameFont = Math.max(16, Math.round(width * 0.026));
+  const textFont = Math.max(14, Math.round(width * 0.022));
+  const smallFont = Math.max(13, Math.round(width * 0.02));
+
+  let cursorY = mapY;
+  const textX = lineX + Math.round(padding * 0.7);
+
+  ctx.font = `600 ${nameFont}px Manrope, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.fillText(details.name, textX, cursorY);
+
+  cursorY += nameFont + 10;
+  ctx.font = `500 ${textFont}px Manrope, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillText(details.dateTime, textX, cursorY);
+
+  cursorY += textFont + 10;
+  const addressMaxHeight = mapY + mapSize - cursorY - (smallFont + 8);
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  wrapText(ctx, details.address, textX, cursorY, width - textX - padding, textFont + 6, addressMaxHeight, 4);
+
+  const coordsLine = `Lat: ${formatCoords(details.lat)}, Long: ${formatCoords(details.lon)}`;
+  ctx.fillStyle = "rgba(255,255,255,0.78)";
+  ctx.font = `500 ${smallFont}px Manrope, sans-serif`;
+  ctx.fillText(coordsLine, textX, mapY + mapSize - smallFont - 2);
+}
+
 function DataProvider({ children }) {
-  const load = (key, fallback) => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [backendError, setBackendError] = useState("");
+  const [farms, setFarms] = useState([]);
+  const [selectedFarmId, setSelectedFarmId] = useState(null);
+
+  const [plantations, setPlantations] = useState([]);
+  const [crops, setCrops] = useState([]);
+  const [monitoring, setMonitoring] = useState([]);
+  const [verification, setVerification] = useState([]);
+  const [harvests, setHarvests] = useState([]);
+  const [packings, setPackings] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [processImages, setProcessImages] = useState([]);
+
+  const run = async (fn, fallbackMessage) => {
     try {
-      const raw = localStorage.getItem(`tc_${key}`);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch {
-      return fallback;
+      setBackendError("");
+      return await fn();
+    } catch (err) {
+      const msg = getTraceabilityErrorMessage(err) || fallbackMessage || "Request failed";
+      setBackendError(msg);
+      throw err;
     }
   };
-  const save = (key, value) => localStorage.setItem(`tc_${key}`, JSON.stringify(value));
-  const id = (prefix) => `${prefix}${Math.random().toString(36).slice(2, 10)}`;
 
-  const [plantations, setPlantations] = useState(() => load("plantations", INITIAL_DATA.plantations));
-  const [crops, setCrops] = useState(() => load("crops", INITIAL_DATA.crops));
-  const [monitoring, setMonitoring] = useState(() => load("monitoring", INITIAL_DATA.monitoring));
-  const [verification, setVerification] = useState(() => load("verification", INITIAL_DATA.verification));
-  const [harvests, setHarvests] = useState(() => load("harvests", INITIAL_DATA.harvests));
-  const [packings, setPackings] = useState(() => load("packings", INITIAL_DATA.packings));
-  const [batches, setBatches] = useState(() => load("batches", INITIAL_DATA.batches));
-  const [processImages, setProcessImages] = useState(() => load("processImages", INITIAL_DATA.processImages));
+  const fetchMyFarms = async () => {
+    const token = (() => {
+      try {
+        return localStorage.getItem("token") || "";
+      } catch {
+        return "";
+      }
+    })();
 
-  const addPlantation = (p) => { const n = [...plantations, { ...p, id: id("p"), createdAt: TODAY }]; setPlantations(n); save("plantations", n); };
-  const delPlantation = (pid) => { const n = plantations.filter((p) => p.id !== pid); setPlantations(n); save("plantations", n); };
-  const addCrop = (c) => { const n = [...crops, { ...c, id: id("c") }]; setCrops(n); save("crops", n); };
-  const delCrop = (cid) => { const n = crops.filter((c) => c.id !== cid); setCrops(n); save("crops", n); };
-  const addMonitoring = (m) => { const n = [...monitoring, { ...m, id: id("m") }]; setMonitoring(n); save("monitoring", n); };
-  const delMonitoring = (mid) => { const n = monitoring.filter((m) => m.id !== mid); setMonitoring(n); save("monitoring", n); };
-  const addVerification = (v) => { const n = [...verification, { ...v, id: id("v") }]; setVerification(n); save("verification", n); };
-  const delVerification = (vid) => { const n = verification.filter((v) => v.id !== vid); setVerification(n); save("verification", n); };
-  const addHarvest = (h) => { const n = [...harvests, { ...h, id: id("h") }]; setHarvests(n); save("harvests", n); };
-  const delHarvest = (hid) => { const n = harvests.filter((h) => h.id !== hid); setHarvests(n); save("harvests", n); };
-  const addPacking = (pk) => { const n = [...packings, { ...pk, id: id("pk") }]; setPackings(n); save("packings", n); };
-  const delPacking = (pkid) => { const n = packings.filter((pk) => pk.id !== pkid); setPackings(n); save("packings", n); };
-  const addBatch = (b) => { const n = [...batches, b]; setBatches(n); save("batches", n); };
-  const delBatch = (bid) => { const n = batches.filter((b) => b.id !== bid); setBatches(n); save("batches", n); };
-  const addProcessImage = (img) => { const n = [...processImages, { ...img, id: id("img") }]; setProcessImages(n); save("processImages", n); };
-  const delProcessImage = (iid) => { const n = processImages.filter((i) => i.id !== iid); setProcessImages(n); save("processImages", n); };
+    if (!token) throw new Error("Missing auth token. Please login again.");
+
+    const res = await fetch(`${API_URL}/api/farm/my`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(data?.message || `Failed to load farms (${res.status})`);
+    }
+    return Array.isArray(data) ? data : [];
+  };
+
+  useEffect(() => {
+    if (!user?.id) {
+      setFarms([]);
+      setSelectedFarmId(null);
+      setPlantations([]);
+      setCrops([]);
+      setMonitoring([]);
+      setVerification([]);
+      setHarvests([]);
+      setPackings([]);
+      setBatches([]);
+      setProcessImages([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setBackendError("");
+
+    (async () => {
+      const [
+        myFarms,
+        pl,
+        cr,
+        mon,
+        ver,
+        har,
+        pk,
+        pt,
+        imgs,
+      ] = await Promise.all([
+        fetchMyFarms(),
+        traceabilityApi.listPlantations(),
+        traceabilityApi.listCrops(),
+        traceabilityApi.listMonitoringRecords(),
+        traceabilityApi.listVerifications(),
+        traceabilityApi.listHarvests(),
+        traceabilityApi.listPackings(),
+        traceabilityApi.listPatches(),
+        traceabilityApi.listProcessImages(),
+      ]);
+
+      if (cancelled) return;
+      setFarms(myFarms || []);
+      const defaultFarmId = myFarms?.[0]?.farm_id;
+      setSelectedFarmId((prev) => (prev === null || prev === undefined) ? (Number(defaultFarmId) || null) : prev);
+      setPlantations((pl || []).map(fromDbPlantation));
+      setCrops((cr || []).map(fromDbCrop));
+      setMonitoring((mon || []).map(fromDbMonitoring));
+      setVerification((ver || []).map(fromDbVerification));
+      setHarvests((har || []).map(fromDbHarvest));
+      setPackings((pk || []).map(fromDbPacking));
+      setBatches((pt || []).map(fromDbPatch));
+      setProcessImages((imgs || []).map(fromDbProcessImage));
+    })()
+      .catch((err) => {
+        if (cancelled) return;
+        setBackendError(err?.message || "Failed to load traceability data");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const addPlantation = (p) => {
+    return run(async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      const farmIdNum = Number(selectedFarmId);
+      if (!Number.isInteger(farmIdNum)) {
+        throw new Error("No farm found for this user. Create a Farm first, then retry.");
+      }
+      const farm = farms.find((f) => Number(f?.farm_id) === farmIdNum) || null;
+      const created = await traceabilityApi.createPlantation({
+        farm_id: farmIdNum,
+        name: p.name,
+        location_description: p.location,
+        polygon_coordinates: farm?.polygon_coordinates,
+        status: "active",
+      });
+      setPlantations((prev) => [fromDbPlantation(created), ...prev]);
+      return created;
+    }, "Failed to create plantation");
+  };
+
+  const delPlantation = (pid) => {
+    return run(async () => {
+      await traceabilityApi.deletePlantation(pid);
+      setPlantations((prev) => prev.filter((x) => x.id !== pid));
+      setCrops((prev) => prev.filter((x) => x.plantationId !== pid));
+      setMonitoring((prev) => prev.filter((x) => x.plantationId !== pid));
+      setVerification((prev) => prev.filter((x) => x.plantationId !== pid));
+      setHarvests((prev) => prev.filter((x) => x.plantationId !== pid));
+      setPackings((prev) => prev.filter((x) => x.plantationId !== pid));
+      setProcessImages((prev) => prev.filter((x) => x.plantationId !== pid));
+      return true;
+    }, "Failed to delete plantation");
+  };
+
+  const addCrop = (c) => {
+    return run(async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      const created = await traceabilityApi.createCrop({
+        plantation_id: Number(c.plantationId),
+        crop_name: c.name,
+        crop_variety: c.variety || null,
+        sowing_date: c.sowingDate || null,
+        expected_harvest_date: c.expectedHarvest || null,
+      });
+      setCrops((prev) => [fromDbCrop(created), ...prev]);
+      return created;
+    }, "Failed to create crop");
+  };
+
+  const delCrop = (cid) => {
+    return run(async () => {
+      await traceabilityApi.deleteCrop(cid);
+      setCrops((prev) => prev.filter((x) => x.id !== cid));
+      return true;
+    }, "Failed to delete crop");
+  };
+
+  const addMonitoring = (m) => {
+    return run(async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      const created = await traceabilityApi.createMonitoringRecord({
+        plantation_id: Number(m.plantationId),
+        crop_id: m.cropId ? Number(m.cropId) : null,
+        date: m.date,
+        input_type: m.inputType,
+        remarks: m.remarks || null,
+        photo_url: m.photoUrl || null,
+      });
+      setMonitoring((prev) => [fromDbMonitoring(created), ...prev]);
+      return created;
+    }, "Failed to create monitoring record");
+  };
+
+  const delMonitoring = (mid) => {
+    return run(async () => {
+      await traceabilityApi.deleteMonitoringRecord(mid);
+      setMonitoring((prev) => prev.filter((x) => x.id !== mid));
+      return true;
+    }, "Failed to delete monitoring record");
+  };
+
+  const addVerification = (v) => {
+    return run(async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      const created = await traceabilityApi.createVerification({
+        plantation_id: Number(v.plantationId),
+        crop_id: v.cropId ? Number(v.cropId) : null,
+        inspection_date: v.inspectionDate,
+        crop_health: v.health,
+        approved_for_harvest: Boolean(v.approved),
+      });
+      setVerification((prev) => [fromDbVerification(created), ...prev]);
+      return created;
+    }, "Failed to create verification");
+  };
+
+  const delVerification = (vid) => {
+    return run(async () => {
+      await traceabilityApi.deleteVerification(vid);
+      setVerification((prev) => prev.filter((x) => x.id !== vid));
+      return true;
+    }, "Failed to delete verification");
+  };
+
+  const addHarvest = (h) => {
+    return run(async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      const created = await traceabilityApi.createHarvest({
+        plantation_id: Number(h.plantationId),
+        crop_id: h.cropId ? Number(h.cropId) : null,
+        harvest_date: h.harvestDate,
+        total_quantity: Number(h.total) || 0,
+        accepted_quantity: Number(h.accepted) || 0,
+        rejected_quantity: Number(h.rejected) || 0,
+        unit: h.unit || "kg",
+      });
+      setHarvests((prev) => [fromDbHarvest(created), ...prev]);
+      return created;
+    }, "Failed to create harvest");
+  };
+
+  const delHarvest = (hid) => {
+    return run(async () => {
+      await traceabilityApi.deleteHarvest(hid);
+      setHarvests((prev) => prev.filter((x) => x.id !== hid));
+      return true;
+    }, "Failed to delete harvest");
+  };
+
+  const addPacking = (pk) => {
+    return run(async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      const created = await traceabilityApi.createPacking({
+        plantation_id: Number(pk.plantationId),
+        harvest_id: pk.harvestId ? Number(pk.harvestId) : null,
+        packing_date: pk.packingDate,
+        number_of_packages: Number(pk.numPackages) || 0,
+        net_weight: Number(pk.netWeight) || 0,
+        packing_size: pk.packingSize || null,
+        warehouse_name: pk.warehouse || null,
+        street: pk.street || null,
+        city: pk.city || null,
+        state: pk.state || null,
+        pincode: pk.pincode || null,
+        country: pk.country || null,
+      });
+      setPackings((prev) => [fromDbPacking(created), ...prev]);
+      return created;
+    }, "Failed to create packing");
+  };
+
+  const delPacking = (pkid) => {
+    return run(async () => {
+      await traceabilityApi.deletePacking(pkid);
+      setPackings((prev) => prev.filter((x) => x.id !== pkid));
+      return true;
+    }, "Failed to delete packing");
+  };
+
+  const addBatch = (b) => {
+    return run(async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      const items = (b.packingIds || []).map((pid) => {
+        const packing = packings.find((p) => p.id === pid);
+        const harvest = harvests.find((h) => h.id === packing?.harvestId);
+        return {
+          packing_id: pid,
+          harvest_id: packing?.harvestId,
+          crop_id: harvest?.cropId,
+          plantation_id: packing?.plantationId,
+        };
+      });
+
+      const created = await traceabilityApi.createPatch({
+        patch_id: b.id,
+        description: b.description || null,
+        total_weight: Number(b.totalWeight) || 0,
+        unit: b.unit || "kg",
+        items,
+      });
+      setBatches((prev) => [fromDbPatch(created), ...prev]);
+      return created;
+    }, "Failed to create patch");
+  };
+
+  const delBatch = (patchId) => {
+    return run(async () => {
+      const patch = batches.find((x) => x.id === patchId);
+      if (!patch?.dbId) throw new Error("Patch record not found for delete.");
+      await traceabilityApi.deletePatchByDbId(patch.dbId);
+      setBatches((prev) => prev.filter((x) => x.id !== patchId));
+      return true;
+    }, "Failed to delete patch");
+  };
+
+  const addProcessImage = (img) => {
+    return run(async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      const created = await traceabilityApi.createProcessImage({
+        plantation_id: Number(img.plantationId),
+        stage: img.stage,
+        process_name: img.name,
+        image_url: img.imageUrl,
+      });
+      setProcessImages((prev) => [fromDbProcessImage(created), ...prev]);
+      return created;
+    }, "Failed to create process image");
+  };
+
+  const delProcessImage = (iid) => {
+    return run(async () => {
+      await traceabilityApi.deleteProcessImage(iid);
+      setProcessImages((prev) => prev.filter((x) => x.id !== iid));
+      return true;
+    }, "Failed to delete process image");
+  };
 
   return (
     <DataContext.Provider
       value={{
+        loading,
+        backendError,
+        farms,
+        selectedFarmId,
+        setSelectedFarmId,
         plantations,
         crops,
         monitoring,
@@ -139,40 +817,79 @@ function DataProvider({ children }) {
 }
 
 function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try { const raw = localStorage.getItem("tc_user"); return raw ? JSON.parse(raw) : null; } catch { return null; }
-  });
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const signIn = (email, password) => new Promise((resolve, reject) => {
-    setLoading(true);
-    const found = DUMMY_ACCOUNTS.find((a) => a.email === email && a.password === password);
-    if (!found) { setLoading(false); reject("Invalid email or password"); return; }
-    const u = { id: found.id, name: found.name, email: found.email, role: found.role };
-    setUser(u);
-    localStorage.setItem("tc_user", JSON.stringify(u));
-    setLoading(false);
-    resolve(u);
-  });
-  const signUp = (name, email, password, role) => new Promise((resolve, reject) => {
-    setLoading(true);
-    if (DUMMY_ACCOUNTS.some((a) => a.email === email)) { setLoading(false); reject("Email already exists"); return; }
-    const newUser = { id: `u${Date.now()}`, name, email, password, role };
-    DUMMY_ACCOUNTS.push(newUser);
-    const u = { id: newUser.id, name, email, role };
-    setUser(u);
-    localStorage.setItem("tc_user", JSON.stringify(u));
-    setLoading(false);
-    resolve(u);
-  });
-  const signOut = () => { setUser(null); localStorage.removeItem("tc_user"); };
-  const signInWithGoogle = () => { const u = { id: "u_google", name: "Google User", email: "google@user.com", role: "grower" }; setUser(u); localStorage.setItem("tc_user", JSON.stringify(u)); };
+  useEffect(() => {
+    let cancelled = false;
 
-  return <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, signInWithGoogle }}>{children}</AuthContext.Provider>;
+    (async () => {
+      const token = (() => {
+        try {
+          return localStorage.getItem("token") || "";
+        } catch {
+          return "";
+        }
+      })();
+
+      if (!token) {
+        if (!cancelled) setUser(null);
+        return;
+      }
+
+      const res = await fetch(`${API_URL}/api/auth/profile`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || `Failed to load profile (${res.status})`);
+
+      // MaatiAI auth roles are: farmer/admin/drone_controller. Traceability UX defaults to grower.
+      const role = data?.role === "farmer" ? "grower" : "grower";
+      const u = {
+        id: data?.user_id,
+        name: data?.name || "User",
+        email: data?.email || "",
+        role,
+        rawRole: data?.role,
+      };
+      if (!cancelled) setUser(u);
+    })()
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const signOut = () => {
+    setUser(null);
+    try {
+      localStorage.removeItem("token");
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("userRole");
+    } catch {
+      // ignore
+    }
+  };
+
+  return <AuthContext.Provider value={{ user, loading, signOut }}>{children}</AuthContext.Provider>;
 }
 
-const useAuth = () => useContext(AuthContext);
-const useData = () => useContext(DataContext);
+function useAuth() {
+  return useContext(AuthContext);
+}
+
+function useData() {
+  return useContext(DataContext);
+}
 
 function useRouter() {
   const [route, setRoute] = useState(window.location.hash.slice(1) || "/");
@@ -263,152 +980,14 @@ function useConfirm() {
   return { confirm, dialog };
 }
 
-function AuthModal({ onClose, toast }) {
-  const { signIn, signUp, signInWithGoogle, loading } = useAuth();
-  const [mode, setMode] = useState("signin");
-  const [form, setForm] = useState({ name: "John Farmer", email: "john@farm.com", password: "password123", role: "grower" });
-  const [error, setError] = useState("");
-  const [remember, setRemember] = useState(false);
-
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const submit = async () => {
-    setError("");
-    try {
-      if (mode === "signin") await signIn(form.email, form.password);
-      else await signUp(form.name, form.email, form.password, form.role);
-      toast(mode === "signin" ? "Welcome back!" : "Account created!", "success");
-      onClose();
-    } catch (e) {
-      setError(e);
-    }
-  };
-
+function LoginRequired() {
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box auth-modal">
-        {/* Close btn on left panel */}
-        <button className="auth-close-btn" onClick={onClose} aria-label="Close">✕</button>
-
-        {/* LEFT PANEL */}
-        <div className="auth-left-panel">
-          <div className="auth-illustration">
-            <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Ground */}
-              <ellipse cx="80" cy="130" rx="55" ry="10" fill="rgba(255,255,255,0.08)" />
-              {/* Clock/compass circle */}
-              <circle cx="48" cy="112" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" />
-              <circle cx="48" cy="112" r="16" fill="rgba(255,255,255,0.08)" />
-              <line x1="48" y1="112" x2="48" y2="100" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" />
-              <line x1="48" y1="112" x2="58" y2="116" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" />
-              {/* Big tree */}
-              <ellipse cx="100" cy="72" rx="28" ry="34" fill="#1f8a43" />
-              <ellipse cx="100" cy="60" rx="20" ry="26" fill="#2ecc71" />
-              <rect x="96" y="98" width="8" height="30" fill="#5d4037" rx="3" />
-              {/* Small pink circle accent */}
-              <circle cx="82" cy="45" r="10" fill="#f87171" opacity="0.7" />
-              {/* Farmer figure */}
-              <circle cx="80" cy="88" r="7" fill="#fcd34d" />
-              <rect x="75" y="96" width="10" height="18" rx="4" fill="#1e3a5f" />
-              <line x1="75" y1="100" x2="68" y2="110" stroke="#1e3a5f" strokeWidth="3" strokeLinecap="round" />
-              <line x1="85" y1="100" x2="87" y2="112" stroke="#1e3a5f" strokeWidth="3" strokeLinecap="round" />
-              <line x1="77" y1="114" x2="75" y2="128" stroke="#1e3a5f" strokeWidth="3" strokeLinecap="round" />
-              <line x1="83" y1="114" x2="85" y2="128" stroke="#1e3a5f" strokeWidth="3" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div className="auth-left-tagline">
-            Trace every seed<br />to the final batch
-          </div>
-        </div>
-
-        {/* RIGHT PANEL */}
-        <div className="auth-right-panel">
-          <h2>{mode === "signin" ? "Log In" : "Create Account"}</h2>
-
-          {/* Tabs */}
-          <div className="auth-modal-tabs">
-            <button className={`auth-modal-tab ${mode === "signin" ? "active" : ""}`} onClick={() => setMode("signin")}>Sign In</button>
-            <button className={`auth-modal-tab ${mode === "signup" ? "active" : ""}`} onClick={() => setMode("signup")}>Sign Up</button>
-          </div>
-
-          {error && <div className="auth-error">{error}</div>}
-
-          {mode === "signup" && (
-            <div className="auth-input-wrap">
-              <label className="auth-field-label">Full Name</label>
-              <input className="input" placeholder="John Farmer" value={form.name} onChange={(e) => set("name", e.target.value)} />
-            </div>
-          )}
-
-          <div className="auth-input-wrap">
-            <label className="auth-field-label">Email</label>
-            <input className="input" type="email" placeholder="you@email.com" value={form.email} onChange={(e) => set("email", e.target.value)} />
-          </div>
-
-          <div className="auth-input-wrap" style={{ position: "relative" }}>
-            <label className="auth-field-label">Password</label>
-            {mode === "signin" && (
-              <button className="auth-forgot" tabIndex={-1} type="button">Forgot Password?</button>
-            )}
-            <input className="input" type="password" placeholder="••••••••" value={form.password} onChange={(e) => set("password", e.target.value)} />
-          </div>
-
-          {mode === "signup" && (
-            <div className="auth-input-wrap">
-              <label className="auth-field-label">Role</label>
-              <select className="input" value={form.role} onChange={(e) => set("role", e.target.value)}>
-                <option value="grower">Grower</option>
-                <option value="supplier">Supplier</option>
-              </select>
-            </div>
-          )}
-
-          {mode === "signin" && (
-            <div className="auth-remember-row">
-              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} id="rem" />
-              <label htmlFor="rem"><span>Remember me</span></label>
-            </div>
-          )}
-
-          <button className="auth-submit-btn" onClick={submit} disabled={loading}>
-            {loading ? "Please wait…" : (mode === "signin" ? "Login" : "Create Account")}
-          </button>
-
-          <div className="auth-or">Or login with</div>
-
-          <div className="auth-social-row">
-            <button className="auth-social-btn google" onClick={signInWithGoogle}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-              Google
-            </button>
-            <button className="auth-social-btn facebook">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-              Facebook
-            </button>
-            <button className="auth-social-btn github">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-              Github
-            </button>
-          </div>
-
-          <div className="auth-switch-text">
-            {mode === "signin"
-              ? <>New user? <button onClick={() => setMode("signup")}>Sign up</button></>
-              : <>Already have an account? <button onClick={() => setMode("signin")}>Sign in</button></>
-            }
-          </div>
-        </div>
+    <div className="page-container">
+      <div className="card" style={{ textAlign: "center" }}>
+        <h2>Login Required</h2>
+        <p className="muted">Please login to MaatiAI to use Traceability.</p>
+        <a className="btn btn-primary" href="/login">Go to Login</a>
       </div>
-    </div>
-  );
-}
-
-function HomePage({ navigate, toast }) {
-  const [showAuth, setShowAuth] = useState(true);
-  const { user } = useAuth();
-  useEffect(() => { if (user) navigate(user.role === "grower" ? "/grower" : "/supplier"); }, [user]);
-  return (
-    <div className="auth-entry-page">
-      {showAuth && <AuthModal onClose={() => setShowAuth(false)} toast={toast} />}
     </div>
   );
 }
@@ -481,25 +1060,36 @@ function StatCard({ icon, label, value, color }) {
 
 function GrowerDashboard({ navigate, toast }) {
   const { user } = useAuth();
-  const { plantations, crops, harvests, packings, addPlantation, delPlantation } = useData();
+  const { plantations, crops, harvests, packings, addPlantation, delPlantation, backendError, farms, selectedFarmId } = useData();
   const { confirm, dialog } = useConfirm();
   const [form, setForm] = useState({ type: "crop", name: "", location: "" });
-  const mine = plantations.filter((p) => p.userId === user?.id);
+  const mine = plantations;
   const mineIds = mine.map((p) => p.id);
   const totalHarvested = harvests.filter((h) => mineIds.includes(h.plantationId)).reduce((s, h) => s + (h.accepted || 0), 0);
 
-  const create = () => {
-    if (!form.name || !form.location) { toast("Please fill in plantation name and location", "error"); return; }
-    addPlantation({ ...form, userId: user.id, status: "Active" });
-    setForm({ type: "crop", name: "", location: "" });
-    toast("Plantation created successfully!", "success");
+  const create = async () => {
+    if (!form.name || !form.location) {
+      toast("Please fill in plantation name and location", "error");
+      return;
+    }
+    try {
+      await addPlantation({ ...form, status: "Active" });
+      setForm({ type: "crop", name: "", location: "" });
+      toast("Plantation created successfully!", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e) || "Failed to create plantation", "error");
+    }
   };
 
   const remove = async (id) => {
     const ok = await confirm("Delete this plantation and all its associated data?");
     if (!ok) return;
-    delPlantation(id);
-    toast("Plantation deleted", "success");
+    try {
+      await delPlantation(id);
+      toast("Plantation deleted", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e) || "Failed to delete plantation", "error");
+    }
   };
 
   return (
@@ -508,9 +1098,15 @@ function GrowerDashboard({ navigate, toast }) {
       <div className="page-header">
         <div>
           <h1>Grower Dashboard</h1>
-          <p className="page-subtitle">Welcome back, <strong>{user?.name}</strong> — manage your plantations below</p>
+          <p className="page-subtitle">Welcome back, <strong>{user?.name}</strong> - manage your plantations below</p>
         </div>
       </div>
+      {backendError && <div className="inline-alert error">{backendError}</div>}
+      {farms.length > 0 && (
+        <div className="inline-alert" style={{ marginBottom: 12 }}>
+          Active Farm: <strong>#{selectedFarmId}</strong> ({(farms.find((farm) => Number(farm?.farm_id) === Number(selectedFarmId))?.farm_name) || farms[0]?.farm_name || "Farm"})
+        </div>
+      )}
 
       <div className="stats-row">
         <StatCard icon={<FiGrid />} label="Plantations" value={mine.length} color="green" />
@@ -576,13 +1172,17 @@ function PlantationsPage({ navigate, toast }) {
   const { user } = useAuth();
   const { plantations, delPlantation } = useData();
   const { confirm, dialog } = useConfirm();
-  const mine = plantations.filter((p) => p.userId === user?.id);
+  const mine = plantations;
 
   const remove = async (id) => {
     const ok = await confirm("Delete this plantation?");
     if (!ok) return;
-    delPlantation(id);
-    toast("Deleted", "success");
+    try {
+      await delPlantation(id);
+      toast("Deleted", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
   };
 
   return (
@@ -627,20 +1227,35 @@ function PlantationDetail({ plantationId, toast }) {
   const { plantations, crops, monitoring, verification, harvests, packings, processImages, addCrop, delCrop, addMonitoring, delMonitoring, addVerification, delVerification, addHarvest, delHarvest, addPacking, delPacking, addProcessImage, delProcessImage } = useData();
   const { confirm, dialog } = useConfirm();
   const [step, setStep] = useState(0);
-  const plantation = plantations.find((p) => p.id === plantationId);
-  const pCrops = crops.filter((c) => c.plantationId === plantationId);
-  const pMon = monitoring.filter((m) => m.plantationId === plantationId);
-  const pVer = verification.filter((v) => v.plantationId === plantationId);
-  const pHar = harvests.filter((h) => h.plantationId === plantationId);
-  const pPack = packings.filter((pk) => pk.plantationId === plantationId);
-  const pImgs = processImages.filter((img) => img.plantationId === plantationId);
+  const plantationIdNum = Number(plantationId);
+  const plantation = plantations.find((p) => p.id === plantationIdNum);
+  const pCrops = crops.filter((c) => c.plantationId === plantationIdNum);
+  const pMon = monitoring.filter((m) => m.plantationId === plantationIdNum);
+  const pVer = verification.filter((v) => v.plantationId === plantationIdNum);
+  const pHar = harvests.filter((h) => h.plantationId === plantationIdNum);
+  const pPack = packings.filter((pk) => pk.plantationId === plantationIdNum);
+  const pImgs = processImages.filter((img) => img.plantationId === plantationIdNum);
   if (!plantation) return <div className="page-container"><div className="empty-state">Plantation not found.</div></div>;
   const isShrimp = plantation.type === "shrimp";
   const L = { crop: isShrimp ? "Pond" : "Crop", crops: isShrimp ? "Ponds" : "Crops", variety: isShrimp ? "Hatchery / Seed Batch" : "Variety", options: isShrimp ? SHRIMP_OPTIONS : CROP_OPTIONS, monitoring: isShrimp ? SHRIMP_MONITORING : MONITORING_TYPES };
   const unlocked = [true, pCrops.length > 0, pMon.length > 0, pVer.length > 0, pHar.length > 0];
   const done = [pCrops.length > 0, pMon.length > 0, pVer.length > 0, pHar.length > 0, pPack.length > 0];
   const names = [L.crops, "Monitoring", "Verification", "Harvest", "Packing"];
-  const openStep = (i) => { if (!unlocked[i]) { toast(`Complete ${names[i - 1]} first`, "error"); return; } setStep(i); };
+  const stageImages = pImgs.filter((x) => x.imageUrl);
+  const stageGroups = stageImages.reduce((acc, img) => {
+    const key = img.stage || "Other";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(img);
+    return acc;
+  }, {});
+
+  const openStep = (i) => {
+    if (!unlocked[i]) {
+      toast(`Complete ${names[i - 1]} first`, "error");
+      return;
+    }
+    setStep(i);
+  };
 
   return (
     <div className="page-container">
@@ -648,10 +1263,31 @@ function PlantationDetail({ plantationId, toast }) {
       <div className="page-header">
         <div>
           <h1>{plantation.name}</h1>
-          <p className="page-subtitle"><FiMapPin /> {plantation.location} &nbsp;·&nbsp; <span className="status-chip active">● {plantation.status}</span></p>
+          <p className="page-subtitle"><FiMapPin /> {plantation.location} &nbsp;|&nbsp; <span className="status-chip active">{plantation.status}</span></p>
         </div>
       </div>
 
+      {stageImages.length > 0 && (
+        <div className="card">
+          <h3>Stage-wise Photos</h3>
+          {Object.keys(stageGroups).map((stageKey) => (
+            <div key={stageKey} className="gallery-group">
+              <h4>{stageKey}</h4>
+              <div className="tc-photo-grid">
+                {stageGroups[stageKey].map((img) => (
+                  <a key={img.id} className="tc-photo" href={img.imageUrl} target="_blank" rel="noreferrer">
+                    <img src={img.imageUrl} alt={`${stageKey} ${img.name}`} />
+                    <div className="tc-photo-meta">
+                      <div className="tc-photo-title">{img.name}</div>
+                      <div className="tc-photo-sub">{img.date}</div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="step-bar">
         {names.map((n, i) => (
           <button key={n} className={`step-btn ${step === i ? "active" : ""} ${done[i] ? "done" : ""} ${!unlocked[i] ? "locked" : ""}`} onClick={() => openStep(i)}>
@@ -670,7 +1306,7 @@ function PlantationDetail({ plantationId, toast }) {
           addCrop={addCrop}
           delCrop={delCrop}
           confirm={confirm}
-          plantationId={plantationId}
+          plantationId={plantationIdNum}
           pImgs={pImgs}
           addProcessImage={addProcessImage}
           delProcessImage={delProcessImage}
@@ -685,7 +1321,7 @@ function PlantationDetail({ plantationId, toast }) {
           addMonitoring={addMonitoring}
           delMonitoring={delMonitoring}
           confirm={confirm}
-          plantationId={plantationId}
+          plantationId={plantationIdNum}
           pImgs={pImgs}
           addProcessImage={addProcessImage}
           delProcessImage={delProcessImage}
@@ -699,7 +1335,7 @@ function PlantationDetail({ plantationId, toast }) {
           addVerification={addVerification}
           delVerification={delVerification}
           confirm={confirm}
-          plantationId={plantationId}
+          plantationId={plantationIdNum}
           pImgs={pImgs}
           addProcessImage={addProcessImage}
           delProcessImage={delProcessImage}
@@ -714,7 +1350,7 @@ function PlantationDetail({ plantationId, toast }) {
           addHarvest={addHarvest}
           delHarvest={delHarvest}
           confirm={confirm}
-          plantationId={plantationId}
+          plantationId={plantationIdNum}
           pImgs={pImgs}
           addProcessImage={addProcessImage}
           delProcessImage={delProcessImage}
@@ -729,7 +1365,7 @@ function PlantationDetail({ plantationId, toast }) {
           addPacking={addPacking}
           delPacking={delPacking}
           confirm={confirm}
-          plantationId={plantationId}
+          plantationId={plantationIdNum}
           pImgs={pImgs}
           addProcessImage={addProcessImage}
           delProcessImage={delProcessImage}
@@ -765,21 +1401,63 @@ function PlantationDetail({ plantationId, toast }) {
 }
 
 function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProcessImage, confirm, toast }) {
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [pendingName, setPendingName] = useState("");
   const [name, setName] = useState("");
   const list = pImgs.filter((x) => x.stage === stage);
   const add = () => {
-    if (!name.trim()) { toast("Enter a process name", "error"); return; }
-    addProcessImage({ plantationId, stage, name: name.trim(), date: TODAY, imageUrl: "" });
-    setName("");
-    toast("Entry added", "success");
+    if (!name.trim()) {
+      toast("Enter a process name", "error");
+      return;
+    }
+    setPendingName(name.trim());
+    setCameraOpen(true);
   };
-  const remove = async (id) => { const ok = await confirm("Delete this process entry?"); if (!ok) return; delProcessImage(id); };
+  const remove = async (id) => {
+    const ok = await confirm("Delete this process entry?");
+    if (!ok) return;
+    try {
+      await delProcessImage(id);
+      toast("Process entry deleted", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
+  };
   return (
     <div className="card process-card">
-      <div className="card-title"><FiCamera /> Process Entries — {stage}</div>
+      <GeoCameraModal
+        open={cameraOpen}
+        name={pendingName}
+        onClose={() => {
+          setCameraOpen(false);
+          setPendingName("");
+        }}
+        onUse={(imageUrl) => {
+          void traceabilityApi
+            .uploadTraceabilityImage({
+              data_url: imageUrl,
+              plantation_id: plantationId,
+              stage,
+            })
+            .then((uploaded) => {
+              const url = uploaded?.url;
+              if (!url) throw new Error("Upload failed");
+              return addProcessImage({ plantationId, stage, name: pendingName, date: TODAY, imageUrl: url });
+            })
+            .then(() => {
+              setCameraOpen(false);
+              setPendingName("");
+              setName("");
+              toast("Image uploaded", "success");
+            })
+            .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
+        }}
+        toast={toast}
+      />
+      <div className="card-title"><FiCamera /> Process Entries - {stage}</div>
       <div className="form-grid two-col">
         <div className="field-wrap">
-          <input className="input" placeholder={`Describe this ${stage.toLowerCase()} process step…`} value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="input" placeholder={`Describe this ${stage.toLowerCase()} process step...`} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <button className="btn btn-outline" onClick={add}><FiCamera /> Capture</button>
       </div>
@@ -787,7 +1465,15 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
         <div className="record-list">
           {list.map((it) => (
             <div key={it.id} className="record-row">
-              <span className="record-text"><FiCheck /> {it.name} <span className="muted">({it.date})</span></span>
+              <span className="record-text" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                {it.imageUrl ? <img className="tc-thumb" src={it.imageUrl} alt={`${it.name} capture`} /> : <FiCheck />}
+                <span>{it.name} <span className="muted">({it.date})</span></span>
+                {it.imageUrl && (
+                  <a className="link" href={it.imageUrl} target="_blank" rel="noreferrer">
+                    View
+                  </a>
+                )}
+              </span>
               <button className="icon-btn danger" onClick={() => remove(it.id)}><FiTrash2 /></button>
             </div>
           ))}
@@ -797,16 +1483,192 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
   );
 }
 
+function GeoCameraModal({ open, onClose, name, onUse, toast }) {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const [status, setStatus] = useState("Initializing…");
+  const [error, setError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    let cancelled = false;
+    setError("");
+    setPreviewUrl("");
+    setStatus("Requesting camera…");
+
+    (async () => {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error("Camera not supported in this browser.");
+      }
+      const s = await requestBackCameraStream();
+      const track = s.getVideoTracks?.()[0];
+      if (track) await applyCameraTuning(track);
+      if (cancelled) {
+        stopMediaStream(s);
+        return;
+      }
+      streamRef.current = s;
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = s;
+        await video.play();
+      }
+      setStatus("Camera ready");
+    })().catch(() => {
+      if (cancelled) return;
+      setError("Camera permission denied or unavailable.");
+      setStatus("Camera blocked");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    return () => {
+      const s = streamRef.current;
+      streamRef.current = null;
+      stopMediaStream(s);
+      const video = videoRef.current;
+      if (video) {
+        try {
+          video.srcObject = null;
+        } catch {
+          // ignore
+        }
+      }
+    };
+  }, [open]);
+
+  const capture = async () => {
+    try {
+      setBusy(true);
+      setError("");
+      setStatus("Fetching location…");
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas) throw new Error("Camera not ready");
+      const s = streamRef.current;
+      if (!s) throw new Error("Camera stream unavailable");
+      if (video.readyState < 2) throw new Error("Camera not ready yet");
+
+      const coords = await getCurrentLocation();
+
+      let address = "Address unavailable";
+      try {
+        const res = await fetch(
+          `${API_URL}/api/location/reverse?lat=${encodeURIComponent(coords.latitude)}&lon=${encodeURIComponent(coords.longitude)}`,
+          { method: "GET", credentials: "include" },
+        );
+        const json = await res.json().catch(() => null);
+        address = json?.display_name || address;
+      } catch {
+        // ignore
+      }
+
+      const outputWidth = 1280;
+      const photoHeight = 720;
+      const geoHeight = 280;
+      canvas.width = outputWidth;
+      canvas.height = photoHeight + geoHeight;
+      const ctx = canvas.getContext("2d");
+
+      const srcW = video.videoWidth;
+      const srcH = video.videoHeight;
+      const srcAspect = srcW / srcH;
+      const dstAspect = outputWidth / photoHeight;
+      let sx = 0; let sy = 0; let sWidth = srcW; let sHeight = srcH;
+      if (srcAspect > dstAspect) {
+        sWidth = srcH * dstAspect;
+        sx = (srcW - sWidth) / 2;
+      } else {
+        sHeight = srcW / dstAspect;
+        sy = (srcH - sHeight) / 2;
+      }
+      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, outputWidth, photoHeight);
+
+      drawGeoOverlay(ctx, outputWidth, photoHeight, geoHeight, {
+        name: name || "Process Capture",
+        dateTime: formatDateTime(new Date()),
+        address,
+        lat: coords.latitude,
+        lon: coords.longitude,
+      });
+
+      const dataUrl = canvas.toDataURL("image/png");
+      setPreviewUrl(dataUrl);
+      setStatus("Capture complete");
+    } catch (err) {
+      setError(err?.message || "Capture failed");
+      setStatus("Capture failed");
+      toast?.(err?.message || "Capture failed", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true">
+      <div className="modal-box camera-modal">
+        <div className="row-between">
+          <h3>GPS Camera Capture</h3>
+          <button className="auth-close-btn" onClick={onClose} type="button">×</button>
+        </div>
+        <div className="muted" style={{ fontSize: 13 }}>Overlay includes time + GPS + address. (Geofencing removed.)</div>
+        <div className="camera-stage">
+          <video ref={videoRef} autoPlay muted playsInline />
+          <canvas ref={canvasRef} style={{ display: "none" }} />
+          <div className="camera-status">{status}</div>
+        </div>
+        {error && <div className="inline-alert error">{error}</div>}
+        {previewUrl && (
+          <div className="camera-preview">
+            <img src={previewUrl} alt="Captured preview" />
+          </div>
+        )}
+        <div className="actions right">
+          <button className="btn btn-outline" onClick={capture} disabled={busy}>Capture</button>
+          <button className="btn btn-primary" onClick={() => onUse(previewUrl)} disabled={!previewUrl || busy}>Use Photo</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CropsStep({ L, pCrops, addCrop, delCrop, confirm, plantationId, pImgs, addProcessImage, delProcessImage, toast }) {
   const [f, setF] = useState({ name: "", customName: "", variety: "", sowingDate: TODAY, expectedHarvest: "" });
-  const add = () => {
+  const add = async () => {
     const name = f.name === "Other" ? f.customName : f.name;
-    if (!name || !f.variety || !f.sowingDate) { toast("Fill all required fields", "error"); return; }
-    addCrop({ plantationId, name, variety: f.variety, sowingDate: f.sowingDate, expectedHarvest: f.expectedHarvest });
-    setF({ name: "", customName: "", variety: "", sowingDate: TODAY, expectedHarvest: "" });
-    toast(`${L.crop} added!`, "success");
+    if (!name || !f.variety || !f.sowingDate) {
+      toast("Fill all required fields", "error");
+      return;
+    }
+    try {
+      await addCrop({ plantationId, name, variety: f.variety, sowingDate: f.sowingDate, expectedHarvest: f.expectedHarvest });
+      setF({ name: "", customName: "", variety: "", sowingDate: TODAY, expectedHarvest: "" });
+      toast(`${L.crop} added!`, "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
   };
-  const remove = async (id) => { const ok = await confirm(`Delete this ${L.crop.toLowerCase()}?`); if (!ok) return; delCrop(id); };
+  const remove = async (id) => {
+    const ok = await confirm(`Delete this ${L.crop.toLowerCase()}?`);
+    if (!ok) return;
+    try {
+      await delCrop(id);
+      toast(`${L.crop} deleted`, "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
+  };
   return (
     <>
       <WorkflowSection title={`🌱 Add ${L.crop}`}>
@@ -858,14 +1720,30 @@ function CropsStep({ L, pCrops, addCrop, delCrop, confirm, plantationId, pImgs, 
 
 function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm, plantationId, pImgs, addProcessImage, delProcessImage, toast }) {
   const [f, setF] = useState({ date: TODAY, inputType: "", customType: "", cropId: "", remarks: "" });
-  const add = () => {
+  const add = async () => {
     const inputType = f.inputType === "Other" ? f.customType : f.inputType;
-    if (!inputType || !f.cropId) { toast("Select input type and crop", "error"); return; }
-    addMonitoring({ plantationId, date: f.date, inputType, cropId: f.cropId, remarks: f.remarks });
-    setF({ date: TODAY, inputType: "", customType: "", cropId: "", remarks: "" });
-    toast("Monitoring record added!", "success");
+    if (!inputType || !f.cropId) {
+      toast("Select input type and crop", "error");
+      return;
+    }
+    try {
+      await addMonitoring({ plantationId, date: f.date, inputType, cropId: f.cropId, remarks: f.remarks });
+      setF({ date: TODAY, inputType: "", customType: "", cropId: "", remarks: "" });
+      toast("Monitoring record added!", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
   };
-  const remove = async (id) => { const ok = await confirm("Delete this monitoring record?"); if (!ok) return; delMonitoring(id); };
+  const remove = async (id) => {
+    const ok = await confirm("Delete this monitoring record?");
+    if (!ok) return;
+    try {
+      await delMonitoring(id);
+      toast("Monitoring record deleted", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
+  };
   return (
     <>
       <WorkflowSection title="📋 Add Monitoring Record">
@@ -920,13 +1798,29 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
 
 function VerificationStep({ pVer, addVerification, delVerification, pCrops, confirm, plantationId, pImgs, addProcessImage, delProcessImage, toast, L }) {
   const [f, setF] = useState({ inspectionDate: TODAY, cropId: "", health: "Good", approved: true });
-  const add = () => {
-    if (!f.cropId) { toast("Select a crop", "error"); return; }
-    addVerification({ plantationId, ...f });
-    setF({ inspectionDate: TODAY, cropId: "", health: "Good", approved: true });
-    toast("Verification added!", "success");
+  const add = async () => {
+    if (!f.cropId) {
+      toast(`Select a ${L.crop.toLowerCase()}`, "error");
+      return;
+    }
+    try {
+      await addVerification({ plantationId, ...f });
+      setF({ inspectionDate: TODAY, cropId: "", health: "Good", approved: true });
+      toast("Verification added!", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
   };
-  const remove = async (id) => { const ok = await confirm("Delete this verification?"); if (!ok) return; delVerification(id); };
+  const remove = async (id) => {
+    const ok = await confirm("Delete this verification?");
+    if (!ok) return;
+    try {
+      await delVerification(id);
+      toast("Verification deleted", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
+  };
   return (
     <>
       <WorkflowSection title="✅ Add Verification">
@@ -982,13 +1876,29 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
 function HarvestStep({ pHar, addHarvest, delHarvest, pCrops, confirm, plantationId, pImgs, addProcessImage, delProcessImage, toast, L }) {
   const [f, setF] = useState({ harvestDate: TODAY, cropId: "", total: "", unit: "kg", rejected: "" });
   const accepted = Math.max(0, (Number(f.total) || 0) - (Number(f.rejected) || 0));
-  const add = () => {
-    if (!f.cropId || !f.total) { toast("Select crop and enter total quantity", "error"); return; }
-    addHarvest({ plantationId, ...f, total: Number(f.total), rejected: Number(f.rejected) || 0, accepted });
-    setF({ harvestDate: TODAY, cropId: "", total: "", unit: "kg", rejected: "" });
-    toast("Harvest recorded!", "success");
+  const add = async () => {
+    if (!f.cropId || !f.total) {
+      toast("Select crop and enter total quantity", "error");
+      return;
+    }
+    try {
+      await addHarvest({ plantationId, ...f, total: Number(f.total), rejected: Number(f.rejected) || 0, accepted });
+      setF({ harvestDate: TODAY, cropId: "", total: "", unit: "kg", rejected: "" });
+      toast("Harvest recorded!", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
   };
-  const remove = async (id) => { const ok = await confirm("Delete this harvest record?"); if (!ok) return; delHarvest(id); };
+  const remove = async (id) => {
+    const ok = await confirm("Delete this harvest record?");
+    if (!ok) return;
+    try {
+      await delHarvest(id);
+      toast("Harvest record deleted", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
+  };
   return (
     <>
       <WorkflowSection title="🌾 Record Harvest">
@@ -1060,13 +1970,29 @@ function PackingStep({ pPack, pHar, addPacking, delPacking, confirm, plantationI
     pincode: "",
     country: "India",
   });
-  const add = () => {
-    if (!f.harvestId || !f.packingSize || !f.netWeight) { toast("Fill all required fields", "error"); return; }
-    addPacking({ plantationId, ...f, numPackages: Number(f.numPackages) || 0, netWeight: Number(f.netWeight) });
-    setF({ packingDate: TODAY, harvestId: "", packingSize: "", numPackages: "", netWeight: "", warehouse: "", street: "", city: "", state: "", pincode: "", country: "India" });
-    toast("Packing recorded!", "success");
+  const add = async () => {
+    if (!f.harvestId || !f.packingSize || !f.netWeight) {
+      toast("Fill all required fields", "error");
+      return;
+    }
+    try {
+      await addPacking({ plantationId, ...f, numPackages: Number(f.numPackages) || 0, netWeight: Number(f.netWeight) });
+      setF({ packingDate: TODAY, harvestId: "", packingSize: "", numPackages: "", netWeight: "", warehouse: "", street: "", city: "", state: "", pincode: "", country: "India" });
+      toast("Packing recorded!", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
   };
-  const remove = async (id) => { const ok = await confirm("Delete this packing record?"); if (!ok) return; delPacking(id); };
+  const remove = async (id) => {
+    const ok = await confirm("Delete this packing record?");
+    if (!ok) return;
+    try {
+      await delPacking(id);
+      toast("Packing record deleted", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
+  };
   return (
     <>
       <WorkflowSection title="📦 Record Packing">
@@ -1158,15 +2084,25 @@ function SupplierDashboard({ navigate, toast }) {
     if (!selected.length) { toast("Select at least one packing unit", "error"); return; }
     const id = `PATCH-${Date.now().toString(36).toUpperCase()}`;
     const batch = { id, supplierId: user.id, packingIds: selected, description: desc, totalWeight: total, createdAt: TODAY };
-    addBatch(batch); setBatchModal(batch); setSelected([]); setDesc("");
-    toast("Batch created!", "success");
+    void addBatch(batch)
+      .then(() => {
+        setBatchModal(batch);
+        setSelected([]);
+        setDesc("");
+        toast("Batch created!", "success");
+      })
+      .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
   };
 
   const removeBatch = async (id) => {
     const ok = await confirm("Delete this batch?");
     if (!ok) return;
-    delBatch(id);
-    toast("Deleted", "success");
+    try {
+      await delBatch(id);
+      toast("Deleted", "success");
+    } catch (e) {
+      toast(getTraceabilityErrorMessage(e), "error");
+    }
   };
 
   return (
@@ -1418,8 +2354,60 @@ function ProfilePage() {
 }
 
 function TracePage({ patchId }) {
-  const { batches, packings, harvests, crops, plantations } = useData();
-  const batch = batches.find((b) => b.id === patchId);
+  const [state, setState] = useState({ loading: true, error: "", data: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ loading: true, error: "", data: null });
+    traceabilityApi
+      .getTrace(patchId)
+      .then((data) => {
+        if (cancelled) return;
+        setState({ loading: false, error: "", data });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setState({ loading: false, error: err?.message || "Failed to load trace", data: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patchId]);
+
+  if (state.loading) {
+    return (
+      <div className="trace-page trace-public">
+        <div className="trace-card" style={{ textAlign: "center", padding: 36 }}>
+          <h2>Loading trace…</h2>
+          <p className="muted">Batch ID: <code>{patchId}</code></p>
+        </div>
+      </div>
+    );
+  }
+
+  const patch = state.data?.patch ?? null;
+  const items = patch ? safeJson(patch.items, []) : [];
+  const packingIdsFromItems = Array.isArray(items)
+    ? items
+        .map((it) => it?.packing_id ?? it?.packingId)
+        .map((v) => Number(v))
+        .filter((n) => Number.isFinite(n))
+    : [];
+
+  const packings = patch ? (state.data?.packings || []).map(fromDbPacking) : [];
+  const harvests = patch ? (state.data?.harvests || []).map(fromDbHarvest) : [];
+  const crops = patch ? (state.data?.crops || []).map(fromDbCrop) : [];
+  const plantations = patch ? (state.data?.plantations || []).map(fromDbPlantation) : [];
+
+  const batch = patch
+    ? {
+        id: patch.patch_id,
+        description: patch.description || "",
+        totalWeight: Number(patch.total_weight) || 0,
+        createdAt: toISODate(patch.created_at),
+        packingIds: packingIdsFromItems.length ? packingIdsFromItems : packings.map((p) => p.id),
+      }
+    : null;
 
   if (!batch) {
     return (
@@ -1437,7 +2425,7 @@ function TracePage({ patchId }) {
   const harvestRecord = firstPacking ? harvests.find((h) => h.id === firstPacking.harvestId) : null;
   const cropRecord = harvestRecord ? crops.find((c) => c.id === harvestRecord.cropId) : null;
   const plantation = firstPacking ? plantations.find((p) => p.id === firstPacking.plantationId) : null;
-  const isShrimp = plantation?.type === "shrimp";
+  const isShrimp = false;
 
   const cropKey = (cropRecord?.name || "").toLowerCase();
   const xfactorMap = {
@@ -1659,17 +2647,21 @@ function TracePage({ patchId }) {
   );
 }
 function AppShell() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { route, navigate } = useRouter();
   const { toast, toasts } = useToast();
   const plantationMatch = route.match(/^\/plantation\/(.+)$/);
   const patchMatch = route.match(/^\/patch\/(.+)$/);
 
-  useEffect(() => { if (!user && route !== "/" && !patchMatch) navigate("/"); }, [user, route, patchMatch, navigate]);
+  useEffect(() => {
+    if (loading) return;
+    if (!user && route !== "/" && !patchMatch) navigate("/");
+  }, [user, loading, route, patchMatch, navigate]);
 
   let page = null;
   if (patchMatch) page = <TracePage patchId={patchMatch[1]} />;
-  else if (!user) page = <HomePage navigate={navigate} toast={toast} />;
+  else if (loading) page = <div className="page-container"><div className="card">Loading…</div></div>;
+  else if (!user) page = <LoginRequired />;
   else if (plantationMatch) page = <PlantationDetail plantationId={plantationMatch[1]} toast={toast} />;
   else if (route === "/grower") page = user.role === "grower" ? <GrowerDashboard navigate={navigate} toast={toast} /> : <div className="page-container">Access denied</div>;
   else if (route === "/supplier") page = user.role === "supplier" ? <SupplierDashboard navigate={navigate} toast={toast} /> : <div className="page-container">Access denied</div>;
