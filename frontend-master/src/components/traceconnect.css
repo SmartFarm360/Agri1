@@ -1321,9 +1321,9 @@
 
 .tc-root main {
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 28px 20px 60px;
+  max-width: none;
+  margin: 0;
+  padding: 28px 24px 60px;
 }
 
 .tc-root .page-container {
@@ -1598,9 +1598,21 @@
 }
 
 .tc-root .btn-row {
+  grid-column: 1 / -1;
   flex-direction: row;
+  flex-wrap: wrap;
   gap: 8px;
-  align-items: flex-end;
+  align-items: stretch;
+}
+
+.tc-root .btn-row .btn {
+  flex: 1 1 220px;
+  justify-content: center;
+  align-self: stretch;
+}
+
+.tc-root .field-wrap.field-btn-wrap.btn-row .btn {
+  align-self: stretch;
 }
 
 .tc-root .form-grid {
@@ -2068,8 +2080,17 @@
 .tc-root .profile-avatar {
   width: 28px;
   height: 28px;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.18);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tc-root .profile-avatar svg {
+  width: 14px;
+  height: 14px;
 }
 
 .tc-root .profile-dropdown {
