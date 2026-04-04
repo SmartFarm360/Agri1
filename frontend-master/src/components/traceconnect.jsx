@@ -258,6 +258,7 @@ function AuthModal({ onClose, toast }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "John Farmer", email: "john@farm.com", password: "password123", role: "grower" });
   const [error, setError] = useState("");
+  const [remember, setRemember] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const submit = async () => {
@@ -275,26 +276,116 @@ function AuthModal({ onClose, toast }) {
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-box auth-modal">
-        <button className="auth-close-btn" onClick={onClose} aria-label="Close">
-          X
-        </button>
-        <div className="auth-tabs">
-          <button className={mode === "signin" ? "auth-tab active" : "auth-tab"} onClick={() => setMode("signin")}>Sign In</button>
-          <button className={mode === "signup" ? "auth-tab active" : "auth-tab"} onClick={() => setMode("signup")}>Sign Up</button>
+        {/* Close btn on left panel */}
+        <button className="auth-close-btn" onClick={onClose} aria-label="Close">✕</button>
+
+        {/* LEFT PANEL */}
+        <div className="auth-left-panel">
+          <div className="auth-illustration">
+            <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Ground */}
+              <ellipse cx="80" cy="130" rx="55" ry="10" fill="rgba(255,255,255,0.08)" />
+              {/* Clock/compass circle */}
+              <circle cx="48" cy="112" r="22" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" />
+              <circle cx="48" cy="112" r="16" fill="rgba(255,255,255,0.08)" />
+              <line x1="48" y1="112" x2="48" y2="100" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" />
+              <line x1="48" y1="112" x2="58" y2="116" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" />
+              {/* Big tree */}
+              <ellipse cx="100" cy="72" rx="28" ry="34" fill="#1f8a43" />
+              <ellipse cx="100" cy="60" rx="20" ry="26" fill="#2ecc71" />
+              <rect x="96" y="98" width="8" height="30" fill="#5d4037" rx="3" />
+              {/* Small pink circle accent */}
+              <circle cx="82" cy="45" r="10" fill="#f87171" opacity="0.7" />
+              {/* Farmer figure */}
+              <circle cx="80" cy="88" r="7" fill="#fcd34d" />
+              <rect x="75" y="96" width="10" height="18" rx="4" fill="#1e3a5f" />
+              <line x1="75" y1="100" x2="68" y2="110" stroke="#1e3a5f" strokeWidth="3" strokeLinecap="round" />
+              <line x1="85" y1="100" x2="87" y2="112" stroke="#1e3a5f" strokeWidth="3" strokeLinecap="round" />
+              <line x1="77" y1="114" x2="75" y2="128" stroke="#1e3a5f" strokeWidth="3" strokeLinecap="round" />
+              <line x1="83" y1="114" x2="85" y2="128" stroke="#1e3a5f" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div className="auth-left-tagline">
+            Trace every seed<br />to the final batch
+          </div>
         </div>
-        {error && <div className="auth-error">{error}</div>}
-        {mode === "signup" && <input className="input" placeholder="Full Name" value={form.name} onChange={(e) => set("name", e.target.value)} />}
-        <input className="input" type="email" placeholder="Email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-        <input className="input" type="password" placeholder="Password" value={form.password} onChange={(e) => set("password", e.target.value)} />
-        {mode === "signup" && (
-          <select className="input" value={form.role} onChange={(e) => set("role", e.target.value)}>
-            <option value="grower">Grower</option>
-            <option value="supplier">Supplier</option>
-          </select>
-        )}
-        <div className="auth-actions">
-          <button className="btn btn-outline" onClick={signInWithGoogle} disabled={loading}>Continue with Google</button>
-          <button className="btn btn-primary" onClick={submit} disabled={loading}>{loading ? "Please wait..." : (mode === "signin" ? "Sign In" : "Create Account")}</button>
+
+        {/* RIGHT PANEL */}
+        <div className="auth-right-panel">
+          <h2>{mode === "signin" ? "Log In" : "Create Account"}</h2>
+
+          {/* Tabs */}
+          <div className="auth-modal-tabs">
+            <button className={`auth-modal-tab ${mode === "signin" ? "active" : ""}`} onClick={() => setMode("signin")}>Sign In</button>
+            <button className={`auth-modal-tab ${mode === "signup" ? "active" : ""}`} onClick={() => setMode("signup")}>Sign Up</button>
+          </div>
+
+          {error && <div className="auth-error">{error}</div>}
+
+          {mode === "signup" && (
+            <div className="auth-input-wrap">
+              <label className="auth-field-label">Full Name</label>
+              <input className="input" placeholder="John Farmer" value={form.name} onChange={(e) => set("name", e.target.value)} />
+            </div>
+          )}
+
+          <div className="auth-input-wrap">
+            <label className="auth-field-label">Email</label>
+            <input className="input" type="email" placeholder="you@email.com" value={form.email} onChange={(e) => set("email", e.target.value)} />
+          </div>
+
+          <div className="auth-input-wrap" style={{ position: "relative" }}>
+            <label className="auth-field-label">Password</label>
+            {mode === "signin" && (
+              <button className="auth-forgot" tabIndex={-1} type="button">Forgot Password?</button>
+            )}
+            <input className="input" type="password" placeholder="••••••••" value={form.password} onChange={(e) => set("password", e.target.value)} />
+          </div>
+
+          {mode === "signup" && (
+            <div className="auth-input-wrap">
+              <label className="auth-field-label">Role</label>
+              <select className="input" value={form.role} onChange={(e) => set("role", e.target.value)}>
+                <option value="grower">Grower</option>
+                <option value="supplier">Supplier</option>
+              </select>
+            </div>
+          )}
+
+          {mode === "signin" && (
+            <div className="auth-remember-row">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} id="rem" />
+              <label htmlFor="rem"><span>Remember me</span></label>
+            </div>
+          )}
+
+          <button className="auth-submit-btn" onClick={submit} disabled={loading}>
+            {loading ? "Please wait…" : (mode === "signin" ? "Login" : "Create Account")}
+          </button>
+
+          <div className="auth-or">Or login with</div>
+
+          <div className="auth-social-row">
+            <button className="auth-social-btn google" onClick={signInWithGoogle}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Google
+            </button>
+            <button className="auth-social-btn facebook">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              Facebook
+            </button>
+            <button className="auth-social-btn github">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+              Github
+            </button>
+          </div>
+
+          <div className="auth-switch-text">
+            {mode === "signin"
+              ? <>New user? <button onClick={() => setMode("signup")}>Sign up</button></>
+              : <>Already have an account? <button onClick={() => setMode("signin")}>Sign in</button></>
+            }
+          </div>
         </div>
       </div>
     </div>
