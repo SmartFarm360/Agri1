@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Wheat,
@@ -64,12 +65,12 @@ export default function TraceabilityPage() {
               with total transparency.
             </p>
             <div className="ta-hero-btns">
-              <a
+              <Link
                 className="ta-btn-black ta-btn-lg ta-btn-link"
-                href="https://traceability1.lovable.app"
+                to="/traceconnect"
               >
                 Start Monitoring <ArrowRight size={18} />
-              </a>
+              </Link>
               <button
                 className="ta-btn-outline ta-btn-lg"
                 type="button"
