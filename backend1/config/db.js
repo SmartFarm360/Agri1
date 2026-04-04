@@ -7,9 +7,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: isProduction
-    ? { rejectUnauthorized: false } // hosting / cloud DB
-    : false,                         // localhost
+  ssl: false                        // localhost
 });
 
 pool.connect()

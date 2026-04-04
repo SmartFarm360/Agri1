@@ -9,7 +9,9 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const traceabilityRoutes = require('./modules/traceability/routes');
 
+app.use('/api/traceability', traceabilityRoutes);
 app.set("trust proxy", 1);
 
 /* =========================
