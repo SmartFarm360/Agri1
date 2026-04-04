@@ -2,11 +2,11 @@ const model = require('../models/userRoleModel');
 
 exports.create = async (req, res) => {
   try {
-    if (req.body?.user_id === undefined || !req.body?.role) {
-      return res.status(400).json({ error: 'user_id and role are required' });
+    if (!req.body?.role) {
+      return res.status(400).json({ error: 'role is required' });
     }
 
-    const result = await model.createUserRole(req.body);
+    const result = await model.createUserRole({ ...(req.body || {}), user_id: req.user.user_id });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -16,7 +16,7 @@ exports.create = async (req, res) => {
 exports.list = async (req, res) => {
   try {
     const filters = {
-      user_id: req.query.user_id ? Number(req.query.user_id) : undefined,
+      user_id: req.user.user_id,
       role: req.query.role,
     };
 
@@ -35,6 +35,7 @@ exports.getById = async (req, res) => {
     const result = await model.getUserRoleById(id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'User role not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'User role not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -49,6 +50,7 @@ exports.update = async (req, res) => {
     const result = await model.updateUserRole(id, req.body || {});
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'User role not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'User role not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -63,9 +65,9 @@ exports.remove = async (req, res) => {
     const result = await model.deleteUserRole(id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'User role not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'User role not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-

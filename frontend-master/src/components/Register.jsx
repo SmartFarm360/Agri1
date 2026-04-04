@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+﻿import { useEffect, useState, useRef } from "react";
 
 import { Link, useNavigate } from "react-router-dom";
 import { translations } from "../utils/translations";
@@ -38,7 +38,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // 🚀 FAST & DEBOUNCED location search
+    // ðŸš€ FAST & DEBOUNCED location search
     if (name === "farm_location") {
       // Clear previous debounce
       if (locationTimeoutRef.current) {
@@ -69,7 +69,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
           locationAbortRef.current = controller;
 
           const res = await fetch(
-            `https://agri1-32qq.onrender.com/api/location/search?q=${encodeURIComponent(query)}`,
+            `${API_URL}/api/location/search?q=${encodeURIComponent(query)}`,
             { signal: controller.signal },
           );
 
@@ -160,7 +160,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
         submissionData.append("flightExperience", formData.flight_experience);
       }
 
-      const API_URL = "https://agri1-32qq.onrender.com";
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
@@ -206,13 +206,13 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
         return (
           <div className="role-section">
             <div className="role-header">
-              <div className="role-icon farmer-icon">🌱</div>
+              <div className="role-icon farmer-icon">ðŸŒ±</div>
               <h3 className="role-title">Farmer Details</h3>
             </div>
 
             <div className="form-group location-group">
               <label className="form-label">
-                <span className="label-icon">📍</span>
+                <span className="label-icon">ðŸ“</span>
                 {t.farmLocation || "Farm Location"}
               </label>
               <input
@@ -287,7 +287,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
 
             <div className="form-group file-group">
               <label className="form-label">
-                <span className="label-icon">📄</span>
+                <span className="label-icon">ðŸ“„</span>
                 Land Document (PDF)
               </label>
               <input
@@ -309,7 +309,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
         return (
           <div className="role-section">
             <div className="role-header">
-              <div className="role-icon drone-icon">🚁</div>
+              <div className="role-icon drone-icon">ðŸš</div>
               <h3 className="role-title">Drone Controller Details</h3>
             </div>
 
@@ -384,7 +384,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
       //   return (
       //     <div className="role-section">
       //       <div className="role-header">
-      //         <div className="role-icon admin-icon">🛡</div>
+      //         <div className="role-icon admin-icon">ðŸ›¡</div>
       //         <h3 className="role-title">Admin Access</h3>
       //       </div>
       //       <div className="admin-note">
@@ -422,14 +422,14 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
             {/* Basic Information Section */}
             <div className="form-section">
               <h3 className="section-title">
-                <span className="section-icon">👤</span>
+                <span className="section-icon">ðŸ‘¤</span>
                 Basic Information
               </h3>
 
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="firstName" className="form-label">
-                    <span className="label-icon">👤</span>
+                    <span className="label-icon">ðŸ‘¤</span>
                     {t.firstName || "First Name"}
                   </label>
                   <input
@@ -449,7 +449,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
 
                 <div className="form-group">
                   <label htmlFor="email" className="form-label">
-                    <span className="label-icon">📧</span>
+                    <span className="label-icon">ðŸ“§</span>
                     {t.email || "Email"}
                   </label>
                   <input
@@ -470,7 +470,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
 
               <div className="form-group">
                 <label htmlFor="mob" className="form-label">
-                  <span className="label-icon">📱</span>
+                  <span className="label-icon">ðŸ“±</span>
                   {t.mob || "mob Number"}
                 </label>
                 <input
@@ -489,7 +489,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="password" className="form-label">
-                    <span className="label-icon">🔒</span>
+                    <span className="label-icon">ðŸ”’</span>
                     {t.createPassword || "Create Password"}
                   </label>
                   <input
@@ -509,7 +509,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
 
                 <div className="form-group">
                   <label htmlFor="confirmPassword" className="form-label">
-                    <span className="label-icon">🔒</span>
+                    <span className="label-icon">ðŸ”’</span>
                     {t.confirmPassword || "Confirm Password"}
                   </label>
                   <input
@@ -544,10 +544,10 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
                   required
                 >
                   <option value="">-- Select Role --</option>
-                  <option value="farmer">🌱 {t.farmer || "Farmer"}</option>
-                  {/* <option value="admin">🛡 {t.admin || "Admin"}</option> */}
+                  <option value="farmer">ðŸŒ± {t.farmer || "Farmer"}</option>
+                  {/* <option value="admin">ðŸ›¡ {t.admin || "Admin"}</option> */}
                   <option value="drone_controller">
-                    🚁 {t.droneController || "Drone Controller"}
+                    ðŸš {t.droneController || "Drone Controller"}
                   </option>
                 </select>
               </div>
@@ -558,10 +558,10 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
                 >
                   <span className="badge-icon">
                     {formData.role === "farmer"
-                      ? "🌱"
+                      ? "ðŸŒ±"
                       : formData.role === "admin"
-                        ? "🛡"
-                        : "🚁"}
+                        ? "ðŸ›¡"
+                        : "ðŸš"}
                   </span>
                   {formData.role === "farmer"
                     ? t.farmer
@@ -582,7 +582,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
 
             {errors.submit && (
               <div className="error-alert">
-                <span className="error-icon">⚠</span>
+                <span className="error-icon">âš </span>
                 {errors.submit}
               </div>
             )}
@@ -599,7 +599,7 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
                 </>
               ) : (
                 <>
-                  <span className="btn-icon">✅</span>
+                  <span className="btn-icon">âœ…</span>
                   {t.register || "Create Account"}
                 </>
               )}
@@ -621,3 +621,4 @@ const Register = ({ currentLanguage, onRegister, showGlobalToast }) => {
 };
 
 export default Register;
+

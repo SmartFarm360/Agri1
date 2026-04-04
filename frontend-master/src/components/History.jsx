@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -45,7 +45,7 @@ const translations = {
   },
 };
 
-const API_URL = import.meta.env.VITE_API_URL || "https://agri1-32qq.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const HECTARE_TO_ACRE = 2.4710538147;
 
 const getSeededUnit = (seed) => {
@@ -145,7 +145,7 @@ const History = ({ currentLanguage = "en" }) => {
         id: index + 1,
         gridId: `GRID-${String(Math.floor(Math.random() * 100) + 1).padStart(3, "0")}`,
         problem,
-        description: problemDescriptions[problem], // ✅ ADD THIS LINE
+        description: problemDescriptions[problem], // âœ… ADD THIS LINE
         status: statuses[Math.floor(Math.random() * statuses.length)],
         createdDate: new Date(
           Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
@@ -580,7 +580,7 @@ const History = ({ currentLanguage = "en" }) => {
                       style={{ height: "100%", width: "100%" }}
                     >
                       <TileLayer
-                        attribution='© <a href="https://www.mappls.com">MapmyIndia</a>'
+                        attribution='Â© <a href="https://www.mappls.com">MapmyIndia</a>'
                         url="https://maps.mapmyindia.com/rastertiles/v1.0/{z}/{x}/{y}?access_token=890b827c2d4d264a7179eca8750ce4"
                       />
                       <Marker position={[farmLocation.lat, farmLocation.lng]} icon={redIcon}>
@@ -737,7 +737,7 @@ const History = ({ currentLanguage = "en" }) => {
                 setIsSubmitted(false);
               }}
             >
-              �
+              ×
             </button>
 
             {/* GRID STATUS */}
@@ -834,7 +834,7 @@ const History = ({ currentLanguage = "en" }) => {
             {showResponseBox && (
               <div className="response-box">
                 <p>
-                  ✅ <strong>Action Submitted Successfully</strong>
+                  âœ… <strong>Action Submitted Successfully</strong>
                   <br />
                   <br />
                   Your issue is of{" "}
@@ -844,7 +844,7 @@ const History = ({ currentLanguage = "en" }) => {
                   .
                   <br />
                   {selectedHistoryItem.severity === "low" &&
-                    "Evaluation will be done within 3–4 days."}
+                    "Evaluation will be done within 3â€“4 days."}
                   {selectedHistoryItem.severity === "moderate" &&
                     "Evaluation will be done on alternate days."}
                   {selectedHistoryItem.severity === "high" &&
@@ -875,4 +875,5 @@ const History = ({ currentLanguage = "en" }) => {
 };
 
 export default History;
+
 

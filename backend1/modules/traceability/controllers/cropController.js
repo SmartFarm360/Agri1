@@ -2,10 +2,10 @@ const model = require('../models/cropModel');
 
 exports.create = async (req, res) => {
   try {
-    if (req.body?.plantation_id === undefined || req.body?.user_id === undefined || !req.body?.crop_name) {
-      return res.status(400).json({ error: 'plantation_id, user_id, and crop_name are required' });
+    if (req.body?.plantation_id === undefined || !req.body?.crop_name) {
+      return res.status(400).json({ error: 'plantation_id and crop_name are required' });
     }
-    const result = await model.createCrop(req.body);
+    const result = await model.createCrop({ ...(req.body || {}), user_id: req.user.user_id });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -15,7 +15,7 @@ exports.create = async (req, res) => {
 exports.list = async (req, res) => {
   try {
     const filters = {
-      user_id: req.query.user_id ? Number(req.query.user_id) : undefined,
+      user_id: req.user.user_id,
       plantation_id: req.query.plantation_id ? Number(req.query.plantation_id) : undefined,
       crop_name: req.query.crop_name,
     };
@@ -34,6 +34,7 @@ exports.getById = async (req, res) => {
     const result = await model.getCropById(id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Crop not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Crop not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -48,6 +49,7 @@ exports.update = async (req, res) => {
     const result = await model.updateCrop(id, req.body || {});
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Crop not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Crop not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -62,6 +64,7 @@ exports.remove = async (req, res) => {
     const result = await model.deleteCrop(id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Crop not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Crop not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -2,10 +2,10 @@ const model = require('../models/patchModel');
 
 exports.create = async (req, res) => {
   try {
-    if (req.body?.user_id === undefined || !req.body?.patch_id) {
-      return res.status(400).json({ error: 'user_id and patch_id are required' });
+    if (!req.body?.patch_id) {
+      return res.status(400).json({ error: 'patch_id is required' });
     }
-    const result = await model.createPatch(req.body);
+    const result = await model.createPatch({ ...(req.body || {}), user_id: req.user.user_id });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -15,7 +15,7 @@ exports.create = async (req, res) => {
 exports.list = async (req, res) => {
   try {
     const filters = {
-      user_id: req.query.user_id ? Number(req.query.user_id) : undefined,
+      user_id: req.user.user_id,
       patch_id: req.query.patch_id,
     };
     const result = await model.listPatches(filters);
@@ -33,6 +33,7 @@ exports.getById = async (req, res) => {
     const result = await model.getPatchById(id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Patch not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Patch not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -45,6 +46,7 @@ exports.getByPatchId = async (req, res) => {
     const result = await model.getPatchByPatchId(patch_id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Patch not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Patch not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -59,6 +61,7 @@ exports.update = async (req, res) => {
     const result = await model.updatePatch(id, req.body || {});
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Patch not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Patch not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -73,6 +76,7 @@ exports.remove = async (req, res) => {
     const result = await model.deletePatch(id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Patch not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Patch not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });

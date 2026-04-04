@@ -4,16 +4,15 @@ exports.create = async (req, res) => {
   try {
     if (
       req.body?.plantation_id === undefined ||
-      req.body?.user_id === undefined ||
       !req.body?.inspection_date ||
       !req.body?.crop_health
     ) {
       return res.status(400).json({
-        error: 'plantation_id, user_id, inspection_date, and crop_health are required',
+        error: 'plantation_id, inspection_date, and crop_health are required',
       });
     }
 
-    const result = await model.createVerification(req.body);
+    const result = await model.createVerification({ ...(req.body || {}), user_id: req.user.user_id });
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -23,7 +22,7 @@ exports.create = async (req, res) => {
 exports.list = async (req, res) => {
   try {
     const filters = {
-      user_id: req.query.user_id ? Number(req.query.user_id) : undefined,
+      user_id: req.user.user_id,
       plantation_id: req.query.plantation_id ? Number(req.query.plantation_id) : undefined,
       crop_id: req.query.crop_id ? Number(req.query.crop_id) : undefined,
       approved_for_harvest:
@@ -48,6 +47,7 @@ exports.getById = async (req, res) => {
     const result = await model.getVerificationById(id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Verification not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Verification not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -62,6 +62,7 @@ exports.update = async (req, res) => {
     const result = await model.updateVerification(id, req.body || {});
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Verification not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Verification not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -76,9 +77,9 @@ exports.remove = async (req, res) => {
     const result = await model.deleteVerification(id);
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Verification not found' });
+    if (row.user_id !== req.user.user_id) return res.status(404).json({ error: 'Verification not found' });
     res.json(row);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-

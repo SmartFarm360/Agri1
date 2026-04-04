@@ -30,7 +30,7 @@ function AppRoutes() {
     message: "",
   });
   const navigate = useNavigate();
-  const API_URL = import.meta.env.VITE_API_URL || "https://agri1-32qq.onrender.com";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const showToast = (message, type = "success") => {
     setToast({
@@ -269,7 +269,16 @@ function AppRoutes() {
           }
         />
 
-        <Route path="/traceconnect" element={<TraceConnect />} />
+        <Route
+          path="/traceconnect"
+          element={
+            isAuthenticated ? (
+              <TraceConnect />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
 
         {/* FARMER DASHBOARD */}
         <Route
