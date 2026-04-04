@@ -1,5 +1,11 @@
 import { useState, useEffect, useContext, createContext, useRef } from "react";
-import { FiLock, FiCheckCircle, FiUser, FiChevronDown, FiLogOut } from "react-icons/fi";
+import {
+  FiLock, FiCheckCircle, FiUser, FiLogOut,
+  FiHome, FiList, FiBarChart2, FiPackage, FiAlertTriangle,
+  FiTrash2, FiEdit2, FiPlus, FiArrowRight, FiMapPin,
+  FiCalendar, FiDroplet, FiVideo, FiCamera, FiCheck,
+  FiX, FiMail, FiShield, FiStar, FiTrendingUp, FiGrid
+} from "react-icons/fi";
 import "./traceconnect.css";
 import { getApiUrl, traceabilityApi } from "../api/traceabilityApi";
 
@@ -900,17 +906,20 @@ function useToast() {
   const [toasts, setToasts] = useState([]);
   const toast = (message, type = "success") => {
     const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    setToasts((t) => [{ id, type, message }, ...t]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 1500);
+    setToasts((t) => [...t, { id, type, message }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500);
   };
   return { toasts, toast };
 }
 
 function Toasts({ toasts }) {
   return (
-    <div className="toast-container">
+    <div className="toast-stack">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast toast-${t.type}`}>{t.message}</div>
+        <div key={t.id} className={`toast-item toast-${t.type}`}>
+          <span className="toast-icon">{t.type === "success" ? <FiCheck /> : <FiAlertTriangle />}</span>
+          <span className="toast-msg">{t.message}</span>
+        </div>
       ))}
     </div>
   );
@@ -945,10 +954,11 @@ const UNIT_OPTIONS = ["kg", "ton", "count"];
 function ConfirmDialog({ message, onConfirm, onCancel }) {
   return (
     <div className="modal-overlay">
-      <div className="modal-box">
+      <div className="confirm-box">
+        <div className="confirm-icon"><FiAlertTriangle /></div>
         <h3>Confirm Delete</h3>
         <p className="muted">{message}</p>
-        <div className="auth-actions">
+        <div className="confirm-actions">
           <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
           <button className="btn btn-danger" onClick={onConfirm}>Delete</button>
         </div>
@@ -997,21 +1007,31 @@ function Header({ route, navigate }) {
 
   if (!user) return null;
   const links = user.role === "grower"
-    ? [{ label: "Dashboard", path: "/grower" }, { label: "Plantations", path: "/plantations" }, { label: "Reports", path: "/reports" }]
-    : [{ label: "Dashboard", path: "/supplier" }, { label: "Reports", path: "/reports" }];
+    ? [{ label: "Dashboard", path: "/grower", icon: <FiHome /> }, { label: "Plantations", path: "/plantations", icon: <FiList /> }, { label: "Reports", path: "/reports", icon: <FiBarChart2 /> }]
+    : [{ label: "Dashboard", path: "/supplier", icon: <FiHome /> }, { label: "Reports", path: "/reports", icon: <FiBarChart2 /> }];
   return (
     <header className="app-header">
-      <button className="brand" onClick={() => navigate(user.role === "grower" ? "/grower" : "/supplier")}>Seed-to-Batch</button>
-      <nav>
-        {links.map((l) => <button key={l.path} className={route === l.path ? "nav-pill active" : "nav-pill"} onClick={() => navigate(l.path)}>{l.label}</button>)}
+      <button className="brand" onClick={() => navigate(user.role === "grower" ? "/grower" : "/supplier")}>
+        <span className="brand-icon">🌱</span>
+        <span>Seed-to-Batch</span>
+      </button>
+      <nav className="header-nav">
+        {links.map((l) => (
+          <button key={l.path} className={`nav-pill ${route === l.path ? "active" : ""}`} onClick={() => navigate(l.path)}>
+            {l.icon} {l.label}
+          </button>
+        ))}
         <div className="profile-menu-wrap" ref={menuRef}>
           <button className={`profile-trigger ${menuOpen ? "open" : ""}`} onClick={() => setMenuOpen((x) => !x)}>
             <span className="profile-avatar"><FiUser /></span>
-            <span className="profile-short">{(user?.name || "User").split(" ")[0]}</span>
-            <FiChevronDown className="chevron" />
           </button>
           {menuOpen && (
             <div className="profile-dropdown">
+              <div className="dropdown-user-info">
+                <span className="dropdown-name">{user.name}</span>
+                <span className="dropdown-role badge-chip">{user.role}</span>
+              </div>
+              <div className="dropdown-divider" />
               <button className="profile-item" onClick={() => { setMenuOpen(false); navigate("/profile"); }}>
                 <FiUser /> Profile
               </button>
@@ -1023,6 +1043,18 @@ function Header({ route, navigate }) {
         </div>
       </nav>
     </header>
+  );
+}
+
+function StatCard({ icon, label, value, color }) {
+  return (
+    <div className="stat-card">
+      <div className={`stat-icon-wrap ${color}`}>{icon}</div>
+      <div>
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">{label}</div>
+      </div>
+    </div>
   );
 }
 
@@ -1047,7 +1079,7 @@ function GrowerDashboard({ navigate, toast }) {
   };
 
   const remove = async (id) => {
-    const ok = await confirm("Delete this plantation and related data?");
+    const ok = await confirm("Delete this plantation and all its associated data?");
     if (!ok) return;
     try {
       await delPlantation(id);
@@ -1086,19 +1118,63 @@ function GrowerDashboard({ navigate, toast }) {
           <button className="btn btn-primary" onClick={create}>Create</button>
         </div>
       </div>
-      <div className="card-grid">
-        {mine.map((p) => (
-          <div key={p.id} className="plantation-card">
-            <h4>{p.name}</h4>
-            <p>{p.location}</p>
-            <p className="muted">Type: {p.type === "shrimp" ? "Shrimp / Prawn Farming" : "Crop Farming"} | Created: {p.createdAt}</p>
-            <div className="actions">
-              <button className="btn btn-outline" onClick={() => navigate(`/plantation/${p.id}`)}>Open</button>
-              <button className="btn btn-danger" onClick={() => remove(p.id)}>Delete</button>
-            </div>
-          </div>
-        ))}
+
+      <div className="stats-row">
+        <StatCard icon={<FiGrid />} label="Plantations" value={mine.length} color="green" />
+        <StatCard icon={<FiStar />} label="Crops" value={crops.filter((c) => mineIds.includes(c.plantationId)).length} color="amber" />
+        <StatCard icon={<FiTrendingUp />} label="Harvested (kg)" value={totalHarvested} color="blue" />
+        <StatCard icon={<FiPackage />} label="Packings" value={packings.filter((p) => mineIds.includes(p.plantationId)).length} color="purple" />
       </div>
+
+      <div className="card">
+        <div className="card-title"><FiPlus /> Add New Plantation</div>
+        <div className="form-grid">
+          <div className="field-wrap">
+            <label className="field-label">Production Type</label>
+            <select className="input" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
+              <option value="crop">🌾 Crop Farming</option>
+              <option value="shrimp">🦐 Shrimp / Prawn Aquaculture</option>
+            </select>
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Plantation Name</label>
+            <input className="input" placeholder={form.type === "shrimp" ? "e.g. Coastal Prawn Farm" : "e.g. Green Valley Farm"} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Location</label>
+            <input className="input" placeholder="e.g. Pune, Maharashtra" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
+          </div>
+          <div className="field-wrap field-btn-wrap">
+            <button className="btn btn-primary" onClick={create}><FiPlus /> Create</button>
+          </div>
+        </div>
+      </div>
+
+      {mine.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">🌾</div>
+          <p>No plantations yet. Create your first one above.</p>
+        </div>
+      ) : (
+        <div className="card-grid">
+          {mine.map((p) => (
+            <div key={p.id} className="plantation-card">
+              <div className="plantation-card-top">
+                <span className={`type-badge ${p.type === "shrimp" ? "shrimp" : "crop"}`}>
+                  {p.type === "shrimp" ? "🦐 Aquaculture" : "🌾 Crop Farming"}
+                </span>
+                <button className="icon-btn danger" onClick={(e) => { e.stopPropagation(); remove(p.id); }} title="Delete"><FiTrash2 /></button>
+              </div>
+              <h4>{p.name}</h4>
+              <p className="plantation-location"><FiMapPin /> {p.location}</p>
+              <p className="plantation-date"><FiCalendar /> Created {p.createdAt}</p>
+              <button className="btn btn-outline full-width mt" onClick={() => navigate(`/plantation/${p.id}`)}>
+                Open Plantation <FiArrowRight />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1123,23 +1199,24 @@ function PlantationsPage({ navigate, toast }) {
   return (
     <div className="page-container">
       {dialog}
-      <div className="row-between">
-        <h1>All Plantations</h1>
-        <button className="btn btn-primary" onClick={() => navigate("/grower")}>+ New</button>
+      <div className="page-header">
+        <div><h1>All Plantations</h1><p className="page-subtitle">Manage all your registered plantations</p></div>
+        <button className="btn btn-primary" onClick={() => navigate("/grower")}><FiPlus /> New Plantation</button>
       </div>
       {mine.length === 0 ? (
-        <div className="empty-state">No plantations yet.</div>
+        <div className="empty-state"><div className="empty-icon">🌾</div><p>No plantations yet.</p></div>
       ) : (
         <div className="card-grid">
           {mine.map((p) => (
             <div key={p.id} className="plantation-card">
-              <h4>{p.name}</h4>
-              <p>{p.location}</p>
-              <p className="muted">{p.createdAt}</p>
-              <div className="actions">
-                <button className="btn btn-outline" onClick={() => navigate(`/plantation/${p.id}`)}>Open</button>
-                <button className="btn btn-danger" onClick={() => remove(p.id)}>Delete</button>
+              <div className="plantation-card-top">
+                <span className={`type-badge ${p.type === "shrimp" ? "shrimp" : "crop"}`}>{p.type === "shrimp" ? "🦐 Aquaculture" : "🌾 Crop Farming"}</span>
+                <button className="icon-btn danger" onClick={() => remove(p.id)} title="Delete"><FiTrash2 /></button>
               </div>
+              <h4>{p.name}</h4>
+              <p className="plantation-location"><FiMapPin /> {p.location}</p>
+              <p className="plantation-date"><FiCalendar /> {p.createdAt}</p>
+              <button className="btn btn-outline full-width mt" onClick={() => navigate(`/plantation/${p.id}`)}>Open <FiArrowRight /></button>
             </div>
           ))}
         </div>
@@ -1148,32 +1225,17 @@ function PlantationsPage({ navigate, toast }) {
   );
 }
 
-function WorkflowStep({ title, children }) {
-  return <div className="card"><h3>{title}</h3>{children}</div>;
+function WorkflowSection({ title, children }) {
+  return (
+    <div className="card">
+      <div className="card-title">{title}</div>
+      {children}
+    </div>
+  );
 }
 
 function PlantationDetail({ plantationId, toast }) {
-  const {
-    plantations,
-    crops,
-    monitoring,
-    verification,
-    harvests,
-    packings,
-    processImages,
-    addCrop,
-    delCrop,
-    addMonitoring,
-    delMonitoring,
-    addVerification,
-    delVerification,
-    addHarvest,
-    delHarvest,
-    addPacking,
-    delPacking,
-    addProcessImage,
-    delProcessImage,
-  } = useData();
+  const { plantations, crops, monitoring, verification, harvests, packings, processImages, addCrop, delCrop, addMonitoring, delMonitoring, addVerification, delVerification, addHarvest, delHarvest, addPacking, delPacking, addProcessImage, delProcessImage } = useData();
   const { confirm, dialog } = useConfirm();
   const [step, setStep] = useState(0);
   const plantationIdNum = Number(plantationId);
@@ -1185,16 +1247,8 @@ function PlantationDetail({ plantationId, toast }) {
   const pPack = packings.filter((pk) => pk.plantationId === plantationIdNum);
   const pImgs = processImages.filter((img) => img.plantationId === plantationIdNum);
   if (!plantation) return <div className="page-container"><div className="empty-state">Plantation not found.</div></div>;
-
   const isShrimp = plantation.type === "shrimp";
-  const L = {
-    crop: isShrimp ? "Pond" : "Crop",
-    crops: isShrimp ? "Ponds" : "Crops",
-    sowDate: isShrimp ? "Stocking Date" : "Sowing Date",
-    variety: isShrimp ? "Hatchery / Seed Batch" : "Variety",
-    options: isShrimp ? SHRIMP_OPTIONS : CROP_OPTIONS,
-    monitoring: isShrimp ? SHRIMP_MONITORING : MONITORING_TYPES,
-  };
+  const L = { crop: isShrimp ? "Pond" : "Crop", crops: isShrimp ? "Ponds" : "Crops", variety: isShrimp ? "Hatchery / Seed Batch" : "Variety", options: isShrimp ? SHRIMP_OPTIONS : CROP_OPTIONS, monitoring: isShrimp ? SHRIMP_MONITORING : MONITORING_TYPES };
   const unlocked = [true, pCrops.length > 0, pMon.length > 0, pVer.length > 0, pHar.length > 0];
   const done = [pCrops.length > 0, pMon.length > 0, pVer.length > 0, pHar.length > 0, pPack.length > 0];
   const names = [L.crops, "Monitoring", "Verification", "Harvest", "Packing"];
@@ -1243,8 +1297,10 @@ function PlantationDetail({ plantationId, toast }) {
       )}
       <div className="step-bar">
         {names.map((n, i) => (
-          <button key={n} className={`step ${step === i ? "active" : ""} ${done[i] ? "done" : ""} ${!unlocked[i] ? "locked" : ""}`} onClick={() => openStep(i)}>
-            {done[i] ? <FiCheckCircle className="step-icon" /> : !unlocked[i] ? <FiLock className="step-icon" /> : <span className="step-index">{i + 1}</span>}
+          <button key={n} className={`step-btn ${step === i ? "active" : ""} ${done[i] ? "done" : ""} ${!unlocked[i] ? "locked" : ""}`} onClick={() => openStep(i)}>
+            <span className="step-indicator">
+              {done[i] ? <FiCheckCircle /> : !unlocked[i] ? <FiLock /> : <span className="step-num">{i + 1}</span>}
+            </span>
             <span>{n}</span>
           </button>
         ))}
@@ -1325,40 +1381,26 @@ function PlantationDetail({ plantationId, toast }) {
       )}
 
       {step < 4 && done[step] && (
-        <div className="actions right">
-          <button className="btn btn-primary" onClick={() => openStep(step + 1)}>Next: {names[step + 1]} {"->"}</button>
+        <div className="next-btn-wrap">
+          <button className="btn btn-primary" onClick={() => openStep(step + 1)}>Next: {names[step + 1]} <FiArrowRight /></button>
         </div>
       )}
 
       {done[4] && (
         <div className="card video-card">
-          <h3>Generate Traceability Video</h3>
-          <p className="muted">Create lifecycle video for this farm.</p>
-          <button
-            className="btn btn-outline"
-            onClick={async () => {
-              try {
-                await fetch("https://maatiaivideogenerator.onrender.com", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    logo: "",
-                    intro_logo: "",
-                    farmer_img: "",
-                    farm_img: "",
-                    process_images: pImgs.map((x) => x.imageUrl).filter(Boolean),
-                    certificate_img: "",
-                    end_img: "",
-                  }),
-                });
-                toast("Video generation initiated!", "success");
-              } catch {
-                toast("Video service unavailable right now.", "error");
-              }
-            }}
-          >
-            Generate
-          </button>
+          <div className="video-card-left">
+            <div className="video-icon"><FiVideo /></div>
+            <div>
+              <div className="card-title" style={{ margin: 0 }}>Generate Traceability Video</div>
+              <p className="muted">Create a lifecycle video for this farm to share with customers.</p>
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={async () => {
+            try {
+              await fetch("https://maatiaivideogenerator.onrender.com", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ logo: "", intro_logo: "", farmer_img: "", farm_img: "", process_images: pImgs.map((x) => x.imageUrl).filter(Boolean), certificate_img: "", end_img: "" }) });
+              toast("Video generation initiated!", "success");
+            } catch { toast("Video service unavailable right now.", "error"); }
+          }}>Generate</button>
         </div>
       )}
     </div>
@@ -1425,7 +1467,7 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
         <button className="btn btn-outline" onClick={add}>Capture</button>
       </div>
       {list.length > 0 && (
-        <ul className="records">
+        <div className="record-list">
           {list.map((it) => (
             <li key={it.id}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -1440,7 +1482,7 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
               <button className="link-danger" onClick={() => remove(it.id)}>Delete</button>
             </li>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
@@ -1630,20 +1672,48 @@ function CropsStep({ L, pCrops, addCrop, delCrop, confirm, plantationId, pImgs, 
   };
   return (
     <>
-      <WorkflowStep title={`Add ${L.crop}`}>
-        <div className="form-row">
-          <select className="input" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))}>
-            <option value="">Select {L.crop}</option>
-            {L.options.map((o) => <option key={o}>{o}</option>)}
-          </select>
-          {f.name === "Other" && <input className="input" placeholder="Custom Name" value={f.customName} onChange={(e) => setF((x) => ({ ...x, customName: e.target.value }))} />}
-          <input className="input" placeholder={L.variety} value={f.variety} onChange={(e) => setF((x) => ({ ...x, variety: e.target.value }))} />
-          <input className="input" type="date" value={f.sowingDate} onChange={(e) => setF((x) => ({ ...x, sowingDate: e.target.value }))} />
-          <input className="input" type="date" value={f.expectedHarvest} onChange={(e) => setF((x) => ({ ...x, expectedHarvest: e.target.value }))} />
-          <button className="btn btn-primary" onClick={add}>Add</button>
+      <WorkflowSection title={`🌱 Add ${L.crop}`}>
+        <div className="form-grid">
+          <div className="field-wrap">
+            <label className="field-label">{L.crop} Type *</label>
+            <select className="input" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))}>
+              <option value="">Select {L.crop}…</option>
+              {L.options.map((o) => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          {f.name === "Other" && (
+            <div className="field-wrap">
+              <label className="field-label">Custom Name *</label>
+              <input className="input" placeholder="Enter custom crop name" value={f.customName} onChange={(e) => setF((x) => ({ ...x, customName: e.target.value }))} />
+            </div>
+          )}
+          <div className="field-wrap">
+            <label className="field-label">{L.variety} *</label>
+            <input className="input" placeholder={L.variety === "Variety" ? "e.g. Hybrid-5, Baby Leaf" : "e.g. SIS Hatchery Batch-22"} value={f.variety} onChange={(e) => setF((x) => ({ ...x, variety: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Sowing / Stocking Date *</label>
+            <input className="input" type="date" value={f.sowingDate} onChange={(e) => setF((x) => ({ ...x, sowingDate: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Expected Harvest Date</label>
+            <input className="input" type="date" value={f.expectedHarvest} onChange={(e) => setF((x) => ({ ...x, expectedHarvest: e.target.value }))} />
+          </div>
+          <div className="field-wrap field-btn-wrap">
+            <button className="btn btn-primary" onClick={add}><FiPlus /> Add {L.crop}</button>
+          </div>
         </div>
-        <ul className="records">{pCrops.map((c) => <li key={c.id}>{c.name} ({c.variety}) <button className="link-danger" onClick={() => remove(c.id)}>Delete</button></li>)}</ul>
-      </WorkflowStep>
+        {pCrops.length > 0 && (
+          <div className="record-list mt">
+            {pCrops.map((c) => (
+              <div key={c.id} className="record-row">
+                <span className="record-text"><FiStar style={{ color: "#f59e0b" }} /> <strong>{c.name}</strong> · {c.variety} · <span className="muted">Sown {c.sowingDate}</span></span>
+                <button className="icon-btn danger" onClick={() => remove(c.id)}><FiTrash2 /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </WorkflowSection>
       <ProcessEntries stage="Crops" plantationId={plantationId} pImgs={pImgs} addProcessImage={addProcessImage} delProcessImage={delProcessImage} confirm={confirm} toast={toast} />
     </>
   );
@@ -1673,23 +1743,51 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
   };
   return (
     <>
-      <WorkflowStep title="Add Monitoring Record">
-        <div className="form-row">
-          <input className="input" type="date" value={f.date} onChange={(e) => setF((x) => ({ ...x, date: e.target.value }))} />
-          <select className="input" value={f.inputType} onChange={(e) => setF((x) => ({ ...x, inputType: e.target.value }))}>
-            <option value="">Input Type</option>
-            {L.monitoring.map((o) => <option key={o}>{o}</option>)}
-          </select>
-          {f.inputType === "Other" && <input className="input" placeholder="Custom type" value={f.customType} onChange={(e) => setF((x) => ({ ...x, customType: e.target.value }))} />}
-          <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
-            <option value="">Select {L.crop}</option>
-            {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <input className="input" placeholder="Remarks" value={f.remarks} onChange={(e) => setF((x) => ({ ...x, remarks: e.target.value }))} />
-          <button className="btn btn-primary" onClick={add}>Add</button>
+      <WorkflowSection title="📋 Add Monitoring Record">
+        <div className="form-grid">
+          <div className="field-wrap">
+            <label className="field-label">Date *</label>
+            <input className="input" type="date" value={f.date} onChange={(e) => setF((x) => ({ ...x, date: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Input Type *</label>
+            <select className="input" value={f.inputType} onChange={(e) => setF((x) => ({ ...x, inputType: e.target.value }))}>
+              <option value="">Select input type…</option>
+              {L.monitoring.map((o) => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          {f.inputType === "Other" && (
+            <div className="field-wrap">
+              <label className="field-label">Custom Type *</label>
+              <input className="input" placeholder="Describe the input type" value={f.customType} onChange={(e) => setF((x) => ({ ...x, customType: e.target.value }))} />
+            </div>
+          )}
+          <div className="field-wrap">
+            <label className="field-label">Select {L.crop} *</label>
+            <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
+              <option value="">Choose {L.crop.toLowerCase()}…</option>
+              {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.variety})</option>)}
+            </select>
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Remarks / Notes</label>
+            <input className="input" placeholder="e.g. Applied NPK 12-12-17 at 50kg/acre" value={f.remarks} onChange={(e) => setF((x) => ({ ...x, remarks: e.target.value }))} />
+          </div>
+          <div className="field-wrap field-btn-wrap">
+            <button className="btn btn-primary" onClick={add}><FiPlus /> Add Record</button>
+          </div>
         </div>
-        <ul className="records">{pMon.map((m) => <li key={m.id}>{m.inputType} - {m.date} <button className="link-danger" onClick={() => remove(m.id)}>Delete</button></li>)}</ul>
-      </WorkflowStep>
+        {pMon.length > 0 && (
+          <div className="record-list mt">
+            {pMon.map((m) => (
+              <div key={m.id} className="record-row">
+                <span className="record-text"><FiDroplet style={{ color: "#2563eb" }} /> <strong>{m.inputType}</strong> · <span className="muted">{m.date}</span>{m.remarks && <> · {m.remarks}</>}</span>
+                <button className="icon-btn danger" onClick={() => remove(m.id)}><FiTrash2 /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </WorkflowSection>
       <ProcessEntries stage="Monitoring" plantationId={plantationId} pImgs={pImgs} addProcessImage={addProcessImage} delProcessImage={delProcessImage} confirm={confirm} toast={toast} />
     </>
   );
@@ -1718,25 +1816,51 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
   };
   return (
     <>
-      <WorkflowStep title="Add Verification">
-        <div className="form-row">
-          <input className="input" type="date" value={f.inspectionDate} onChange={(e) => setF((x) => ({ ...x, inspectionDate: e.target.value }))} />
-          <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
-            <option value="">Select {L.crop}</option>
-            {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select className="input" value={f.health} onChange={(e) => setF((x) => ({ ...x, health: e.target.value }))}>
-            {HEALTH_OPTIONS.map((h) => <option key={h}>{h}</option>)}
-          </select>
-          <select className="input" value={f.approved ? "yes" : "no"} onChange={(e) => setF((x) => ({ ...x, approved: e.target.value === "yes" }))}>
-            <option value="yes">Approved</option>
-            <option value="no">Not Approved</option>
-          </select>
-          <button className="btn btn-outline">Capture Certificate</button>
-          <button className="btn btn-primary" onClick={add}>Add</button>
+      <WorkflowSection title="✅ Add Verification">
+        <div className="form-grid">
+          <div className="field-wrap">
+            <label className="field-label">Inspection Date *</label>
+            <input className="input" type="date" value={f.inspectionDate} onChange={(e) => setF((x) => ({ ...x, inspectionDate: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Select {L.crop} *</label>
+            <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
+              <option value="">Choose {L.crop.toLowerCase()}…</option>
+              {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.variety})</option>)}
+            </select>
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Crop Health *</label>
+            <select className="input" value={f.health} onChange={(e) => setF((x) => ({ ...x, health: e.target.value }))}>
+              {HEALTH_OPTIONS.map((h) => <option key={h}>{h}</option>)}
+            </select>
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Harvest Approval *</label>
+            <select className="input" value={f.approved ? "yes" : "no"} onChange={(e) => setF((x) => ({ ...x, approved: e.target.value === "yes" }))}>
+              <option value="yes">✅ Approved for Harvest</option>
+              <option value="no">❌ Not Approved</option>
+            </select>
+          </div>
+          <div className="field-wrap field-btn-wrap btn-row">
+            <button className="btn btn-outline"><FiCamera /> Capture Certificate</button>
+            <button className="btn btn-primary" onClick={add}><FiPlus /> Add</button>
+          </div>
         </div>
-        <ul className="records">{pVer.map((v) => <li key={v.id}>{v.health} ({v.approved ? "Approved" : "Not Approved"}) <button className="link-danger" onClick={() => remove(v.id)}>Delete</button></li>)}</ul>
-      </WorkflowStep>
+        {pVer.length > 0 && (
+          <div className="record-list mt">
+            {pVer.map((v) => (
+              <div key={v.id} className="record-row">
+                <span className="record-text">
+                  <FiCheckCircle style={{ color: v.approved ? "#1f8a43" : "#c0392b" }} />
+                  <strong>{v.health}</strong> · {v.approved ? "Approved ✓" : "Not Approved ✗"} · <span className="muted">{v.inspectionDate}</span>
+                </span>
+                <button className="icon-btn danger" onClick={() => remove(v.id)}><FiTrash2 /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </WorkflowSection>
       <ProcessEntries stage="Verification" plantationId={plantationId} pImgs={pImgs} addProcessImage={addProcessImage} delProcessImage={delProcessImage} confirm={confirm} toast={toast} />
     </>
   );
@@ -1766,23 +1890,56 @@ function HarvestStep({ pHar, addHarvest, delHarvest, pCrops, confirm, plantation
   };
   return (
     <>
-      <WorkflowStep title="Record Harvest">
-        <div className="form-row">
-          <input className="input" type="date" value={f.harvestDate} onChange={(e) => setF((x) => ({ ...x, harvestDate: e.target.value }))} />
-          <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
-            <option value="">Select {L.crop}</option>
-            {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <input className="input" type="number" placeholder="Total" value={f.total} onChange={(e) => setF((x) => ({ ...x, total: e.target.value }))} />
-          <select className="input" value={f.unit} onChange={(e) => setF((x) => ({ ...x, unit: e.target.value }))}>
-            {UNIT_OPTIONS.map((u) => <option key={u}>{u}</option>)}
-          </select>
-          <input className="input" type="number" placeholder="Rejected" value={f.rejected} onChange={(e) => setF((x) => ({ ...x, rejected: e.target.value }))} />
-          <div className="accepted-box">Accepted: {accepted} {f.unit}</div>
-          <button className="btn btn-primary" onClick={add}>Add</button>
+      <WorkflowSection title="🌾 Record Harvest">
+        <div className="form-grid">
+          <div className="field-wrap">
+            <label className="field-label">Harvest Date *</label>
+            <input className="input" type="date" value={f.harvestDate} onChange={(e) => setF((x) => ({ ...x, harvestDate: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Select {L.crop} *</label>
+            <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
+              <option value="">Choose {L.crop.toLowerCase()}…</option>
+              {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.variety})</option>)}
+            </select>
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Total Quantity *</label>
+            <input className="input" type="number" placeholder="e.g. 500" value={f.total} onChange={(e) => setF((x) => ({ ...x, total: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Unit *</label>
+            <select className="input" value={f.unit} onChange={(e) => setF((x) => ({ ...x, unit: e.target.value }))}>
+              {UNIT_OPTIONS.map((u) => <option key={u}>{u}</option>)}
+            </select>
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Rejected Quantity</label>
+            <input className="input" type="number" placeholder="e.g. 20 (damaged / substandard)" value={f.rejected} onChange={(e) => setF((x) => ({ ...x, rejected: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Accepted (auto-calculated)</label>
+            <div className="accepted-box">{accepted} {f.unit} accepted</div>
+          </div>
+          <div className="field-wrap field-btn-wrap">
+            <button className="btn btn-primary" onClick={add}><FiPlus /> Record Harvest</button>
+          </div>
         </div>
-        <ul className="records">{pHar.map((h) => <li key={h.id}>{h.harvestDate} - Accepted: {h.accepted} {h.unit} <button className="link-danger" onClick={() => remove(h.id)}>Delete</button></li>)}</ul>
-      </WorkflowStep>
+        {pHar.length > 0 && (
+          <div className="record-list mt">
+            {pHar.map((h) => (
+              <div key={h.id} className="record-row">
+                <span className="record-text">
+                  <FiTrendingUp style={{ color: "#1f8a43" }} />
+                  <strong>{h.harvestDate}</strong> · Accepted: <strong style={{ color: "#1f8a43" }}>{h.accepted} {h.unit}</strong>
+                  {h.rejected > 0 && <> · Rejected: <strong style={{ color: "#c0392b" }}>{h.rejected} {h.unit}</strong></>}
+                </span>
+                <button className="icon-btn danger" onClick={() => remove(h.id)}><FiTrash2 /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </WorkflowSection>
       <ProcessEntries stage="Harvest" plantationId={plantationId} pImgs={pImgs} addProcessImage={addProcessImage} delProcessImage={delProcessImage} confirm={confirm} toast={toast} />
     </>
   );
@@ -1823,26 +1980,73 @@ function PackingStep({ pPack, pHar, addPacking, delPacking, confirm, plantationI
   };
   return (
     <>
-      <WorkflowStep title="Record Packing">
-        <div className="form-row">
-          <input className="input" type="date" value={f.packingDate} onChange={(e) => setF((x) => ({ ...x, packingDate: e.target.value }))} />
-          <select className="input" value={f.harvestId} onChange={(e) => setF((x) => ({ ...x, harvestId: e.target.value }))}>
-            <option value="">Select Harvest</option>
-            {pHar.map((h) => <option key={h.id} value={h.id}>{h.harvestDate} ({h.accepted} {h.unit})</option>)}
-          </select>
-          <input className="input" placeholder="Packing Size" value={f.packingSize} onChange={(e) => setF((x) => ({ ...x, packingSize: e.target.value }))} />
-          <input className="input" type="number" placeholder="No. of Packages" value={f.numPackages} onChange={(e) => setF((x) => ({ ...x, numPackages: e.target.value }))} />
-          <input className="input" type="number" placeholder="Net Weight (kg)" value={f.netWeight} onChange={(e) => setF((x) => ({ ...x, netWeight: e.target.value }))} />
-          <input className="input" placeholder="Warehouse" value={f.warehouse} onChange={(e) => setF((x) => ({ ...x, warehouse: e.target.value }))} />
-          <input className="input" placeholder="Street" value={f.street} onChange={(e) => setF((x) => ({ ...x, street: e.target.value }))} />
-          <input className="input" placeholder="City" value={f.city} onChange={(e) => setF((x) => ({ ...x, city: e.target.value }))} />
-          <input className="input" placeholder="State" value={f.state} onChange={(e) => setF((x) => ({ ...x, state: e.target.value }))} />
-          <input className="input" placeholder="Pincode" value={f.pincode} onChange={(e) => setF((x) => ({ ...x, pincode: e.target.value }))} />
-          <input className="input" placeholder="Country" value={f.country} onChange={(e) => setF((x) => ({ ...x, country: e.target.value }))} />
-          <button className="btn btn-primary" onClick={add}>Add</button>
+      <WorkflowSection title="📦 Record Packing">
+        <div className="form-grid">
+          <div className="field-wrap">
+            <label className="field-label">Packing Date *</label>
+            <input className="input" type="date" value={f.packingDate} onChange={(e) => setF((x) => ({ ...x, packingDate: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Link to Harvest *</label>
+            <select className="input" value={f.harvestId} onChange={(e) => setF((x) => ({ ...x, harvestId: e.target.value }))}>
+              <option value="">Select harvest batch…</option>
+              {pHar.map((h) => <option key={h.id} value={h.id}>{h.harvestDate} — {h.accepted} {h.unit} accepted</option>)}
+            </select>
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Package Size *</label>
+            <input className="input" placeholder="e.g. 50kg bag, 25kg sack" value={f.packingSize} onChange={(e) => setF((x) => ({ ...x, packingSize: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Number of Packages</label>
+            <input className="input" type="number" placeholder="e.g. 10" value={f.numPackages} onChange={(e) => setF((x) => ({ ...x, numPackages: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Net Weight (kg) *</label>
+            <input className="input" type="number" placeholder="Total net weight in kg" value={f.netWeight} onChange={(e) => setF((x) => ({ ...x, netWeight: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Warehouse Name</label>
+            <input className="input" placeholder="e.g. Green Cold Storage" value={f.warehouse} onChange={(e) => setF((x) => ({ ...x, warehouse: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Street Address</label>
+            <input className="input" placeholder="e.g. MG Road, Sector 5" value={f.street} onChange={(e) => setF((x) => ({ ...x, street: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">City</label>
+            <input className="input" placeholder="e.g. Pune" value={f.city} onChange={(e) => setF((x) => ({ ...x, city: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">State</label>
+            <input className="input" placeholder="e.g. Maharashtra" value={f.state} onChange={(e) => setF((x) => ({ ...x, state: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Pincode</label>
+            <input className="input" placeholder="6-digit PIN" value={f.pincode} onChange={(e) => setF((x) => ({ ...x, pincode: e.target.value }))} />
+          </div>
+          <div className="field-wrap">
+            <label className="field-label">Country</label>
+            <input className="input" placeholder="Country name" value={f.country} onChange={(e) => setF((x) => ({ ...x, country: e.target.value }))} />
+          </div>
+          <div className="field-wrap field-btn-wrap">
+            <button className="btn btn-primary" onClick={add}><FiPlus /> Record Packing</button>
+          </div>
         </div>
-        <ul className="records">{pPack.map((pk) => <li key={pk.id}>{pk.packingDate} - {pk.numPackages} x {pk.packingSize} ({pk.netWeight} kg) <button className="link-danger" onClick={() => remove(pk.id)}>Delete</button></li>)}</ul>
-      </WorkflowStep>
+        {pPack.length > 0 && (
+          <div className="record-list mt">
+            {pPack.map((pk) => (
+              <div key={pk.id} className="record-row">
+                <span className="record-text">
+                  <FiPackage style={{ color: "#7c3aed" }} />
+                  <strong>{pk.packingDate}</strong> · {pk.numPackages} × {pk.packingSize} · <strong>{pk.netWeight} kg</strong> · <span className="muted">{pk.city}, {pk.state}</span>
+                </span>
+                <button className="icon-btn danger" onClick={() => remove(pk.id)}><FiTrash2 /></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </WorkflowSection>
       <ProcessEntries stage="Packing" plantationId={plantationId} pImgs={pImgs} addProcessImage={addProcessImage} delProcessImage={delProcessImage} confirm={confirm} toast={toast} />
     </>
   );
@@ -1862,10 +2066,7 @@ function SupplierDashboard({ navigate, toast }) {
   const toggle = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   const create = () => {
-    if (!selected.length) {
-      toast("Select at least one packing", "error");
-      return;
-    }
+    if (!selected.length) { toast("Select at least one packing unit", "error"); return; }
     const id = `PATCH-${Date.now().toString(36).toUpperCase()}`;
     const batch = { id, supplierId: user.id, packingIds: selected, description: desc, totalWeight: total, createdAt: TODAY };
     void addBatch(batch)
@@ -1892,40 +2093,66 @@ function SupplierDashboard({ navigate, toast }) {
   return (
     <div className="page-container">
       {dialog}
-      <h1>Supplier Dashboard</h1>
-      <div className="stats-grid">
-        <div className="stat">Available Packings: {available.length}</div>
-        <div className="stat">Batches Created: {mine.length}</div>
+      <div className="page-header">
+        <div><h1>Supplier Dashboard</h1><p className="page-subtitle">Select packings and create traceable batches with QR codes</p></div>
+      </div>
+      <div className="stats-row">
+        <StatCard icon={<FiPackage />} label="Available Packings" value={available.length} color="green" />
+        <StatCard icon={<FiGrid />} label="Batches Created" value={mine.length} color="blue" />
       </div>
       <div className="card">
-        <h3>Select Packings</h3>
-        <div className="records">
-          {available.map((pk) => (
-            <div key={pk.id} className={`check-row ${selected.includes(pk.id) ? "packing-selected" : ""}`} onClick={() => toggle(pk.id)}>
-              <input type="checkbox" checked={selected.includes(pk.id)} readOnly />
-              <span>{pk.numPackages || 0} packages x {pk.packingSize || "-"} | {pk.netWeight} kg | {pk.packingDate}</span>
-            </div>
-          ))}
-        </div>
+        <div className="card-title"><FiPackage /> Select Packings to Bundle</div>
+        {available.length === 0 ? (
+          <div className="empty-state small"><p>No available packings. Growers need to complete their packing step first.</p></div>
+        ) : (
+          <div className="packing-list">
+            {available.map((pk) => (
+              <div key={pk.id} className={`packing-row ${selected.includes(pk.id) ? "selected" : ""}`} onClick={() => toggle(pk.id)}>
+                <input type="checkbox" checked={selected.includes(pk.id)} readOnly />
+                <div className="packing-info">
+                  <span className="packing-main">{pk.numPackages || 0} packages × {pk.packingSize || "—"}</span>
+                  <span className="packing-sub">{pk.netWeight} kg · {pk.packingDate} · {pk.city}, {pk.state}</span>
+                </div>
+                <span className="packing-weight">{pk.netWeight} kg</span>
+              </div>
+            ))}
+          </div>
+        )}
         {selected.length > 0 && (
-          <div className="form-row">
-            <input className="input" placeholder="Batch description" value={desc} onChange={(e) => setDesc(e.target.value)} />
-            <button className="btn btn-primary" onClick={create}>Create Batch ({selected.length} items)</button>
+          <div className="batch-create-panel">
+            <div className="batch-summary">Selected: <strong>{selected.length} packings</strong> · Total: <strong>{total} kg</strong></div>
+            <div className="form-grid two-col">
+              <div className="field-wrap">
+                <label className="field-label">Batch Description</label>
+                <input className="input" placeholder="e.g. Premium Tomato Batch — Export Quality" value={desc} onChange={(e) => setDesc(e.target.value)} />
+              </div>
+              <div className="field-wrap field-btn-wrap">
+                <button className="btn btn-primary" onClick={create}><FiPlus /> Create Batch ({selected.length})</button>
+              </div>
+            </div>
           </div>
         )}
       </div>
-      <div className="card-grid">
-        {mine.map((b) => (
-          <div key={b.id} className="batch-card" onClick={() => setBatchModal(b)}>
-            <h4>{b.id}</h4>
-            <p>{b.totalWeight} kg | {b.createdAt}</p>
-            <div className="actions">
-              <button className="btn btn-outline" onClick={() => navigate(`/patch/${b.id}`)}>View Trace Page</button>
-              <button className="btn btn-danger" onClick={(e) => { e.stopPropagation(); removeBatch(b.id); }}>Delete</button>
-            </div>
+      {mine.length > 0 && (
+        <div className="card">
+          <div className="card-title"><FiGrid /> My Batches</div>
+          <div className="card-grid">
+            {mine.map((b) => (
+              <div key={b.id} className="batch-card" onClick={() => setBatchModal(b)}>
+                <div className="batch-card-top">
+                  <code className="batch-id">{b.id}</code>
+                  <button className="icon-btn danger" onClick={(e) => { e.stopPropagation(); removeBatch(b.id); }}><FiTrash2 /></button>
+                </div>
+                <div className="batch-weight">{b.totalWeight} kg total</div>
+                <p className="muted">{b.description || "No description"} · {b.createdAt}</p>
+                <button className="btn btn-outline full-width mt" onClick={(e) => { e.stopPropagation(); navigate(`/patch/${b.id}`); }}>
+                  View Trace Page <FiArrowRight />
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
       {batchModal && <BatchModal batch={batchModal} onClose={() => setBatchModal(null)} navigate={navigate} />}
     </div>
   );
@@ -1935,16 +2162,23 @@ function BatchModal({ batch, onClose, navigate }) {
   const qrValue = `${window.location.origin}/patch/${batch.id}`;
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box">
-        <button className="auth-close-btn" onClick={onClose} aria-label="Close">X</button>
-        <h3>Batch Created</h3>
+      <div className="modal-box batch-modal">
+        <button className="modal-close" onClick={onClose}><FiX /></button>
+        <div className="batch-modal-header">
+          <div className="batch-modal-icon">🎉</div>
+          <h3>Batch Created!</h3>
+        </div>
         <div className="qr-box"><QRCode value={qrValue} size={180} /></div>
-        <p><strong>Batch ID:</strong> <code>{batch.id}</code></p>
-        <p><strong>Total Weight:</strong> {batch.totalWeight} kg</p>
-        <p><strong>Description:</strong> {batch.description || "-"}</p>
-        <p><strong>Created:</strong> {batch.createdAt}</p>
-        <p><strong>Items:</strong> {batch.packingIds.length}</p>
-        <button className="btn btn-primary" onClick={() => { onClose(); navigate(`/patch/${batch.id}`); }}>View Public Trace Page</button>
+        <div className="batch-modal-info">
+          <div className="kv-pair"><span>Batch ID</span><code>{batch.id}</code></div>
+          <div className="kv-pair"><span>Total Weight</span><strong>{batch.totalWeight} kg</strong></div>
+          <div className="kv-pair"><span>Description</span><strong>{batch.description || "—"}</strong></div>
+          <div className="kv-pair"><span>Created</span><strong>{batch.createdAt}</strong></div>
+          <div className="kv-pair"><span>Items</span><strong>{batch.packingIds.length} packings</strong></div>
+        </div>
+        <button className="btn btn-primary full-width" onClick={() => { onClose(); navigate(`/patch/${batch.id}`); }}>
+          View Public Trace Page <FiArrowRight />
+        </button>
       </div>
     </div>
   );
@@ -1975,36 +2209,41 @@ function ReportsPage() {
   const { plantations, crops, harvests } = useData();
   return (
     <div className="page-container">
-      <h1>Reports</h1>
+      <div className="page-header">
+        <div><h1>Reports</h1><p className="page-subtitle">Overview of all plantations, crops, and harvest data</p></div>
+      </div>
       <div className="card">
-        <h3>Plantations</h3>
+        <div className="card-title"><FiGrid /> Plantations</div>
         <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Name</th><th>Location</th><th>Status</th><th>Created</th></tr></thead>
             <tbody>
-              {plantations.length === 0 ? <tr><td colSpan={4}>No data</td></tr> : plantations.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.location}</td><td>{p.status}</td><td>{p.createdAt}</td></tr>)}
+              {plantations.length === 0 ? <tr><td colSpan={4} className="table-empty">No data</td></tr>
+                : plantations.map((p) => <tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.location}</td><td><span className="status-chip active">● {p.status}</span></td><td>{p.createdAt}</td></tr>)}
             </tbody>
           </table>
         </div>
       </div>
       <div className="card">
-        <h3>Crops</h3>
+        <div className="card-title"><FiStar /> Crops</div>
         <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Crop</th><th>Variety</th><th>Sowing Date</th><th>Expected Harvest</th></tr></thead>
             <tbody>
-              {crops.length === 0 ? <tr><td colSpan={4}>No data</td></tr> : crops.map((c) => <tr key={c.id}><td>{c.name}</td><td>{c.variety || "-"}</td><td>{c.sowingDate}</td><td>{c.expectedHarvest || "-"}</td></tr>)}
+              {crops.length === 0 ? <tr><td colSpan={4} className="table-empty">No data</td></tr>
+                : crops.map((c) => <tr key={c.id}><td><strong>{c.name}</strong></td><td>{c.variety || "—"}</td><td>{c.sowingDate}</td><td>{c.expectedHarvest || "—"}</td></tr>)}
             </tbody>
           </table>
         </div>
       </div>
       <div className="card">
-        <h3>Harvests</h3>
+        <div className="card-title"><FiTrendingUp /> Harvests</div>
         <div className="table-wrap">
           <table className="data-table">
             <thead><tr><th>Date</th><th>Total</th><th>Rejected</th><th>Accepted</th><th>Unit</th></tr></thead>
             <tbody>
-              {harvests.length === 0 ? <tr><td colSpan={5}>No data</td></tr> : harvests.map((h) => <tr key={h.id}><td>{h.harvestDate}</td><td>{h.total}</td><td>{h.rejected || 0}</td><td>{h.accepted}</td><td>{h.unit}</td></tr>)}
+              {harvests.length === 0 ? <tr><td colSpan={5} className="table-empty">No data</td></tr>
+                : harvests.map((h) => <tr key={h.id}><td>{h.harvestDate}</td><td>{h.total}</td><td><span style={{ color: "#c0392b" }}>{h.rejected || 0}</span></td><td><span style={{ color: "#1f8a43" }}><strong>{h.accepted}</strong></span></td><td>{h.unit}</td></tr>)}
             </tbody>
           </table>
         </div>
@@ -2028,57 +2267,68 @@ function ProfilePage() {
   const mineImages = processImages.filter((i) => mineIds.includes(i.plantationId));
   const stages = ["Crops", "Monitoring", "Verification", "Harvest", "Packing", "Certificate"];
 
-  const removeImage = async (id) => {
-    const ok = await confirm("Delete this image entry?");
-    if (!ok) return;
-    delProcessImage(id);
-  };
+  const removeImage = async (id) => { const ok = await confirm("Delete this entry?"); if (!ok) return; delProcessImage(id); };
 
   return (
     <div className="page-container">
       {dialog}
-      <h1>Profile</h1>
-      <div className="card">
-        <p><strong>Name:</strong> {name}</p>
-        <p><strong>Email:</strong> {user?.email}</p>
-        <p><strong>Role:</strong> {user?.role}</p>
+      <div className="profile-banner">
+        <div className="profile-avatar-lg"><FiUser /></div>
+        <div className="profile-banner-info">
+          <h1>{name}</h1>
+          <span className="badge-chip capitalize">{user?.role}</span>
+        </div>
         {!editing ? (
-          <button className="btn btn-outline" onClick={() => setEditing(true)}>Edit</button>
+          <button className="btn btn-ghost profile-edit-btn" onClick={() => setEditing(true)}><FiEdit2 /> Edit Profile</button>
         ) : (
-          <div className="actions">
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
-            <button className="btn btn-primary" onClick={() => setEditing(false)}>Save</button>
-            <button className="btn btn-ghost" onClick={() => { setName(user?.name || ""); setEditing(false); }}>Cancel</button>
+          <div className="profile-edit-row">
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
+            <button className="btn btn-primary" onClick={() => setEditing(false)}><FiCheck /> Save</button>
+            <button className="btn btn-ghost" onClick={() => { setName(user?.name || ""); setEditing(false); }}><FiX /></button>
           </div>
         )}
       </div>
-      <div className="stats-grid">
+
+      <div className="info-grid">
+        <div className="info-item"><FiMail className="info-icon" /><span>Email</span><strong>{user?.email}</strong></div>
+        <div className="info-item"><FiShield className="info-icon" /><span>Role</span><strong className="capitalize">{user?.role}</strong></div>
+        <div className="info-item"><FiCalendar className="info-icon" /><span>Platform</span><strong>Seed-to-Batch</strong></div>
+        <div className="info-item"><FiCheck className="info-icon" /><span>Status</span><strong style={{ color: "#1f8a43" }}>Active ✓</strong></div>
+      </div>
+
+      <div className="stats-row">
         {user?.role === "grower" ? (
           <>
-            <div className="stat">Plantations: {mine.length}</div>
-            <div className="stat">Crops: {mineCrops.length}</div>
-            <div className="stat">Harvests: {mineHarvests.length}</div>
-            <div className="stat">Packings: {minePackings.length}</div>
+            <StatCard icon={<FiGrid />} label="Plantations" value={mine.length} color="green" />
+            <StatCard icon={<FiStar />} label="Crops" value={mineCrops.length} color="amber" />
+            <StatCard icon={<FiTrendingUp />} label="Harvests" value={mineHarvests.length} color="blue" />
+            <StatCard icon={<FiPackage />} label="Packings" value={minePackings.length} color="purple" />
           </>
         ) : (
           <>
-            <div className="stat">Batches Created: {mineBatches.length}</div>
-            <div className="stat">Packings Managed: {minePackings.length}</div>
+            <StatCard icon={<FiGrid />} label="Batches Created" value={mineBatches.length} color="blue" />
+            <StatCard icon={<FiPackage />} label="Packings Managed" value={minePackings.length} color="green" />
           </>
         )}
       </div>
+
       {mineImages.length > 0 && (
         <div className="card">
-          <h3>Process Image Gallery</h3>
+          <div className="card-title"><FiCamera /> Process Image Gallery</div>
           {stages.map((stage) => {
             const list = mineImages.filter((img) => img.stage === stage);
             if (!list.length) return null;
             return (
               <div key={stage} className="gallery-group">
-                <h4>{stage}</h4>
-                <ul className="records">
-                  {list.map((img) => <li key={img.id}>{img.name} ({img.date}) <button className="link-danger" onClick={() => removeImage(img.id)}>Delete</button></li>)}
-                </ul>
+                <div className="gallery-stage-label">{stage}</div>
+                <div className="record-list">
+                  {list.map((img) => (
+                    <div key={img.id} className="record-row">
+                      <span className="record-text"><FiCamera /> {img.name} <span className="muted">({img.date})</span></span>
+                      <button className="icon-btn danger" onClick={() => removeImage(img.id)}><FiTrash2 /></button>
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })}
@@ -2425,5 +2675,6 @@ export default function TraceConnect() {
     </div>
   );
 }
+
 
 
