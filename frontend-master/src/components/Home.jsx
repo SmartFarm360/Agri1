@@ -1,10 +1,15 @@
 "use client"
 import { useNavigate } from "react-router-dom"
 import { translations } from "../utils/translations"
+import TraceabilityPage from "./TraceabilityPage"
 import "./Home.css"
 import drone2 from "/src/assets/drone2.jpg"
 
-const Home = ({ currentLanguage }) => {
+const Home = ({
+  currentLanguage,
+  onTraceabilityClick,
+  onGoToDashboard,
+}) => {
   const navigate = useNavigate()
   const t = translations?.[currentLanguage] ?? translations["en"]
 
@@ -133,6 +138,12 @@ const Home = ({ currentLanguage }) => {
           </div>
         </div> 
       </div>
+
+      <TraceabilityPage
+        embedded
+        onStartMonitoring={onTraceabilityClick}
+        onGoToDashboard={onGoToDashboard}
+      />
     </div>
   )
 }

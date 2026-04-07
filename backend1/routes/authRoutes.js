@@ -3,7 +3,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 
 const authController = require("../controllers/authController");
-const { landDocumentUpload } = require("../middleware/backBlazeUpload");
+const { registerDocumentUpload } = require("../middleware/backBlazeUpload");
 
 /* ✅ FIX: allow preflight */
 router.options("/register", (req, res) => {
@@ -13,7 +13,9 @@ router.options("/register", (req, res) => {
 /* REGISTER */
 router.post(
   "/register",
-  landDocumentUpload.single("landDocument"),
+  registerDocumentUpload.fields([
+    { name: "landDocument", maxCount: 1 },
+  ]),
   authController.register
 );
 

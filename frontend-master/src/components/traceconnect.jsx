@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, createContext, useRef } from "react";
+﻿import { useState, useEffect, useContext, createContext, useRef } from "react";
 import {
   FiLock, FiCheckCircle, FiUser, FiLogOut,
   FiHome, FiList, FiBarChart2, FiPackage, FiAlertTriangle,
@@ -93,7 +93,7 @@ function getTraceabilityErrorMessage(err) {
   }
 
   if (raw.includes("no farm found") || raw.includes("create a farm first")) {
-    return "No farm found for your account. Please add a Farm first (Dashboard → Add Farm), then retry.";
+    return "No farm found for your account. Please add a Farm first (Dashboard -> Add Farm), then retry.";
   }
 
   if (raw.includes("failed to fetch") || raw.includes("networkerror")) {
@@ -105,6 +105,30 @@ function getTraceabilityErrorMessage(err) {
   }
 
   return err?.message || "Something went wrong. Please try again.";
+}
+
+function stabilizeTraceabilityViewport(update) {
+  if (typeof window === "undefined") {
+    update();
+    return;
+  }
+
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const active = document.activeElement;
+
+  if (active instanceof HTMLElement && typeof active.blur === "function") {
+    active.blur();
+  }
+
+  update();
+
+  requestAnimationFrame(() => {
+    window.scrollTo({ left: scrollX, top: scrollY, behavior: "auto" });
+    requestAnimationFrame(() => {
+      window.scrollTo({ left: scrollX, top: scrollY, behavior: "auto" });
+    });
+  });
 }
 
 function fromDbPlantation(row) {
@@ -278,7 +302,7 @@ function getCurrentLocation() {
 }
 
 function formatCoords(value) {
-  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(6) : "—";
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(6) : "-";
 }
 
 function formatDateTime(date) {
@@ -340,10 +364,10 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxHeight, maxLines) {
   if (maxLines && lines.length > maxLines) {
     clipped = lines.slice(0, maxLines);
     let last = clipped[maxLines - 1];
-    while (ctx.measureText(last + "…").width > maxWidth && last.length > 0) {
+    while (ctx.measureText(last + "...").width > maxWidth && last.length > 0) {
       last = last.slice(0, -1).trim();
     }
-    clipped[maxLines - 1] = last ? `${last}…` : "…";
+    clipped[maxLines - 1] = last ? `${last}...` : "...";
   }
 
   let cursorY = y;
@@ -575,7 +599,9 @@ function DataProvider({ children }) {
         polygon_coordinates: farm?.polygon_coordinates,
         status: "active",
       });
-      setPlantations((prev) => [fromDbPlantation(created), ...prev]);
+      stabilizeTraceabilityViewport(() => {
+        setPlantations((prev) => [...prev, fromDbPlantation(created)]);
+      });
       return created;
     }, "Failed to create plantation");
   };
@@ -583,13 +609,15 @@ function DataProvider({ children }) {
   const delPlantation = (pid) => {
     return run(async () => {
       await traceabilityApi.deletePlantation(pid);
-      setPlantations((prev) => prev.filter((x) => x.id !== pid));
-      setCrops((prev) => prev.filter((x) => x.plantationId !== pid));
-      setMonitoring((prev) => prev.filter((x) => x.plantationId !== pid));
-      setVerification((prev) => prev.filter((x) => x.plantationId !== pid));
-      setHarvests((prev) => prev.filter((x) => x.plantationId !== pid));
-      setPackings((prev) => prev.filter((x) => x.plantationId !== pid));
-      setProcessImages((prev) => prev.filter((x) => x.plantationId !== pid));
+      stabilizeTraceabilityViewport(() => {
+        setPlantations((prev) => prev.filter((x) => x.id !== pid));
+        setCrops((prev) => prev.filter((x) => x.plantationId !== pid));
+        setMonitoring((prev) => prev.filter((x) => x.plantationId !== pid));
+        setVerification((prev) => prev.filter((x) => x.plantationId !== pid));
+        setHarvests((prev) => prev.filter((x) => x.plantationId !== pid));
+        setPackings((prev) => prev.filter((x) => x.plantationId !== pid));
+        setProcessImages((prev) => prev.filter((x) => x.plantationId !== pid));
+      });
       return true;
     }, "Failed to delete plantation");
   };
@@ -604,7 +632,9 @@ function DataProvider({ children }) {
         sowing_date: c.sowingDate || null,
         expected_harvest_date: c.expectedHarvest || null,
       });
-      setCrops((prev) => [fromDbCrop(created), ...prev]);
+      stabilizeTraceabilityViewport(() => {
+        setCrops((prev) => [...prev, fromDbCrop(created)]);
+      });
       return created;
     }, "Failed to create crop");
   };
@@ -612,7 +642,9 @@ function DataProvider({ children }) {
   const delCrop = (cid) => {
     return run(async () => {
       await traceabilityApi.deleteCrop(cid);
-      setCrops((prev) => prev.filter((x) => x.id !== cid));
+      stabilizeTraceabilityViewport(() => {
+        setCrops((prev) => prev.filter((x) => x.id !== cid));
+      });
       return true;
     }, "Failed to delete crop");
   };
@@ -628,7 +660,9 @@ function DataProvider({ children }) {
         remarks: m.remarks || null,
         photo_url: m.photoUrl || null,
       });
-      setMonitoring((prev) => [fromDbMonitoring(created), ...prev]);
+      stabilizeTraceabilityViewport(() => {
+        setMonitoring((prev) => [...prev, fromDbMonitoring(created)]);
+      });
       return created;
     }, "Failed to create monitoring record");
   };
@@ -636,7 +670,9 @@ function DataProvider({ children }) {
   const delMonitoring = (mid) => {
     return run(async () => {
       await traceabilityApi.deleteMonitoringRecord(mid);
-      setMonitoring((prev) => prev.filter((x) => x.id !== mid));
+      stabilizeTraceabilityViewport(() => {
+        setMonitoring((prev) => prev.filter((x) => x.id !== mid));
+      });
       return true;
     }, "Failed to delete monitoring record");
   };
@@ -651,7 +687,9 @@ function DataProvider({ children }) {
         crop_health: v.health,
         approved_for_harvest: Boolean(v.approved),
       });
-      setVerification((prev) => [fromDbVerification(created), ...prev]);
+      stabilizeTraceabilityViewport(() => {
+        setVerification((prev) => [...prev, fromDbVerification(created)]);
+      });
       return created;
     }, "Failed to create verification");
   };
@@ -659,7 +697,9 @@ function DataProvider({ children }) {
   const delVerification = (vid) => {
     return run(async () => {
       await traceabilityApi.deleteVerification(vid);
-      setVerification((prev) => prev.filter((x) => x.id !== vid));
+      stabilizeTraceabilityViewport(() => {
+        setVerification((prev) => prev.filter((x) => x.id !== vid));
+      });
       return true;
     }, "Failed to delete verification");
   };
@@ -676,7 +716,9 @@ function DataProvider({ children }) {
         rejected_quantity: Number(h.rejected) || 0,
         unit: h.unit || "kg",
       });
-      setHarvests((prev) => [fromDbHarvest(created), ...prev]);
+      stabilizeTraceabilityViewport(() => {
+        setHarvests((prev) => [...prev, fromDbHarvest(created)]);
+      });
       return created;
     }, "Failed to create harvest");
   };
@@ -684,7 +726,9 @@ function DataProvider({ children }) {
   const delHarvest = (hid) => {
     return run(async () => {
       await traceabilityApi.deleteHarvest(hid);
-      setHarvests((prev) => prev.filter((x) => x.id !== hid));
+      stabilizeTraceabilityViewport(() => {
+        setHarvests((prev) => prev.filter((x) => x.id !== hid));
+      });
       return true;
     }, "Failed to delete harvest");
   };
@@ -706,7 +750,9 @@ function DataProvider({ children }) {
         pincode: pk.pincode || null,
         country: pk.country || null,
       });
-      setPackings((prev) => [fromDbPacking(created), ...prev]);
+      stabilizeTraceabilityViewport(() => {
+        setPackings((prev) => [...prev, fromDbPacking(created)]);
+      });
       return created;
     }, "Failed to create packing");
   };
@@ -714,7 +760,9 @@ function DataProvider({ children }) {
   const delPacking = (pkid) => {
     return run(async () => {
       await traceabilityApi.deletePacking(pkid);
-      setPackings((prev) => prev.filter((x) => x.id !== pkid));
+      stabilizeTraceabilityViewport(() => {
+        setPackings((prev) => prev.filter((x) => x.id !== pkid));
+      });
       return true;
     }, "Failed to delete packing");
   };
@@ -722,16 +770,18 @@ function DataProvider({ children }) {
   const addBatch = (b) => {
     return run(async () => {
       if (!user?.id) throw new Error("Not logged in");
-      const items = (b.packingIds || []).map((pid) => {
-        const packing = packings.find((p) => p.id === pid);
-        const harvest = harvests.find((h) => h.id === packing?.harvestId);
-        return {
-          packing_id: pid,
-          harvest_id: packing?.harvestId,
-          crop_id: harvest?.cropId,
-          plantation_id: packing?.plantationId,
-        };
-      });
+      const items = Array.isArray(b.items) && b.items.length > 0
+        ? b.items
+        : (b.packingIds || []).map((pid) => {
+            const packing = packings.find((p) => p.id === pid);
+            const harvest = harvests.find((h) => h.id === packing?.harvestId);
+            return {
+              packing_id: pid,
+              harvest_id: packing?.harvestId,
+              crop_id: harvest?.cropId,
+              plantation_id: packing?.plantationId,
+            };
+          });
 
       const created = await traceabilityApi.createPatch({
         patch_id: b.id,
@@ -740,7 +790,9 @@ function DataProvider({ children }) {
         unit: b.unit || "kg",
         items,
       });
-      setBatches((prev) => [fromDbPatch(created), ...prev]);
+      stabilizeTraceabilityViewport(() => {
+        setBatches((prev) => [...prev, fromDbPatch(created)]);
+      });
       return created;
     }, "Failed to create patch");
   };
@@ -750,7 +802,9 @@ function DataProvider({ children }) {
       const patch = batches.find((x) => x.id === patchId);
       if (!patch?.dbId) throw new Error("Patch record not found for delete.");
       await traceabilityApi.deletePatchByDbId(patch.dbId);
-      setBatches((prev) => prev.filter((x) => x.id !== patchId));
+      stabilizeTraceabilityViewport(() => {
+        setBatches((prev) => prev.filter((x) => x.id !== patchId));
+      });
       return true;
     }, "Failed to delete patch");
   };
@@ -764,7 +818,9 @@ function DataProvider({ children }) {
         process_name: img.name,
         image_url: img.imageUrl,
       });
-      setProcessImages((prev) => [fromDbProcessImage(created), ...prev]);
+      stabilizeTraceabilityViewport(() => {
+        setProcessImages((prev) => [...prev, fromDbProcessImage(created)]);
+      });
       return created;
     }, "Failed to create process image");
   };
@@ -772,7 +828,9 @@ function DataProvider({ children }) {
   const delProcessImage = (iid) => {
     return run(async () => {
       await traceabilityApi.deleteProcessImage(iid);
-      setProcessImages((prev) => prev.filter((x) => x.id !== iid));
+      stabilizeTraceabilityViewport(() => {
+        setProcessImages((prev) => prev.filter((x) => x.id !== iid));
+      });
       return true;
     }, "Failed to delete process image");
   };
@@ -846,8 +904,8 @@ function AuthProvider({ children }) {
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message || `Failed to load profile (${res.status})`);
 
-      // MaatiAI auth roles are: farmer/admin/drone_controller. Traceability UX defaults to grower.
-      const role = data?.role === "farmer" ? "grower" : "grower";
+      // Traceability uses grower/supplier while auth stores farmer/supplier roles.
+      const role = data?.role === "supplier" ? "supplier" : "grower";
       const u = {
         id: data?.user_id,
         name: data?.name || "User",
@@ -953,8 +1011,9 @@ const UNIT_OPTIONS = ["kg", "ton", "count"];
 
 function ConfirmDialog({ message, onConfirm, onCancel }) {
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="confirm-box">
+        <button className="modal-close" onClick={onCancel} type="button"><FiX /></button>
         <div className="confirm-icon"><FiAlertTriangle /></div>
         <h3>Confirm Delete</h3>
         <p className="muted">{message}</p>
@@ -1012,7 +1071,7 @@ function Header({ route, navigate }) {
   return (
     <header className="app-header">
       <button className="brand" onClick={() => navigate(user.role === "grower" ? "/grower" : "/supplier")}>
-        <span className="brand-icon">🌱</span>
+        <span className="brand-icon"><FiGrid /></span>
         <span>Seed-to-Batch</span>
       </button>
       <nav className="header-nav">
@@ -1066,6 +1125,10 @@ function GrowerDashboard({ navigate, toast }) {
   const mine = plantations;
   const mineIds = mine.map((p) => p.id);
   const totalHarvested = harvests.filter((h) => mineIds.includes(h.plantationId)).reduce((s, h) => s + (h.accepted || 0), 0);
+  const activeFarmName =
+    (farms.find((farm) => Number(farm?.farm_id) === Number(selectedFarmId))?.farm_name) ||
+    farms[0]?.farm_name ||
+    "Farm";
 
   const create = async () => {
     if (!form.name || !form.location) {
@@ -1074,8 +1137,10 @@ function GrowerDashboard({ navigate, toast }) {
     }
     try {
       await addPlantation({ ...form, status: "Active" });
-      setForm({ type: "crop", name: "", location: "" });
-      toast("Plantation created successfully!", "success");
+      stabilizeTraceabilityViewport(() => {
+        setForm({ type: "crop", name: "", location: "" });
+        toast("Plantation created successfully!", "success");
+      });
     } catch (e) {
       toast(getTraceabilityErrorMessage(e) || "Failed to create plantation", "error");
     }
@@ -1093,40 +1158,27 @@ function GrowerDashboard({ navigate, toast }) {
   };
 
   return (
-    <div className="page-container">
-      {dialog}
-      <h1>Grower Dashboard</h1>
-      <p className="muted">Welcome back, {user?.name}</p>
-      {backendError && <div className="inline-alert error">{backendError}</div>}
-      {farms.length > 0 && (
-        <div className="inline-alert" style={{ marginBottom: 12 }}>
-          Active Farm: <strong>#{selectedFarmId}</strong> ({farms[0]?.farm_name || "Farm"})
+      <div className="page-container">
+        {dialog}
+      <div className="dashboard-hero">
+        <div className="dashboard-hero-copy">
+          <div className="dashboard-kicker">Grower Workspace</div>
+          <h1>Grower Dashboard</h1>
+          <p className="dashboard-subtitle">
+            Welcome back, {user?.name}. Keep track of plantations, crop flow,
+            harvest numbers, and packing readiness from one clean view.
+          </p>
         </div>
-      )}
-      <div className="stats-grid">
-        <div className="stat">Plantations: {mine.length}</div>
-        <div className="stat">Crops: {crops.filter((c) => mineIds.includes(c.plantationId)).length}</div>
-        <div className="stat">Harvested: {totalHarvested} kg</div>
-        <div className="stat">Packings: {packings.filter((p) => mineIds.includes(p.plantationId)).length}</div>
+        {farms.length > 0 && (
+          <div className="dashboard-active-farm">
+            <div className="dashboard-active-label">Active Farm</div>
+            <div className="dashboard-active-name">
+              <FiMapPin />
+              <span>#{selectedFarmId} ({activeFarmName})</span>
+            </div>
+          </div>
+        )}
       </div>
-      <div className="card">
-        <h3>Create New Plantation</h3>
-        <div className="form-row">
-          <select className="input" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
-            <option value="crop">Crop Farming</option>
-            <option value="shrimp">Shrimp / Prawn Farming</option>
-          </select>
-          <input className="input" placeholder="Plantation Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-          <input className="input" placeholder="Location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
-          <button className="btn btn-primary" onClick={create}>Create</button>
-        </div>
-      </div>
-      {backendError && <div className="inline-alert error">{backendError}</div>}
-      {farms.length > 0 && (
-        <div className="inline-alert" style={{ marginBottom: 12 }}>
-          Active Farm: <strong>#{selectedFarmId}</strong> ({(farms.find((farm) => Number(farm?.farm_id) === Number(selectedFarmId))?.farm_name) || farms[0]?.farm_name || "Farm"})
-        </div>
-      )}
 
       <div className="stats-row">
         <StatCard icon={<FiGrid />} label="Plantations" value={mine.length} color="green" />
@@ -1141,8 +1193,8 @@ function GrowerDashboard({ navigate, toast }) {
           <div className="field-wrap">
             <label className="field-label">Production Type</label>
             <select className="input" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}>
-              <option value="crop">🌾 Crop Farming</option>
-              <option value="shrimp">🦐 Shrimp / Prawn Aquaculture</option>
+              <option value="crop">Crop Farming</option>
+              <option value="shrimp">Shrimp / Prawn Aquaculture</option>
             </select>
           </div>
           <div className="field-wrap">
@@ -1161,7 +1213,7 @@ function GrowerDashboard({ navigate, toast }) {
 
       {mine.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🌾</div>
+          <div className="empty-icon"><FiGrid /></div>
           <p>No plantations yet. Create your first one above.</p>
         </div>
       ) : (
@@ -1170,7 +1222,7 @@ function GrowerDashboard({ navigate, toast }) {
             <div key={p.id} className="plantation-card">
               <div className="plantation-card-top">
                 <span className={`type-badge ${p.type === "shrimp" ? "shrimp" : "crop"}`}>
-                  {p.type === "shrimp" ? "🦐 Aquaculture" : "🌾 Crop Farming"}
+                  {p.type === "shrimp" ? "Aquaculture" : "Crop Farming"}
                 </span>
                 <button className="icon-btn danger" onClick={(e) => { e.stopPropagation(); remove(p.id); }} title="Delete"><FiTrash2 /></button>
               </div>
@@ -1213,13 +1265,13 @@ function PlantationsPage({ navigate, toast }) {
         <button className="btn btn-primary" onClick={() => navigate("/grower")}><FiPlus /> New Plantation</button>
       </div>
       {mine.length === 0 ? (
-        <div className="empty-state"><div className="empty-icon">🌾</div><p>No plantations yet.</p></div>
+        <div className="empty-state"><div className="empty-icon"><FiGrid /></div><p>No plantations yet.</p></div>
       ) : (
         <div className="card-grid">
           {mine.map((p) => (
             <div key={p.id} className="plantation-card">
               <div className="plantation-card-top">
-                <span className={`type-badge ${p.type === "shrimp" ? "shrimp" : "crop"}`}>{p.type === "shrimp" ? "🦐 Aquaculture" : "🌾 Crop Farming"}</span>
+                <span className={`type-badge ${p.type === "shrimp" ? "shrimp" : "crop"}`}>{p.type === "shrimp" ? "Aquaculture" : "Crop Farming"}</span>
                 <button className="icon-btn danger" onClick={() => remove(p.id)} title="Delete"><FiTrash2 /></button>
               </div>
               <h4>{p.name}</h4>
@@ -1261,6 +1313,10 @@ function PlantationDetail({ plantationId, toast }) {
   const unlocked = [true, pCrops.length > 0, pMon.length > 0, pVer.length > 0, pHar.length > 0];
   const done = [pCrops.length > 0, pMon.length > 0, pVer.length > 0, pHar.length > 0, pPack.length > 0];
   const names = [L.crops, "Monitoring", "Verification", "Harvest", "Packing"];
+  const completedStages = done.filter(Boolean).length;
+  const totalStages = names.length;
+  const progressPercent = Math.round((completedStages / totalStages) * 100);
+  const allStagesComplete = completedStages === totalStages;
   const stageImages = pImgs.filter((x) => x.imageUrl);
   const stageGroups = stageImages.reduce((acc, img) => {
     const key = img.stage || "Other";
@@ -1280,8 +1336,16 @@ function PlantationDetail({ plantationId, toast }) {
   return (
     <div className="page-container">
       {dialog}
-      <h1>{plantation.name}</h1>
-      <p className="muted">{plantation.location} | {plantation.status}</p>
+      <div className="plantation-hero">
+        <div className="plantation-hero-copy">
+          <div className="plantation-kicker">Plantation Lifecycle</div>
+          <h1>{plantation.name}</h1>
+          <div className="plantation-meta">
+            <span className="plantation-meta-item"><FiMapPin /> {plantation.location}</span>
+            <span className="status-chip active"><FiCheckCircle /> Active</span>
+          </div>
+        </div>
+      </div>
 
       {stageImages.length > 0 && (
         <div className="card">
@@ -1304,6 +1368,29 @@ function PlantationDetail({ plantationId, toast }) {
           ))}
         </div>
       )}
+      <div className={`stage-progress-card ${allStagesComplete ? "complete" : ""}`}>
+        <div className="stage-progress-head">
+          <div>
+            <div className="stage-progress-kicker">Workflow Progress</div>
+            <div className="stage-progress-title">
+              {allStagesComplete
+                ? "All stages completed"
+                : `${completedStages} of ${totalStages} stages completed`}
+            </div>
+          </div>
+          <div className={`stage-progress-badge ${allStagesComplete ? "complete" : ""}`}>
+            {allStagesComplete ? <FiCheckCircle /> : <span>{progressPercent}%</span>}
+          </div>
+        </div>
+        <div className="stage-progress-meter">
+          <div className="stage-progress-fill" style={{ width: `${progressPercent}%` }} />
+        </div>
+        <div className="stage-progress-caption">
+          {allStagesComplete
+            ? "Great work. This plantation has completed every stage successfully."
+            : `Complete ${names[Math.min(completedStages, totalStages - 1)]} to move forward.`}
+        </div>
+      </div>
       <div className="step-bar">
         {names.map((n, i) => (
           <button key={n} className={`step-btn ${step === i ? "active" : ""} ${done[i] ? "done" : ""} ${!unlocked[i] ? "locked" : ""}`} onClick={() => openStep(i)}>
@@ -1420,6 +1507,7 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
   const [cameraOpen, setCameraOpen] = useState(false);
   const [pendingName, setPendingName] = useState("");
   const [name, setName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const list = pImgs.filter((x) => x.stage === stage);
   const add = () => {
     if (!name.trim()) {
@@ -1445,28 +1533,35 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
         open={cameraOpen}
         name={pendingName}
         onClose={() => {
+          if (isSaving) return;
           setCameraOpen(false);
           setPendingName("");
         }}
-        onUse={(imageUrl) => {
-          void traceabilityApi
+        saving={isSaving}
+        onUse={async (imageUrl) => {
+          if (isSaving || !imageUrl) return;
+          setIsSaving(true);
+          try {
+            const uploaded = await traceabilityApi
             .uploadTraceabilityImage({
               data_url: imageUrl,
               plantation_id: plantationId,
               stage,
-            })
-            .then((uploaded) => {
-              const url = uploaded?.url;
-              if (!url) throw new Error("Upload failed");
-              return addProcessImage({ plantationId, stage, name: pendingName, date: TODAY, imageUrl: url });
-            })
-            .then(() => {
+            });
+            const url = uploaded?.url;
+            if (!url) throw new Error("Upload failed");
+            await addProcessImage({ plantationId, stage, name: pendingName, date: TODAY, imageUrl: url });
+            stabilizeTraceabilityViewport(() => {
               setCameraOpen(false);
               setPendingName("");
               setName("");
               toast("Image uploaded", "success");
-            })
-            .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
+            });
+          } catch (e) {
+            toast(getTraceabilityErrorMessage(e), "error");
+          } finally {
+            setIsSaving(false);
+          }
         }}
         toast={toast}
       />
@@ -1476,20 +1571,27 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
         <button className="btn btn-outline" onClick={add}>Capture</button>
       </div>
       {list.length > 0 && (
-        <div className="record-list">
+        <div className="record-list mt process-entry-list">
           {list.map((it) => (
-            <li key={it.id}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                {it.imageUrl && <img className="tc-thumb" src={it.imageUrl} alt={`${it.name} capture`} />}
-                <span>{it.name} ({it.date})</span>
-              </span>
-              {it.imageUrl && (
-                <a className="link" href={it.imageUrl} target="_blank" rel="noreferrer" style={{ marginLeft: 10 }}>
-                  View
-                </a>
-              )}
-              <button className="link-danger" onClick={() => remove(it.id)}>Delete</button>
-            </li>
+            <div key={it.id} className="process-entry-card">
+              <div className="process-entry-main">
+                {it.imageUrl && <img className="tc-thumb process-entry-thumb" src={it.imageUrl} alt={`${it.name} capture`} />}
+                <div className="process-entry-copy">
+                  <div className="process-entry-title">{it.name}</div>
+                  <div className="process-entry-date">{it.date}</div>
+                </div>
+              </div>
+              <div className="process-entry-actions">
+                {it.imageUrl && (
+                  <a className="process-entry-link" href={it.imageUrl} target="_blank" rel="noreferrer">
+                    View
+                  </a>
+                )}
+                <button className="process-entry-delete" onClick={() => remove(it.id)} type="button">
+                  Delete
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -1497,11 +1599,11 @@ function ProcessEntries({ stage, plantationId, pImgs, addProcessImage, delProces
   );
 }
 
-function GeoCameraModal({ open, onClose, name, onUse, toast }) {
+function GeoCameraModal({ open, onClose, name, onUse, toast, saving = false }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
-  const [status, setStatus] = useState("Initializing…");
+  const [status, setStatus] = useState("Initializing...");
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1512,7 +1614,7 @@ function GeoCameraModal({ open, onClose, name, onUse, toast }) {
     let cancelled = false;
     setError("");
     setPreviewUrl("");
-    setStatus("Requesting camera…");
+    setStatus("Requesting camera...");
 
     (async () => {
       if (!navigator?.mediaDevices?.getUserMedia) {
@@ -1564,7 +1666,7 @@ function GeoCameraModal({ open, onClose, name, onUse, toast }) {
     try {
       setBusy(true);
       setError("");
-      setStatus("Fetching location…");
+      setStatus("Fetching location...");
       const video = videoRef.current;
       const canvas = canvasRef.current;
       if (!video || !canvas) throw new Error("Camera not ready");
@@ -1630,17 +1732,15 @@ function GeoCameraModal({ open, onClose, name, onUse, toast }) {
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true">
+    <div className="modal-overlay" role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && !saving && onClose()}>
       <div className="modal-box camera-modal">
-        <div className="row-between">
-          <h3>GPS Camera Capture</h3>
-          <button className="auth-close-btn" onClick={onClose} type="button">×</button>
-        </div>
+        <button className="modal-close" onClick={onClose} type="button" disabled={saving}><FiX /></button>
+        <h3>GPS Camera Capture</h3>
         <div className="muted" style={{ fontSize: 13 }}>Overlay includes time + GPS + address. (Geofencing removed.)</div>
         <div className="camera-stage">
           <video ref={videoRef} autoPlay muted playsInline />
           <canvas ref={canvasRef} style={{ display: "none" }} />
-          <div className="camera-status">{status}</div>
+          <div className="camera-status">{saving ? "Saving photo..." : status}</div>
         </div>
         {error && <div className="inline-alert error">{error}</div>}
         {previewUrl && (
@@ -1649,8 +1749,8 @@ function GeoCameraModal({ open, onClose, name, onUse, toast }) {
           </div>
         )}
         <div className="actions right">
-          <button className="btn btn-outline" onClick={capture} disabled={busy}>Capture</button>
-          <button className="btn btn-primary" onClick={() => onUse(previewUrl)} disabled={!previewUrl || busy}>Use Photo</button>
+          <button className="btn btn-outline" onClick={capture} disabled={busy || saving}>Capture</button>
+          <button className="btn btn-primary" onClick={() => { void onUse(previewUrl); }} disabled={!previewUrl || busy || saving}>Use Photo</button>
         </div>
       </div>
     </div>
@@ -1664,8 +1764,10 @@ function CropsStep({ L, pCrops, addCrop, delCrop, confirm, plantationId, pImgs, 
     if (!name || !f.variety || !f.sowingDate) return;
     void addCrop({ plantationId, name, variety: f.variety, sowingDate: f.sowingDate, expectedHarvest: f.expectedHarvest })
       .then(() => {
-        setF({ name: "", customName: "", variety: "", sowingDate: TODAY, expectedHarvest: "" });
-        toast("Saved", "success");
+        stabilizeTraceabilityViewport(() => {
+          setF({ name: "", customName: "", variety: "", sowingDate: TODAY, expectedHarvest: "" });
+          toast("Saved", "success");
+        });
       })
       .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
   };
@@ -1681,12 +1783,12 @@ function CropsStep({ L, pCrops, addCrop, delCrop, confirm, plantationId, pImgs, 
   };
   return (
     <>
-      <WorkflowSection title={`🌱 Add ${L.crop}`}>
+      <WorkflowSection title={`Add ${L.crop}`}>
         <div className="form-grid">
           <div className="field-wrap">
             <label className="field-label">{L.crop} Type *</label>
             <select className="input" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))}>
-              <option value="">Select {L.crop}…</option>
+              <option value="">Select {L.crop}...</option>
               {L.options.map((o) => <option key={o}>{o}</option>)}
             </select>
           </div>
@@ -1716,7 +1818,7 @@ function CropsStep({ L, pCrops, addCrop, delCrop, confirm, plantationId, pImgs, 
           <div className="record-list mt">
             {pCrops.map((c) => (
               <div key={c.id} className="record-row">
-                <span className="record-text"><FiStar style={{ color: "#f59e0b" }} /> <strong>{c.name}</strong> · {c.variety} · <span className="muted">Sown {c.sowingDate}</span></span>
+                <span className="record-text"><FiStar style={{ color: "#f59e0b" }} /> <strong>{c.name}</strong> - {c.variety} - <span className="muted">Sown {c.sowingDate}</span></span>
                 <button className="icon-btn danger" onClick={() => remove(c.id)}><FiTrash2 /></button>
               </div>
             ))}
@@ -1735,8 +1837,10 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
     if (!inputType || !f.cropId) return;
     void addMonitoring({ plantationId, date: f.date, inputType, cropId: f.cropId, remarks: f.remarks })
       .then(() => {
-        setF({ date: TODAY, inputType: "", customType: "", cropId: "", remarks: "" });
-        toast("Saved", "success");
+        stabilizeTraceabilityViewport(() => {
+          setF({ date: TODAY, inputType: "", customType: "", cropId: "", remarks: "" });
+          toast("Saved", "success");
+        });
       })
       .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
   };
@@ -1753,7 +1857,7 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
   };
   return (
     <>
-      <WorkflowSection title="📋 Add Monitoring Record">
+      <WorkflowSection title="Add Monitoring Record">
         <div className="form-grid">
           <div className="field-wrap">
             <label className="field-label">Date *</label>
@@ -1762,7 +1866,7 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
           <div className="field-wrap">
             <label className="field-label">Input Type *</label>
             <select className="input" value={f.inputType} onChange={(e) => setF((x) => ({ ...x, inputType: e.target.value }))}>
-              <option value="">Select input type…</option>
+              <option value="">Select input type...</option>
               {L.monitoring.map((o) => <option key={o}>{o}</option>)}
             </select>
           </div>
@@ -1775,7 +1879,7 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
           <div className="field-wrap">
             <label className="field-label">Select {L.crop} *</label>
             <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
-              <option value="">Choose {L.crop.toLowerCase()}…</option>
+              <option value="">Choose {L.crop.toLowerCase()}...</option>
               {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.variety})</option>)}
             </select>
           </div>
@@ -1791,7 +1895,7 @@ function MonitoringStep({ L, pMon, addMonitoring, delMonitoring, pCrops, confirm
           <div className="record-list mt">
             {pMon.map((m) => (
               <div key={m.id} className="record-row">
-                <span className="record-text"><FiDroplet style={{ color: "#2563eb" }} /> <strong>{m.inputType}</strong> · <span className="muted">{m.date}</span>{m.remarks && <> · {m.remarks}</>}</span>
+                <span className="record-text"><FiDroplet style={{ color: "#2563eb" }} /> <strong>{m.inputType}</strong> - <span className="muted">{m.date}</span>{m.remarks && <> - {m.remarks}</>}</span>
                 <button className="icon-btn danger" onClick={() => remove(m.id)}><FiTrash2 /></button>
               </div>
             ))}
@@ -1809,8 +1913,10 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
     if (!f.cropId) return;
     void addVerification({ plantationId, ...f })
       .then(() => {
-        setF({ inspectionDate: TODAY, cropId: "", health: "Good", approved: true });
-        toast("Saved", "success");
+        stabilizeTraceabilityViewport(() => {
+          setF({ inspectionDate: TODAY, cropId: "", health: "Good", approved: true });
+          toast("Saved", "success");
+        });
       })
       .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
   };
@@ -1827,7 +1933,7 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
   };
   return (
     <>
-      <WorkflowSection title="✅ Add Verification">
+      <WorkflowSection title="Add Verification">
         <div className="form-grid">
           <div className="field-wrap">
             <label className="field-label">Inspection Date *</label>
@@ -1836,7 +1942,7 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
           <div className="field-wrap">
             <label className="field-label">Select {L.crop} *</label>
             <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
-              <option value="">Choose {L.crop.toLowerCase()}…</option>
+              <option value="">Choose {L.crop.toLowerCase()}...</option>
               {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.variety})</option>)}
             </select>
           </div>
@@ -1849,8 +1955,8 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
           <div className="field-wrap">
             <label className="field-label">Harvest Approval *</label>
             <select className="input" value={f.approved ? "yes" : "no"} onChange={(e) => setF((x) => ({ ...x, approved: e.target.value === "yes" }))}>
-              <option value="yes">✅ Approved for Harvest</option>
-              <option value="no">❌ Not Approved</option>
+              <option value="yes">Approved for Harvest</option>
+              <option value="no">âŒ Not Approved</option>
             </select>
           </div>
           <div className="field-wrap field-btn-wrap btn-row">
@@ -1864,7 +1970,7 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
               <div key={v.id} className="record-row">
                 <span className="record-text">
                   <FiCheckCircle style={{ color: v.approved ? "#1f8a43" : "#c0392b" }} />
-                  <strong>{v.health}</strong> · {v.approved ? "Approved ✓" : "Not Approved ✗"} · <span className="muted">{v.inspectionDate}</span>
+                  <strong>{v.health}</strong> - {v.approved ? "Approved" : "Not Approved"} - <span className="muted">{v.inspectionDate}</span>
                 </span>
                 <button className="icon-btn danger" onClick={() => remove(v.id)}><FiTrash2 /></button>
               </div>
@@ -1884,8 +1990,10 @@ function HarvestStep({ pHar, addHarvest, delHarvest, pCrops, confirm, plantation
     if (!f.cropId || !f.total) return;
     void addHarvest({ plantationId, ...f, total: Number(f.total), rejected: Number(f.rejected) || 0, accepted })
       .then(() => {
-        setF({ harvestDate: TODAY, cropId: "", total: "", unit: "kg", rejected: "" });
-        toast("Saved", "success");
+        stabilizeTraceabilityViewport(() => {
+          setF({ harvestDate: TODAY, cropId: "", total: "", unit: "kg", rejected: "" });
+          toast("Saved", "success");
+        });
       })
       .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
   };
@@ -1902,7 +2010,7 @@ function HarvestStep({ pHar, addHarvest, delHarvest, pCrops, confirm, plantation
   };
   return (
     <>
-      <WorkflowSection title="🌾 Record Harvest">
+      <WorkflowSection title="Record Harvest">
         <div className="form-grid">
           <div className="field-wrap">
             <label className="field-label">Harvest Date *</label>
@@ -1911,7 +2019,7 @@ function HarvestStep({ pHar, addHarvest, delHarvest, pCrops, confirm, plantation
           <div className="field-wrap">
             <label className="field-label">Select {L.crop} *</label>
             <select className="input" value={f.cropId} onChange={(e) => setF((x) => ({ ...x, cropId: e.target.value }))}>
-              <option value="">Choose {L.crop.toLowerCase()}…</option>
+              <option value="">Choose {L.crop.toLowerCase()}...</option>
               {pCrops.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.variety})</option>)}
             </select>
           </div>
@@ -1943,8 +2051,8 @@ function HarvestStep({ pHar, addHarvest, delHarvest, pCrops, confirm, plantation
               <div key={h.id} className="record-row">
                 <span className="record-text">
                   <FiTrendingUp style={{ color: "#1f8a43" }} />
-                  <strong>{h.harvestDate}</strong> · Accepted: <strong style={{ color: "#1f8a43" }}>{h.accepted} {h.unit}</strong>
-                  {h.rejected > 0 && <> · Rejected: <strong style={{ color: "#c0392b" }}>{h.rejected} {h.unit}</strong></>}
+                  <strong>{h.harvestDate}</strong> - Accepted: <strong style={{ color: "#1f8a43" }}>{h.accepted} {h.unit}</strong>
+                  {h.rejected > 0 && <> - Rejected: <strong style={{ color: "#c0392b" }}>{h.rejected} {h.unit}</strong></>}
                 </span>
                 <button className="icon-btn danger" onClick={() => remove(h.id)}><FiTrash2 /></button>
               </div>
@@ -1975,8 +2083,10 @@ function PackingStep({ pPack, pHar, addPacking, delPacking, confirm, plantationI
     if (!f.harvestId || !f.packingSize || !f.netWeight) return;
     void addPacking({ plantationId, ...f, numPackages: Number(f.numPackages) || 0, netWeight: Number(f.netWeight) })
       .then(() => {
-        setF({ packingDate: TODAY, harvestId: "", packingSize: "", numPackages: "", netWeight: "", warehouse: "", street: "", city: "", state: "", pincode: "", country: "India" });
-        toast("Saved", "success");
+        stabilizeTraceabilityViewport(() => {
+          setF({ packingDate: TODAY, harvestId: "", packingSize: "", numPackages: "", netWeight: "", warehouse: "", street: "", city: "", state: "", pincode: "", country: "India" });
+          toast("Saved", "success");
+        });
       })
       .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
   };
@@ -1993,7 +2103,7 @@ function PackingStep({ pPack, pHar, addPacking, delPacking, confirm, plantationI
   };
   return (
     <>
-      <WorkflowSection title="📦 Record Packing">
+      <WorkflowSection title="Record Packing">
         <div className="form-grid">
           <div className="field-wrap">
             <label className="field-label">Packing Date *</label>
@@ -2002,8 +2112,8 @@ function PackingStep({ pPack, pHar, addPacking, delPacking, confirm, plantationI
           <div className="field-wrap">
             <label className="field-label">Link to Harvest *</label>
             <select className="input" value={f.harvestId} onChange={(e) => setF((x) => ({ ...x, harvestId: e.target.value }))}>
-              <option value="">Select harvest batch…</option>
-              {pHar.map((h) => <option key={h.id} value={h.id}>{h.harvestDate} — {h.accepted} {h.unit} accepted</option>)}
+              <option value="">Select harvest batch...</option>
+              {pHar.map((h) => <option key={h.id} value={h.id}>{h.harvestDate} - {h.accepted} {h.unit} accepted</option>)}
             </select>
           </div>
           <div className="field-wrap">
@@ -2052,7 +2162,7 @@ function PackingStep({ pPack, pHar, addPacking, delPacking, confirm, plantationI
               <div key={pk.id} className="record-row">
                 <span className="record-text">
                   <FiPackage style={{ color: "#7c3aed" }} />
-                  <strong>{pk.packingDate}</strong> · {pk.numPackages} × {pk.packingSize} · <strong>{pk.netWeight} kg</strong> · <span className="muted">{pk.city}, {pk.state}</span>
+                  <strong>{pk.packingDate}</strong> - {pk.numPackages} x {pk.packingSize} - <strong>{pk.netWeight} kg</strong> - <span className="muted">{pk.city}, {pk.state}</span>
                 </span>
                 <button className="icon-btn danger" onClick={() => remove(pk.id)}><FiTrash2 /></button>
               </div>
@@ -2067,27 +2177,128 @@ function PackingStep({ pPack, pHar, addPacking, delPacking, confirm, plantationI
 
 function SupplierDashboard({ navigate, toast }) {
   const { user } = useAuth();
-  const { packings, batches, addBatch, delBatch } = useData();
+  const { batches, addBatch, delBatch } = useData();
   const { confirm, dialog } = useConfirm();
   const [selected, setSelected] = useState([]);
   const [desc, setDesc] = useState("");
   const [batchModal, setBatchModal] = useState(null);
+  const [supplierTraceState, setSupplierTraceState] = useState({
+    loading: true,
+    error: "",
+    traces: [],
+    operatingAreas: [],
+  });
+
   const mine = batches.filter((b) => b.supplierId === user?.id);
-  const used = batches.flatMap((b) => b.packingIds);
-  const available = packings.filter((p) => !used.includes(p.id));
-  const total = selected.reduce((s, id) => s + (packings.find((p) => p.id === id)?.netWeight || 0), 0);
-  const toggle = (id) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const minePackingIds = mine.flatMap((b) => b.packingIds || []);
+  const traces = supplierTraceState.traces;
+  const available = traces.filter(
+    (trace) =>
+      !trace.assignedPatchId &&
+      !minePackingIds.includes(trace.packingId),
+  );
+  const selectedTraces = available.filter((trace) =>
+    selected.includes(trace.packingId),
+  );
+  const total = selectedTraces.reduce(
+    (sum, trace) => sum + (Number(trace.netWeight) || 0),
+    0,
+  );
+  const toggle = (id) =>
+    setSelected((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id],
+    );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setSupplierTraceState((prev) => ({
+      ...prev,
+      loading: true,
+      error: "",
+    }));
+
+    traceabilityApi
+      .listSupplierFarmTraces()
+      .then((response) => {
+        if (cancelled) return;
+
+        setSupplierTraceState({
+          loading: false,
+          error: "",
+          traces: Array.isArray(response?.traces) ? response.traces : [],
+          operatingAreas: Array.isArray(response?.operatingAreas)
+            ? response.operatingAreas
+            : [],
+        });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+
+        setSupplierTraceState({
+          loading: false,
+          error:
+            getTraceabilityErrorMessage(error) ||
+            "Failed to load supplier farm traces.",
+          traces: [],
+          operatingAreas: [],
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const regionLabels = supplierTraceState.operatingAreas
+    .map((area) =>
+      [area?.village, area?.district, area?.state, area?.pincode]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+        .join(", "),
+    )
+    .filter(Boolean);
 
   const create = () => {
-    if (!selected.length) { toast("Select at least one packing unit", "error"); return; }
+    if (!selectedTraces.length) {
+      toast("Select at least one farm trace", "error");
+      return;
+    }
+
     const id = `PATCH-${Date.now().toString(36).toUpperCase()}`;
-    const batch = { id, supplierId: user.id, packingIds: selected, description: desc, totalWeight: total, createdAt: TODAY };
+    const batch = {
+      id,
+      supplierId: user.id,
+      packingIds: selectedTraces.map((trace) => trace.packingId),
+      description: desc,
+      totalWeight: total,
+      createdAt: TODAY,
+      items: selectedTraces.map((trace) => ({
+        packing_id: trace.packingId,
+        harvest_id: trace.harvestId,
+        crop_id: trace.cropId,
+        plantation_id: trace.plantationId,
+      })),
+    };
+
     void addBatch(batch)
       .then(() => {
-        setBatchModal(batch);
-        setSelected([]);
-        setDesc("");
-        toast("Batch created!", "success");
+        stabilizeTraceabilityViewport(() => {
+          setSupplierTraceState((prev) => ({
+            ...prev,
+            traces: prev.traces.map((trace) =>
+              batch.packingIds.includes(trace.packingId)
+                ? { ...trace, assignedPatchId: id }
+                : trace,
+            ),
+          }));
+          setBatchModal(batch);
+          setSelected([]);
+          setDesc("");
+          toast("Batch created!", "success");
+        });
       })
       .catch((e) => toast(getTraceabilityErrorMessage(e), "error"));
   };
@@ -2095,8 +2306,20 @@ function SupplierDashboard({ navigate, toast }) {
   const removeBatch = async (id) => {
     const ok = await confirm("Delete this batch?");
     if (!ok) return;
+
+    const targetBatch = mine.find((batch) => batch.id === id);
+
     try {
       await delBatch(id);
+      setSupplierTraceState((prev) => ({
+        ...prev,
+        traces: prev.traces.map((trace) =>
+          targetBatch?.packingIds?.includes(trace.packingId) &&
+          trace.assignedPatchId === id
+            ? { ...trace, assignedPatchId: "" }
+            : trace,
+        ),
+      }));
       toast("Deleted", "success");
     } catch (e) {
       toast(getTraceabilityErrorMessage(e), "error");
@@ -2106,66 +2329,324 @@ function SupplierDashboard({ navigate, toast }) {
   return (
     <div className="page-container">
       {dialog}
-      <div className="page-header">
-        <div><h1>Supplier Dashboard</h1><p className="page-subtitle">Select packings and create traceable batches with QR codes</p></div>
-      </div>
-      <div className="stats-row">
-        <StatCard icon={<FiPackage />} label="Available Packings" value={available.length} color="green" />
-        <StatCard icon={<FiGrid />} label="Batches Created" value={mine.length} color="blue" />
-      </div>
-      <div className="card">
-        <div className="card-title"><FiPackage /> Select Packings to Bundle</div>
-        {available.length === 0 ? (
-          <div className="empty-state small"><p>No available packings. Growers need to complete their packing step first.</p></div>
-        ) : (
-          <div className="packing-list">
-            {available.map((pk) => (
-              <div key={pk.id} className={`packing-row ${selected.includes(pk.id) ? "selected" : ""}`} onClick={() => toggle(pk.id)}>
-                <input type="checkbox" checked={selected.includes(pk.id)} readOnly />
-                <div className="packing-info">
-                  <span className="packing-main">{pk.numPackages || 0} packages × {pk.packingSize || "—"}</span>
-                  <span className="packing-sub">{pk.netWeight} kg · {pk.packingDate} · {pk.city}, {pk.state}</span>
-                </div>
-                <span className="packing-weight">{pk.netWeight} kg</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {selected.length > 0 && (
-          <div className="batch-create-panel">
-            <div className="batch-summary">Selected: <strong>{selected.length} packings</strong> · Total: <strong>{total} kg</strong></div>
-            <div className="form-grid two-col">
-              <div className="field-wrap">
-                <label className="field-label">Batch Description</label>
-                <input className="input" placeholder="e.g. Premium Tomato Batch — Export Quality" value={desc} onChange={(e) => setDesc(e.target.value)} />
-              </div>
-              <div className="field-wrap field-btn-wrap">
-                <button className="btn btn-primary" onClick={create}><FiPlus /> Create Batch ({selected.length})</button>
-              </div>
+      <div className="dashboard-hero supplier-hero">
+        <div className="dashboard-hero-copy">
+          <div className="dashboard-kicker">Supplier Workspace</div>
+          <h1>All Farm Traces</h1>
+          <p className="dashboard-subtitle">
+            Welcome back, {user?.name}. Review grower traces from your
+            operating locations, shortlist packings, and turn them into
+            supplier-side traceable batches.
+          </p>
+          {regionLabels.length > 0 && (
+            <div className="supplier-region-row">
+              {regionLabels.map((label) => (
+                <span key={label} className="supplier-region-chip">
+                  <FiMapPin />
+                  {label}
+                </span>
+              ))}
             </div>
-          </div>
-        )}
-      </div>
-      {mine.length > 0 && (
-        <div className="card">
-          <div className="card-title"><FiGrid /> My Batches</div>
-          <div className="card-grid">
-            {mine.map((b) => (
-              <div key={b.id} className="batch-card" onClick={() => setBatchModal(b)}>
-                <div className="batch-card-top">
-                  <code className="batch-id">{b.id}</code>
-                  <button className="icon-btn danger" onClick={(e) => { e.stopPropagation(); removeBatch(b.id); }}><FiTrash2 /></button>
-                </div>
-                <div className="batch-weight">{b.totalWeight} kg total</div>
-                <p className="muted">{b.description || "No description"} · {b.createdAt}</p>
-                <button className="btn btn-outline full-width mt" onClick={(e) => { e.stopPropagation(); navigate(`/patch/${b.id}`); }}>
-                  View Trace Page <FiArrowRight />
-                </button>
-              </div>
-            ))}
+          )}
+        </div>
+        <div className="supplier-hero-panel">
+          <div className="supplier-hero-label">Matched Coverage</div>
+          <div className="supplier-hero-value">{traces.length}</div>
+          <div className="supplier-hero-foot">
+            farm trace{traces.length === 1 ? "" : "s"} aligned with your
+            supplier profile
           </div>
         </div>
+      </div>
+
+      <div className="stats-row">
+        <StatCard
+          icon={<FiGrid />}
+          label="Farm Traces"
+          value={traces.length}
+          color="blue"
+        />
+        <StatCard
+          icon={<FiPackage />}
+          label="Available Packings"
+          value={available.length}
+          color="green"
+        />
+        <StatCard
+          icon={<FiBarChart2 />}
+          label="Batches Created"
+          value={mine.length}
+          color="purple"
+        />
+      </div>
+
+      {supplierTraceState.error && (
+        <div className="inline-alert error">{supplierTraceState.error}</div>
       )}
+
+      <div className="supplier-dashboard-grid">
+        <div className="supplier-feed-column">
+          <div className="card supplier-feed-card">
+            <div className="card-title">
+              <FiMapPin /> Farm Trace Feed
+            </div>
+
+            {supplierTraceState.loading ? (
+              <div className="empty-state small">
+                <p>Loading farm traces from your supplier coverage...</p>
+              </div>
+            ) : traces.length === 0 ? (
+              <div className="empty-state small">
+                <p>
+                  No grower traces are available for your registered operating
+                  areas yet.
+                </p>
+              </div>
+            ) : (
+              <div className="supplier-trace-grid">
+                {traces.map((trace) => {
+                  const isSelected = selected.includes(trace.packingId);
+                  const myBatch = mine.find((batch) =>
+                    batch.packingIds?.includes(trace.packingId),
+                  );
+                  const locationLine =
+                    [
+                      trace.packingCity,
+                      trace.packingState,
+                      trace.packingPincode,
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || trace.originLocation;
+                  const statusLabel = myBatch
+                    ? "In Your Batch"
+                    : trace.assignedPatchId
+                      ? "Already Batched"
+                      : "Ready for Batch";
+
+                  return (
+                    <div
+                      key={trace.packingId}
+                      className={`supplier-trace-card ${isSelected ? "selected" : ""}`}
+                    >
+                      <div className="supplier-trace-top">
+                        <div>
+                          <div className="supplier-trace-kicker">
+                            {trace.cropName || "Farm Trace"}
+                          </div>
+                          <h3>{trace.plantationName}</h3>
+                        </div>
+                        <span
+                          className={`supplier-trace-status ${
+                            myBatch
+                              ? "mine"
+                              : trace.assignedPatchId
+                                ? "batched"
+                                : "ready"
+                          }`}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+
+                      <div className="supplier-trace-meta">
+                        <div className="supplier-trace-meta-item">
+                          <FiUser />
+                          <div>
+                            <span>Grower</span>
+                            <strong>{trace.growerName}</strong>
+                          </div>
+                        </div>
+                        <div className="supplier-trace-meta-item">
+                          <FiMapPin />
+                          <div>
+                            <span>Origin</span>
+                            <strong>{trace.originLocation || "Location not available"}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="supplier-trace-metrics">
+                        <div>
+                          <span>Variety</span>
+                          <strong>{trace.cropVariety || "Standard"}</strong>
+                        </div>
+                        <div>
+                          <span>Weight</span>
+                          <strong>{trace.netWeight} kg</strong>
+                        </div>
+                        <div>
+                          <span>Packages</span>
+                          <strong>
+                            {trace.numPackages} x {trace.packingSize || "-"}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Harvest</span>
+                          <strong>{trace.harvestDate || "Pending"}</strong>
+                        </div>
+                      </div>
+
+                      <div className="supplier-trace-timeline">
+                        <span>
+                          <FiCalendar />
+                          Sown {trace.sowingDate || "N/A"}
+                        </span>
+                        <span>
+                          <FiCalendar />
+                          Packed {trace.packingDate || "N/A"}
+                        </span>
+                      </div>
+
+                      <div className="supplier-trace-footer">
+                        <div className="supplier-trace-location">
+                          <FiMapPin />
+                          <span>{locationLine || "Location not available"}</span>
+                        </div>
+                        {trace.matchedArea && (
+                          <span className="supplier-match-chip">
+                            Match: {trace.matchedArea}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="supplier-trace-actions">
+                        {myBatch ? (
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => navigate(`/patch/${myBatch.id}`)}
+                          >
+                            View Trace Page <FiArrowRight />
+                          </button>
+                        ) : trace.assignedPatchId ? (
+                          <button className="btn btn-ghost" disabled>
+                            Already assigned
+                          </button>
+                        ) : (
+                          <button
+                            className={`btn ${isSelected ? "btn-outline" : "btn-primary"}`}
+                            onClick={() => toggle(trace.packingId)}
+                          >
+                            {isSelected ? "Selected for Batch" : "Select Trace"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {mine.length > 0 && (
+            <div className="card">
+              <div className="card-title">
+                <FiGrid /> Your Batches
+              </div>
+              <div className="card-grid">
+                {mine.map((batch) => (
+                  <div
+                    key={batch.id}
+                    className="batch-card"
+                    onClick={() => setBatchModal(batch)}
+                  >
+                    <div className="batch-card-top">
+                      <code className="batch-id">{batch.id}</code>
+                      <button
+                        className="icon-btn danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeBatch(batch.id);
+                        }}
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </div>
+                    <div className="batch-weight">{batch.totalWeight} kg total</div>
+                    <p className="muted">
+                      {batch.description || "No description"} - {batch.createdAt}
+                    </p>
+                    <button
+                      className="btn btn-outline full-width mt"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/patch/${batch.id}`);
+                      }}
+                    >
+                      View Trace Page <FiArrowRight />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="supplier-batch-column">
+          <div className="card supplier-workbench">
+            <div className="card-title">
+              <FiPackage /> Create Supplier Batch
+            </div>
+            <div className="supplier-workbench-summary">
+              <div>
+                <span>Selected traces</span>
+                <strong>{selectedTraces.length}</strong>
+              </div>
+              <div>
+                <span>Total weight</span>
+                <strong>{total} kg</strong>
+              </div>
+            </div>
+
+            <div className="field-wrap">
+              <label className="field-label">Batch Description</label>
+              <textarea
+                className="input supplier-notes"
+                placeholder="e.g. Premium tomato route for North 24 Parganas stores"
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            {selectedTraces.length === 0 ? (
+              <div className="empty-state small">
+                <p>
+                  Select trace cards from the feed to prepare a supplier batch.
+                </p>
+              </div>
+            ) : (
+              <div className="supplier-selection-list">
+                {selectedTraces.map((trace) => (
+                  <div key={trace.packingId} className="supplier-selection-item">
+                    <div>
+                      <strong>{trace.plantationName}</strong>
+                      <p>
+                        {trace.cropName} • {trace.netWeight} kg •{" "}
+                        {trace.packingDate || "Packing date pending"}
+                      </p>
+                    </div>
+                    <button
+                      className="icon-btn"
+                      onClick={() => toggle(trace.packingId)}
+                    >
+                      <FiX />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              className="btn btn-primary full-width"
+              onClick={create}
+              disabled={!selectedTraces.length}
+            >
+              <FiPlus /> Create Batch ({selectedTraces.length})
+            </button>
+          </div>
+        </div>
+      </div>
+
       {batchModal && <BatchModal batch={batchModal} onClose={() => setBatchModal(null)} navigate={navigate} />}
     </div>
   );
@@ -2178,14 +2659,14 @@ function BatchModal({ batch, onClose, navigate }) {
       <div className="modal-box batch-modal">
         <button className="modal-close" onClick={onClose}><FiX /></button>
         <div className="batch-modal-header">
-          <div className="batch-modal-icon">🎉</div>
+          <div className="batch-modal-icon"><FiCheck /></div>
           <h3>Batch Created!</h3>
         </div>
         <div className="qr-box"><QRCode value={qrValue} size={180} /></div>
         <div className="batch-modal-info">
           <div className="kv-pair"><span>Batch ID</span><code>{batch.id}</code></div>
           <div className="kv-pair"><span>Total Weight</span><strong>{batch.totalWeight} kg</strong></div>
-          <div className="kv-pair"><span>Description</span><strong>{batch.description || "—"}</strong></div>
+          <div className="kv-pair"><span>Description</span><strong>{batch.description || "-"}</strong></div>
           <div className="kv-pair"><span>Created</span><strong>{batch.createdAt}</strong></div>
           <div className="kv-pair"><span>Items</span><strong>{batch.packingIds.length} packings</strong></div>
         </div>
@@ -2221,7 +2702,7 @@ function QRCode({ value, size = 160 }) {
 function ReportsPage() {
   const { plantations, crops, harvests } = useData();
   return (
-    <div className="page-container">
+    <div className="page-container reports-page">
       <div className="page-header">
         <div><h1>Reports</h1><p className="page-subtitle">Overview of all plantations, crops, and harvest data</p></div>
       </div>
@@ -2232,7 +2713,7 @@ function ReportsPage() {
             <thead><tr><th>Name</th><th>Location</th><th>Status</th><th>Created</th></tr></thead>
             <tbody>
               {plantations.length === 0 ? <tr><td colSpan={4} className="table-empty">No data</td></tr>
-                : plantations.map((p) => <tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.location}</td><td><span className="status-chip active">● {p.status}</span></td><td>{p.createdAt}</td></tr>)}
+                : plantations.map((p) => <tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.location}</td><td><span className="status-chip active"><FiCheckCircle /> {p.status}</span></td><td>{p.createdAt}</td></tr>)}
             </tbody>
           </table>
         </div>
@@ -2244,7 +2725,7 @@ function ReportsPage() {
             <thead><tr><th>Crop</th><th>Variety</th><th>Sowing Date</th><th>Expected Harvest</th></tr></thead>
             <tbody>
               {crops.length === 0 ? <tr><td colSpan={4} className="table-empty">No data</td></tr>
-                : crops.map((c) => <tr key={c.id}><td><strong>{c.name}</strong></td><td>{c.variety || "—"}</td><td>{c.sowingDate}</td><td>{c.expectedHarvest || "—"}</td></tr>)}
+                : crops.map((c) => <tr key={c.id}><td><strong>{c.name}</strong></td><td>{c.variety || "â€”"}</td><td>{c.sowingDate}</td><td>{c.expectedHarvest || "â€”"}</td></tr>)}
             </tbody>
           </table>
         </div>
@@ -2306,7 +2787,7 @@ function ProfilePage() {
         <div className="info-item"><FiMail className="info-icon" /><span>Email</span><strong>{user?.email}</strong></div>
         <div className="info-item"><FiShield className="info-icon" /><span>Role</span><strong className="capitalize">{user?.role}</strong></div>
         <div className="info-item"><FiCalendar className="info-icon" /><span>Platform</span><strong>Seed-to-Batch</strong></div>
-        <div className="info-item"><FiCheck className="info-icon" /><span>Status</span><strong style={{ color: "#1f8a43" }}>Active ✓</strong></div>
+        <div className="info-item"><FiCheck className="info-icon" /><span>Status</span><strong style={{ color: "#1f8a43" }}>Active</strong></div>
       </div>
 
       <div className="stats-row">
@@ -2376,7 +2857,7 @@ function TracePage({ patchId }) {
     return (
       <div className="trace-page trace-public">
         <div className="trace-card" style={{ textAlign: "center", padding: 36 }}>
-          <h2>Loading trace…</h2>
+          <h2>Loading trace...</h2>
           <p className="muted">Batch ID: <code>{patchId}</code></p>
         </div>
       </div>
@@ -2411,7 +2892,7 @@ function TracePage({ patchId }) {
     return (
       <div className="trace-page trace-public">
         <div className="trace-card" style={{ textAlign: "center", padding: 36 }}>
-          <div style={{ fontSize: 40 }}>🔍</div>
+          <div style={{ fontSize: 40 }}><FiAlertTriangle /></div>
           <h2>Batch Not Found</h2>
           <p className="muted">Batch ID: <code>{patchId}</code> does not exist.</p>
         </div>
@@ -2427,17 +2908,17 @@ function TracePage({ patchId }) {
 
   const cropKey = (cropRecord?.name || "").toLowerCase();
   const xfactorMap = {
-    tomato: [{ label: "Fruit Firmness", val: "7.2 N" }, { label: "Brix Sweetness", val: "4.8 °Bx" }, { label: "Lycopene", val: "85 mg/kg" }, { label: "Pest Resistance", val: "0.89" }],
+    tomato: [{ label: "Fruit Firmness", val: "7.2 N" }, { label: "Brix Sweetness", val: "4.8 deg Bx" }, { label: "Lycopene", val: "85 mg/kg" }, { label: "Pest Resistance", val: "0.89" }],
     brinjal: [{ label: "Glossiness", val: "92%" }, { label: "Anthocyanin", val: "120 mg/kg" }, { label: "Pest Resistance", val: "0.82" }],
     spinach: [{ label: "Iron", val: "27 mg/kg" }, { label: "Nitrate", val: "1800 mg/kg" }, { label: "Chlorophyll", val: "48 SPAD" }],
     palak: [{ label: "Iron", val: "27 mg/kg" }, { label: "Nitrate", val: "1800 mg/kg" }, { label: "Chlorophyll", val: "48 SPAD" }],
     "green gram": [{ label: "Protein", val: "24.5%" }, { label: "Germination", val: "95%" }, { label: "Moisture", val: "10.2%" }],
     moong: [{ label: "Protein", val: "24.5%" }, { label: "Germination", val: "95%" }, { label: "Moisture", val: "10.2%" }],
     lettuce: [{ label: "Crispness", val: "8.4 N" }, { label: "Nutrient Efficiency", val: "92%" }, { label: "Chlorophyll", val: "42 SPAD" }],
-    cabbage: [{ label: "Head Density", val: "1.05 g/cm³" }, { label: "Compactness", val: "88%" }, { label: "Vitamin C", val: "36 mg/100g" }],
+    cabbage: [{ label: "Head Density", val: "1.05 g/cm3" }, { label: "Compactness", val: "88%" }, { label: "Vitamin C", val: "36 mg/100g" }],
     cauliflower: [{ label: "Curd Compactness", val: "91%" }, { label: "Whiteness", val: "85" }, { label: "Vitamin C", val: "48 mg/100g" }],
-    carrot: [{ label: "Beta Carotene", val: "8.3 mg/100g" }, { label: "Root Length", val: "18 cm" }, { label: "Sugar", val: "6.2 °Bx" }],
-    beetroot: [{ label: "Betanin", val: "95 mg/100g" }, { label: "Diameter", val: "7.5 cm" }, { label: "Sugar", val: "8.1 °Bx" }],
+    carrot: [{ label: "Beta Carotene", val: "8.3 mg/100g" }, { label: "Root Length", val: "18 cm" }, { label: "Sugar", val: "6.2 deg Bx" }],
+    beetroot: [{ label: "Betanin", val: "95 mg/100g" }, { label: "Diameter", val: "7.5 cm" }, { label: "Sugar", val: "8.1 deg Bx" }],
     okra: [{ label: "Tenderness", val: "6.8 N" }, { label: "Fiber", val: "3.2 g/100g" }, { label: "Mucilage", val: "18 mL/100g" }],
     bhindi: [{ label: "Tenderness", val: "6.8 N" }, { label: "Fiber", val: "3.2 g/100g" }, { label: "Mucilage", val: "18 mL/100g" }],
     "french beans": [{ label: "Pod Length", val: "14 cm" }, { label: "Protein", val: "7.1 g/100g" }, { label: "Fiber", val: "3.4 g/100g" }],
@@ -2474,18 +2955,18 @@ function TracePage({ patchId }) {
             <h2 className="trace-product-name">{cropRecord?.name || "Agricultural Product"}</h2>
           </div>
           <div className="trace-info-bar">
-            <div className="trace-info-item"><span className="amber-dot">●</span><span>Variety</span><strong>{cropRecord?.variety || "-"}</strong></div>
-            <div className="trace-info-item"><span className="amber-dot">●</span><span>Harvested</span><strong>{harvestRecord?.harvestDate || "-"}</strong></div>
-            <div className="trace-info-item"><span className="amber-dot">●</span><span>Origin</span><strong>{plantation?.location || "-"}</strong></div>
-            <div className="trace-info-item"><span className="amber-dot">●</span><span>Batch ID</span><strong className="mono">{batch.id}</strong></div>
+            <div className="trace-info-item"><span className="amber-dot">•</span><span>Variety</span><strong>{cropRecord?.variety || "-"}</strong></div>
+            <div className="trace-info-item"><span className="amber-dot">•</span><span>Harvested</span><strong>{harvestRecord?.harvestDate || "-"}</strong></div>
+            <div className="trace-info-item"><span className="amber-dot">•</span><span>Origin</span><strong>{plantation?.location || "-"}</strong></div>
+            <div className="trace-info-item"><span className="amber-dot">•</span><span>Batch ID</span><strong className="mono">{batch.id}</strong></div>
           </div>
         </div>
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">👨‍🌾 Farmer Information</div>
+        <div className="trace-section-header">Farmer Information</div>
         <div className="farmer-row">
-          <div className="farmer-avatar">{isShrimp ? "🦐" : "🌾"}</div>
+          <div className="farmer-avatar">{isShrimp ? "AQ" : "FM"}</div>
           <div>
             <div className="farmer-name">{plantation?.name || "Unknown Farm"}</div>
             <div className="farmer-sub">{isShrimp ? "Aquaculture Farm" : "Organic Farming Cooperative"}</div>
@@ -2498,31 +2979,31 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">📍 Farm Location</div>
+        <div className="trace-section-header">Farm Location</div>
         <div className="location-row">
           <div>
             <div className="location-name">{plantation?.location || "-"}</div>
-            <div className="location-meta">Area: 2.5 hectares · <span className="badge badge-green">Active</span></div>
+            <div className="location-meta">Area: 2.5 hectares - <span className="badge badge-green">Active</span></div>
           </div>
         </div>
         <div style={{ padding: "0 16px 14px" }}>
-          <button className="btn btn-dark">🎬 View Farm Media</button>
+          <button className="btn btn-dark"><FiVideo /> View Farm Media</button>
         </div>
       </div>
 
       <div className="trace-card">
         <div className="trace-section-header" style={{ background: isShrimp ? "#1a5276" : "#2d6a2e" }}>
-          {isShrimp ? "💧 Water & Environment Data" : "🌱 Sustainability Data"}
+          {isShrimp ? "Water & Environment Data" : "Sustainability Data"}
         </div>
         {isShrimp ? (
           <div className="sustain-grid">
-            {[{ l: "Water Quality", v: "pH 7.5-8.5" }, { l: "Water Temp", v: "28-32°C" }, { l: "Dissolved O₂", v: "≥ 5 mg/L" }, { l: "Ammonia", v: "< 0.1 mg/L" }, { l: "Antibiotic Test", v: "Passed ✓" }, { l: "Salinity", v: "15-25 ppt" }].map((i) => (
+            {[{ l: "Water Quality", v: "pH 7.5-8.5" }, { l: "Water Temp", v: "28-32°C" }, { l: "Dissolved O2", v: ">= 5 mg/L" }, { l: "Ammonia", v: "< 0.1 mg/L" }, { l: "Antibiotic Test", v: "Passed" }, { l: "Salinity", v: "15-25 ppt" }].map((i) => (
               <div key={i.l} className="sustain-item"><div className="sustain-label">{i.l}</div><div className="sustain-val">{i.v}</div></div>
             ))}
           </div>
         ) : (
           <div className="sustain-grid">
-            {[{ l: "Water Used", v: "1100 L/kg" }, { l: "Soil Health", v: "pH 6.8" }, { l: "Organic Carbon", v: "1.2%" }, { l: "NPK", v: "N:45 P:30 K:35 kg/ha" }, { l: "NDVI Score", v: "0.78" }, { l: "CO₂ Footprint", v: "0.4 kg CO₂e" }].map((i) => (
+            {[{ l: "Water Used", v: "1100 L/kg" }, { l: "Soil Health", v: "pH 6.8" }, { l: "Organic Carbon", v: "1.2%" }, { l: "NPK", v: "N:45 P:30 K:35 kg/ha" }, { l: "NDVI Score", v: "0.78" }, { l: "CO2 Footprint", v: "0.4 kg CO2e" }].map((i) => (
               <div key={i.l} className="sustain-item"><div className="sustain-label">{i.l}</div><div className="sustain-val">{i.v}</div></div>
             ))}
           </div>
@@ -2530,7 +3011,7 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">{isShrimp ? "🦐 Shrimp Product Details" : "⭐ Crop-Specific Quality X-Factor"}</div>
+        <div className="trace-section-header">{isShrimp ? "Shrimp Product Details" : "Crop-Specific Quality X-Factor"}</div>
         <div className="xfactor-grid">
           {xfactor.map((x) => (
             <div key={x.label} className="xfactor-item">
@@ -2543,9 +3024,9 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">🏅 Certifications</div>
+        <div className="trace-section-header">Certifications</div>
         <div className="cert-row">
-          <span className="cert-badge">🌿</span>
+          <span className="cert-badge">CERT</span>
           <div>
             <div style={{ fontWeight: 600 }}>{isShrimp ? "MPEDA / BAP Certified" : "India Organic Certified"}</div>
             <div style={{ fontSize: 13 }} className="muted">Valid Until: Dec 2025</div>
@@ -2554,7 +3035,7 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">🚚 Harvest & Supply Chain</div>
+        <div className="trace-section-header">Harvest & Supply Chain</div>
         <div className="supply-chain">
           {["Harvested", "Bulk Packed", "Supplier Packing", "Transported", "At Store"].map((s, i) => (
             <div key={s} className="chain-item">
@@ -2567,7 +3048,7 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">🌾 Harvest Data</div>
+        <div className="trace-section-header">Harvest Data</div>
         <div className="kv-grid">
           <div className="kv-item"><span>Harvest Date</span><strong>{harvestRecord?.harvestDate || "-"}</strong></div>
           <div className="kv-item"><span>Total Quantity</span><strong>{harvestRecord?.total || 0} {harvestRecord?.unit || "kg"}</strong></div>
@@ -2577,10 +3058,10 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">📦 Bulk Packing Details</div>
+        <div className="trace-section-header">Bulk Packing Details</div>
         <div className="kv-grid">
           <div className="kv-item"><span>Packed On</span><strong>{firstPacking?.packingDate || "-"}</strong></div>
-          <div className="kv-item"><span>Packages</span><strong>{firstPacking?.numPackages || 0} × {firstPacking?.packingSize || "-"}</strong></div>
+          <div className="kv-item"><span>Packages</span><strong>{firstPacking?.numPackages || 0} x {firstPacking?.packingSize || "-"}</strong></div>
           <div className="kv-item"><span>Net Weight</span><strong>{firstPacking?.netWeight || 0} kg</strong></div>
           <div className="kv-item"><span>Warehouse</span><strong>{firstPacking?.warehouse || "-"}</strong></div>
           <div className="kv-item"><span>Location</span><strong>{firstPacking ? `${firstPacking.city}, ${firstPacking.state}` : "-"}</strong></div>
@@ -2588,19 +3069,19 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header" style={{ background: "linear-gradient(90deg, #1a5276, #2980b9)" }}>🏪 Supplier Packing (Retail)</div>
+        <div className="trace-section-header" style={{ background: "linear-gradient(90deg, #1a5276, #2980b9)" }}>Supplier Packing (Retail)</div>
         <div className="kv-grid">
           <div className="kv-item"><span>Batch ID</span><code className="mono">{batch.id}</code></div>
           <div className="kv-item"><span>Bulk Weight</span><strong>{batch.totalWeight} kg</strong></div>
           <div className="kv-item"><span>Retail Packet Size</span><strong>{retailSize} kg</strong></div>
           <div className="kv-item"><span>Total Retail Packets</span><strong>{totalRetail} pcs</strong></div>
           <div className="kv-item"><span>Packaging Type</span><strong>{isShrimp ? "IQF / Frozen Pack" : "Consumer Ready"}</strong></div>
-          <div className="kv-item"><span>QC Status</span><strong style={{ color: "#2d6a2e" }}>Passed ✓</strong></div>
+          <div className="kv-item"><span>QC Status</span><strong style={{ color: "#2d6a2e" }}>Passed</strong></div>
         </div>
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">📅 Traceability Timeline</div>
+        <div className="trace-section-header">Traceability Timeline</div>
         <div className="v-timeline">
           {timeline.map((t, i) => (
             <div key={t.label} className="v-tl-item">
@@ -2616,7 +3097,7 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">📋 Batch Summary</div>
+        <div className="trace-section-header">Batch Summary</div>
         <div className="kv-grid">
           <div className="kv-item"><span>Batch ID</span><code className="mono">{batch.id}</code></div>
           <div className="kv-item"><span>Total Weight</span><strong>{batch.totalWeight} kg</strong></div>
@@ -2627,17 +3108,17 @@ function TracePage({ patchId }) {
       </div>
 
       <div className="trace-card">
-        <div className="trace-section-header">✅ Data Verification</div>
+        <div className="trace-section-header">Data Verification</div>
         <div className="kv-grid">
           <div className="kv-item"><span>Verified By</span><strong>MaatiAI System</strong></div>
           <div className="kv-item"><span>Last Updated</span><strong>{new Date().toLocaleString()}</strong></div>
-          <div className="kv-item"><span>Status</span><strong style={{ color: "#2d6a2e" }}>Verified ✓</strong></div>
+          <div className="kv-item"><span>Status</span><strong style={{ color: "#2d6a2e" }}>Verified</strong></div>
         </div>
       </div>
 
       <div className="trace-actions">
-        <button className="btn btn-primary">📸 View Harvest Photos</button>
-        <button className="btn btn-outline">▶ Watch Farmer Story</button>
+        <button className="btn btn-primary"><FiCamera /> View Harvest Photos</button>
+        <button className="btn btn-outline"><FiVideo /> Watch Farmer Story</button>
       </div>
 
       <div className="trace-footer">Powered by <strong>MaatiAI</strong> Traceability</div>
@@ -2658,7 +3139,7 @@ function AppShell() {
 
   let page = null;
   if (patchMatch) page = <TracePage patchId={patchMatch[1]} />;
-  else if (loading) page = <div className="page-container"><div className="card">Loading…</div></div>;
+  else if (loading) page = <div className="page-container"><div className="card">Loading...</div></div>;
   else if (!user) page = <LoginRequired />;
   else if (plantationMatch) page = <PlantationDetail plantationId={plantationMatch[1]} toast={toast} />;
   else if (route === "/grower") page = user.role === "grower" ? <GrowerDashboard navigate={navigate} toast={toast} /> : <div className="page-container">Access denied</div>;
@@ -2678,6 +3159,25 @@ function AppShell() {
 }
 
 export default function TraceConnect() {
+  useEffect(() => {
+    const rootEl = typeof document !== "undefined" ? document.getElementById("root") : null;
+    if (typeof document !== "undefined") {
+      document.body.classList.add("traceconnect-body");
+    }
+    if (rootEl) {
+      rootEl.classList.add("traceconnect-root-host");
+    }
+
+    return () => {
+      if (typeof document !== "undefined") {
+        document.body.classList.remove("traceconnect-body");
+      }
+      if (rootEl) {
+        rootEl.classList.remove("traceconnect-root-host");
+      }
+    };
+  }, []);
+
   return (
     <div className="tc-root">
       <AuthProvider>

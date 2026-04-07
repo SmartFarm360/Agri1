@@ -28,7 +28,11 @@ const yieldData = [
   { name: "W6", yield: 900 },
 ];
 
-export default function TraceabilityPage() {
+export default function TraceabilityPage({
+  embedded = false,
+  onStartMonitoring,
+  onGoToDashboard,
+}) {
   const scrollToDemo = () => {
     const videoSection = document.getElementById("ta-video-section");
     if (videoSection) {
@@ -37,6 +41,8 @@ export default function TraceabilityPage() {
   };
 
   useEffect(() => {
+    if (embedded) return undefined;
+
     document.body.classList.add("traceability-page-active");
     document.getElementById("root")?.classList.add("traceability-root-active");
 
@@ -46,7 +52,7 @@ export default function TraceabilityPage() {
         .getElementById("root")
         ?.classList.remove("traceability-root-active");
     };
-  }, []);
+  }, [embedded]);
 
   return (
     <div className="ta-page-wrapper">
@@ -65,19 +71,39 @@ export default function TraceabilityPage() {
               with total transparency.
             </p>
             <div className="ta-hero-btns">
-              <Link
-                className="ta-btn-black ta-btn-lg ta-btn-link"
-                to="/traceconnect"
-              >
-                Start Monitoring <ArrowRight size={18} />
-              </Link>
-              <button
-                className="ta-btn-outline ta-btn-lg"
-                type="button"
-                onClick={scrollToDemo}
-              >
-                Show a Demo
-              </button>
+              {onStartMonitoring ? (
+                <button
+                  className="ta-btn-black ta-btn-lg ta-btn-link"
+                  type="button"
+                  onClick={onStartMonitoring}
+                >
+                  Start Monitoring <ArrowRight size={18} />
+                </button>
+              ) : (
+                <Link
+                  className="ta-btn-black ta-btn-lg ta-btn-link"
+                  to="/traceconnect"
+                >
+                  Start Monitoring <ArrowRight size={18} />
+                </Link>
+              )}
+              {onGoToDashboard ? (
+                <button
+                  className="ta-btn-outline ta-btn-lg"
+                  type="button"
+                  onClick={onGoToDashboard}
+                >
+                  Go to Dashboard
+                </button>
+              ) : (
+                <button
+                  className="ta-btn-outline ta-btn-lg"
+                  type="button"
+                  onClick={scrollToDemo}
+                >
+                  Show a Demo
+                </button>
+              )}
             </div>
           </div>
 

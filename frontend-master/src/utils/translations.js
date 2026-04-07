@@ -35,6 +35,9 @@ export const translations = {
     passwordError: "Password must be at least 8 characters long",
     passwordMismatch: "Passwords do not match",
     registrationSuccess: "Registration successful!",
+    supplier: "Supplier",
+    farmer: "Farmer",
+    droneController: "Drone Controller",
 
     // Home
     heroSubtitle: "Revolutionary AI-powered farming solutions for the modern farmer",

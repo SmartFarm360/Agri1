@@ -1,7 +1,8 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
+import { FiCheckCircle, FiEdit2, FiLock, FiMail, FiSave, FiUser, FiX } from "react-icons/fi"
 import { translations } from "../utils/translations"
 import "./Profile.css"
 
@@ -148,7 +149,7 @@ const handleSave = async () => {
       <div className="profile-container">
         {showSuccess && (
           <div className="success-message">
-            <span className="success-icon">✓</span>
+            <span className="success-icon"><FiCheckCircle /></span>
             <span>{t?.profileUpdated || "Profile updated successfully!"}</span>
           </div>
         )}
@@ -185,7 +186,7 @@ const handleSave = async () => {
               </div>
               {!isEditing && (
                 <button className="edit-btn-header" onClick={handleEdit}>
-                  <span className="edit-icon">✏️</span>
+                  <span className="edit-icon"><FiEdit2 /></span>
                   {t?.edit || "Edit Profile"}
                 </button>
               )}
@@ -197,7 +198,7 @@ const handleSave = async () => {
               {/* Name Field */}
               <div className="form-group">
                 <label className="form-label">
-                  <span className="label-icon">👤</span>
+                  <span className="label-icon"><FiUser /></span>
                   {t?.name || "Full Name"}
                 </label>
                 {isEditing ? (
@@ -216,7 +217,7 @@ const handleSave = async () => {
               {/* Email Field */}
               <div className="form-group">
                 <label className="form-label">
-                  <span className="label-icon">📧</span>
+                  <span className="label-icon"><FiMail /></span>
                   {t?.email || "Email Address"}
                 </label>
                 {isEditing ? (
@@ -235,7 +236,7 @@ const handleSave = async () => {
               {/* Password Field (Masked) */}
               <div className="form-group">
                 <label className="form-label">
-                  <span className="label-icon">🔒</span>
+                  <span className="label-icon"><FiLock /></span>
                   {t?.password || "Password"}
                 </label>
                 {isEditing ? (
@@ -247,7 +248,7 @@ const handleSave = async () => {
                     className="form-input"
                   />
                 ) : (
-                  <div className="form-value">••••••••</div>
+                  <div className="form-value">********</div>
                 )}
               </div>
             </div>
@@ -258,11 +259,11 @@ const handleSave = async () => {
                 <div className="form-divider"></div>
                 <div className="form-actions">
                   <button className="cancel-btn" onClick={handleCancel}>
-                    <span className="btn-icon">✕</span>
+                    <span className="btn-icon"><FiX /></span>
                     {t?.cancel || "Cancel"}
                   </button>
                   <button className="save-btn" onClick={handleSave}>
-                    <span className="btn-icon">💾</span>
+                    <span className="btn-icon"><FiSave /></span>
                     {t?.save || "Save Changes"}
                   </button>
                 </div>

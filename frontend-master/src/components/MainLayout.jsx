@@ -1,7 +1,6 @@
 ﻿// MainLayout.jsx
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import axios from "axios";
 import navLogo from "../assets/Maati AI.jpg";
 import "./MainLayout.css";
 
@@ -9,6 +8,7 @@ const baseText = {
   home: "Home",
   aboutUs: "About Us",
   dashboard: "Dashboard",
+  profile: "Profile",
   language: "Language",
   history: "Issue Log",
   login: "Login",
@@ -32,6 +32,7 @@ const fallbackTranslations = {
     home: "\u0939\u094b\u092e",
     aboutUs: "\u0939\u092e\u093e\u0930\u0947 \u092c\u093e\u0930\u0947 \u092e\u0947\u0902",
     dashboard: "\u0921\u0948\u0936\u092c\u094b\u0930\u094d\u0921",
+    profile: "\u092a\u094d\u0930\u094b\u092b\u093e\u0907\u0932",
     language: "\u092d\u093e\u0937\u093e",
     history: "\u0907\u0936\u094d\u092f\u0942 \u0932\u0949\u0917",
     login: "\u0932\u0949\u0917\u093f\u0928",
@@ -58,6 +59,7 @@ const languageLabels = {
 const MainLayout = ({
   children,
   onLogout,
+  onTraceabilityClick,
   currentLanguage = "en",
   setCurrentLanguage,
   isAuthenticated,
@@ -82,36 +84,16 @@ const MainLayout = ({
       document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const translateUI = async (targetLang) => {
+  const translateUI = (targetLang) => {
     const fallbackForLang = fallbackTranslations[targetLang] || baseText;
-
-    try {
-      const res = await axios.post(
-        "https://frontend-k-backend.onrender.com/translations",
-        {
-          q: Object.values(baseText),
-          source: "en",
-          target: targetLang,
-        },
-      );
-
-      const translated = {};
-      Object.keys(baseText).forEach((key, idx) => {
-        translated[key] = res.data.translatedTexts[idx] || fallbackForLang[key];
-      });
-
-      setTranslatedText(translated);
-    } catch (err) {
-      console.error("Translation failed:", err.message);
-      setTranslatedText(fallbackForLang);
-    }
+    setTranslatedText(fallbackForLang);
   };
 
-  const handleLanguageChange = async (langCode) => {
+  const handleLanguageChange = (langCode) => {
     setCurrentLanguage(langCode);
     localStorage.setItem("selectedLanguage", langCode);
     setShowLangMenu(false);
-    await translateUI(langCode);
+    translateUI(langCode);
   };
 
   useEffect(() => {
@@ -125,6 +107,19 @@ const MainLayout = ({
   const t = new Proxy(translatedText, {
     get: (target, prop) => target[prop] || baseText[prop] || prop,
   });
+  const storedUserRole =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("userRole") || ""
+      : "";
+  const isSupplierUser = isAuthenticated && storedUserRole === "supplier";
+  const dashboardPath =
+    isAuthenticated && storedUserRole === "drone_controller"
+      ? "/drone-dashboard"
+      : "/dashboard";
+  const isDashboardActive =
+    location.pathname === "/dashboard" || location.pathname === "/drone-dashboard";
+  const isTraceabilityActive =
+    location.pathname === "/traceability" || location.pathname === "/traceconnect";
 
   return (
     <div className="main-layout">
@@ -139,21 +134,32 @@ const MainLayout = ({
         </div>
 
         <div className="nav-right">
-          <Link to="/" className={location.pathname === "/" ? "nav-link active" : "nav-link"}>
-            {t.home}
-          </Link>
-          <Link to="/dashboard" className={location.pathname === "/dashboard" ? "nav-link active" : "nav-link"}>
+          {!isSupplierUser && (
+            <Link to="/" className={location.pathname === "/" ? "nav-link active" : "nav-link"}>
+              {t.home}
+            </Link>
+          )}
+          <Link to={dashboardPath} className={isDashboardActive ? "nav-link active" : "nav-link"}>
             {t.dashboard}
           </Link>
-          <Link to="/blog" className={location.pathname === "/blog" ? "nav-link active" : "nav-link"}>
-            {t.blog}
-          </Link>
-          <Link
-            to="/traceability"
-            className={location.pathname === "/traceability" ? "nav-link active" : "nav-link"}
-          >
-            {t.traceability}
-          </Link>
+          {!isSupplierUser && (
+            <>
+              <Link to="/blog" className={location.pathname === "/blog" ? "nav-link active" : "nav-link"}>
+                {t.blog}
+              </Link>
+              <Link
+                to="/traceconnect"
+                className={isTraceabilityActive ? "nav-link active" : "nav-link"}
+                onClick={(event) => {
+                  if (!onTraceabilityClick) return;
+                  event.preventDefault();
+                  onTraceabilityClick();
+                }}
+              >
+                {t.traceability}
+              </Link>
+            </>
+          )}
 
           <div className="language-dropdown" ref={langRef}>
             <button
@@ -182,9 +188,11 @@ const MainLayout = ({
             )}
           </div>
 
-          <Link to="/history" className={location.pathname === "/history" ? "nav-link active" : "nav-link"}>
-            {t.history}
-          </Link>
+          {!isSupplierUser && (
+            <Link to="/history" className={location.pathname === "/history" ? "nav-link active" : "nav-link"}>
+              {t.history}
+            </Link>
+          )}
 
           {!isAuthenticated ? (
             <Link to="/login" className="nav-link login-btn">
@@ -195,8 +203,12 @@ const MainLayout = ({
               <div className="profile-circle" onClick={toggleProfileMenu}>{"\uD83D\uDC64"}</div>
               {showProfileMenu && (
                 <div className="profile-menu">
-                  <Link to="/profile" className="profile-menu-item">{t.accountInfo}</Link>
-                  <Link to="/help" className="profile-menu-item">{t.help}</Link>
+                  <Link to="/profile" className="profile-menu-item">
+                    {isSupplierUser ? t.profile : t.accountInfo}
+                  </Link>
+                  {!isSupplierUser && (
+                    <Link to="/help" className="profile-menu-item">{t.help}</Link>
+                  )}
                   <div className="profile-menu-item-logout" onClick={onLogout}>
                     {t.logout}
                   </div>

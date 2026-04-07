@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./AddFarmModal.css";
@@ -350,7 +350,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     // bounding box
     const bbox = turf.bbox(farmPolygon);
 
-    // create grid (20m × 20m)
+    // create grid (20m x 20m)
     const grid = turf.squareGrid(bbox, 0.02, { units: "kilometers" });
 
     grid.features.forEach((cell) => {
@@ -560,8 +560,8 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
           </div>
         )}
 
-        <button className="modal-close-btn" onClick={onClose}>
-          ✕
+        <button className="modal-close-btn" onClick={onClose} aria-label="Close">
+          X
         </button>
 
         <h2>Add Farm</h2>

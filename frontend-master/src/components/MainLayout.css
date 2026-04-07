@@ -145,6 +145,7 @@ body.dashboard-modal-open .navbar {
   display: flex;
   align-items: center;
   flex: 0 0 auto;
+  position: relative;
 }
 
 .profile-circle {

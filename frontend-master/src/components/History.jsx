@@ -145,7 +145,7 @@ const History = ({ currentLanguage = "en" }) => {
         id: index + 1,
         gridId: `GRID-${String(Math.floor(Math.random() * 100) + 1).padStart(3, "0")}`,
         problem,
-        description: problemDescriptions[problem], // âœ… ADD THIS LINE
+        description: problemDescriptions[problem],
         status: statuses[Math.floor(Math.random() * statuses.length)],
         createdDate: new Date(
           Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
@@ -580,7 +580,7 @@ const History = ({ currentLanguage = "en" }) => {
                       style={{ height: "100%", width: "100%" }}
                     >
                       <TileLayer
-                        attribution='Â© <a href="https://www.mappls.com">MapmyIndia</a>'
+                        attribution='© <a href="https://www.mappls.com">MapmyIndia</a>'
                         url="https://maps.mapmyindia.com/rastertiles/v1.0/{z}/{x}/{y}?access_token=890b827c2d4d264a7179eca8750ce4"
                       />
                       <Marker position={[farmLocation.lat, farmLocation.lng]} icon={redIcon}>
@@ -834,7 +834,8 @@ const History = ({ currentLanguage = "en" }) => {
             {showResponseBox && (
               <div className="response-box">
                 <p>
-                  âœ… <strong>Action Submitted Successfully</strong>
+                  <CheckCircle size={18} style={{ marginRight: 6, verticalAlign: "text-bottom" }} />
+                  <strong>Action Submitted Successfully</strong>
                   <br />
                   <br />
                   Your issue is of{" "}
@@ -844,7 +845,7 @@ const History = ({ currentLanguage = "en" }) => {
                   .
                   <br />
                   {selectedHistoryItem.severity === "low" &&
-                    "Evaluation will be done within 3â€“4 days."}
+                    "Evaluation will be done within 3-4 days."}
                   {selectedHistoryItem.severity === "moderate" &&
                     "Evaluation will be done on alternate days."}
                   {selectedHistoryItem.severity === "high" &&

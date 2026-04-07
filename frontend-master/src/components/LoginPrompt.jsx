@@ -4,14 +4,22 @@ import { useNavigate } from "react-router-dom"
 import { Lock, User, UserPlus } from "lucide-react"
 import "./LoginPrompt.css"
 
-const LoginPrompt = () => {
+const LoginPrompt = ({
+  title = "Authentication Required",
+  subtitle = "Please login first to show the dashboard information",
+  message = "You need to be authenticated to access your MAATI AI dashboard. Login to view your farm data, monitor crops, and manage your agricultural operations.",
+  footerMessage = "New to MAATI AI? Create an account to get started!",
+  onAction,
+}) => {
   const navigate = useNavigate()
 
   const handleLoginClick = () => {
+    onAction?.()
     navigate("/login")
   }
 
   const handleRegisterClick = () => {
+    onAction?.()
     navigate("/register")
   }
 
@@ -24,15 +32,12 @@ const LoginPrompt = () => {
           </div>
 
           <div className="login-prompt-header">
-            <h2 className="login-prompt-title">Authentication Required</h2>
-            <p className="login-prompt-subtitle">Please login first to show the dashboard information</p>
+            <h2 className="login-prompt-title">{title}</h2>
+            <p className="login-prompt-subtitle">{subtitle}</p>
           </div>
 
           <div className="login-prompt-message">
-            <p>
-              You need to be authenticated to access your MAATI AI dashboard. Login to view your farm data,
-              monitor crops, and manage your agricultural operations.
-            </p>
+            <p>{message}</p>
           </div>
 
           <div className="login-prompt-actions">
@@ -52,7 +57,7 @@ const LoginPrompt = () => {
           </div>
 
           <div className="login-prompt-footer">
-            <p>New to MAATI AI? Create an account to get started!</p>
+            <p>{footerMessage}</p>
           </div>
         </div>
       </div>

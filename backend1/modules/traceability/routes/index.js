@@ -22,6 +22,7 @@ router.use('/harvests', require('./harvestRoutes'));
 router.use('/packings', require('./packingRoutes'));
 router.use('/patches', require('./patchRoutes'));
 router.use('/process-images', require('./processImageRoutes'));
+router.use('/supplier-traces', require('./supplierTraceRoutes'));
 router.use('/user-roles', require('./userRoleRoutes'));
 
 module.exports = router;

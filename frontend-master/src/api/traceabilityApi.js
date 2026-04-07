@@ -68,6 +68,7 @@ export const traceabilityApi = {
   listPackings: () => request(`/api/traceability/packings`),
   createPacking: (payload) => request(`/api/traceability/packings`, { method: "POST", body: payload }),
   deletePacking: (id) => request(`/api/traceability/packings/${id}`, { method: "DELETE" }),
+  listSupplierFarmTraces: () => request(`/api/traceability/supplier-traces`),
 
   listPatches: () => request(`/api/traceability/patches`),
   createPatch: (payload) => request(`/api/traceability/patches`, { method: "POST", body: payload }),

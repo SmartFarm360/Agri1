@@ -8,12 +8,12 @@ import MainLayout from "./components/MainLayout";
 import About from "./components/About";
 import Dashboard from "./components/Dashboard";
 import DroneDashboard from "./components/DroneDashboard";
+import SupplierDashboard from "./components/SupplierDashboard";
 import History from "./components/History";
 import Language from "./components/Language";
 import Profile from "./components/Profile";
 import FarmBlog from "./components/Farm Blog";
 import Help from "./components/Help";
-import TraceabilityPage from "./components/TraceabilityPage";
 import TraceConnect from "./components/traceconnect";
 
 
@@ -89,6 +89,8 @@ function AppRoutes() {
 
         if (response.data.role === "farmer") {
           navigate("/dashboard");
+        } else if (response.data.role === "supplier") {
+          navigate("/dashboard");
         } else if (response.data.role === "drone_controller") {
           navigate("/drone-dashboard");
         } else {
@@ -143,6 +145,45 @@ function AppRoutes() {
     navigate("/");
   };
 
+  const handleTraceabilityAccess = () => {
+    if (isAuthenticated) {
+      if (userRole === "supplier") {
+        showToast(
+          "Supplier access is currently available through the supplier dashboard only.",
+          "error",
+        );
+        navigate("/dashboard");
+        return;
+      }
+
+      navigate("/traceconnect");
+      return;
+    }
+
+    showToast(
+      "You must login as a grower/farmer through Maati AI to access Traceability. Redirecting to login.",
+      "error",
+    );
+    navigate("/login");
+  };
+
+  const handleFarmerDashboardAccess = () => {
+    if (isAuthenticated) {
+      if (userRole === "drone_controller") {
+        navigate("/drone-dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+      return;
+    }
+
+    showToast(
+      "Please login through Maati AI to open the farmer dashboard. Redirecting to login.",
+      "error",
+    );
+    navigate("/login");
+  };
+
   return (
     appLoaded && (
       <>
@@ -173,10 +214,15 @@ function AppRoutes() {
             <MainLayout
               isAuthenticated={isAuthenticated}
               onLogout={handleLogout}
+              onTraceabilityClick={handleTraceabilityAccess}
               currentLanguage={currentLanguage}
               setCurrentLanguage={setCurrentLanguage}
             >
-              <Home currentLanguage={currentLanguage} />
+              <Home
+                currentLanguage={currentLanguage}
+                onTraceabilityClick={handleTraceabilityAccess}
+                onGoToDashboard={handleFarmerDashboardAccess}
+              />
             </MainLayout>
           }
         />
@@ -228,6 +274,7 @@ function AppRoutes() {
               <MainLayout
                 isAuthenticated={isAuthenticated}
                 onLogout={handleLogout}
+                onTraceabilityClick={handleTraceabilityAccess}
                 currentLanguage={currentLanguage}
                 setCurrentLanguage={setCurrentLanguage}
               >
@@ -243,37 +290,37 @@ function AppRoutes() {
         <Route
           path="/blog"
           element={
-            <MainLayout
-              isAuthenticated={isAuthenticated}
-              onLogout={handleLogout}
-              currentLanguage={currentLanguage}
-              setCurrentLanguage={setCurrentLanguage}
-            >
-              <FarmBlog currentLanguage={currentLanguage} />
-            </MainLayout>
+            isAuthenticated && userRole === "supplier" ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <MainLayout
+                isAuthenticated={isAuthenticated}
+                onLogout={handleLogout}
+                onTraceabilityClick={handleTraceabilityAccess}
+                currentLanguage={currentLanguage}
+                setCurrentLanguage={setCurrentLanguage}
+              >
+                <FarmBlog currentLanguage={currentLanguage} />
+              </MainLayout>
+            )
           }
         />
 
         {/* TRACEABILITY */}
         <Route
           path="/traceability"
-          element={
-            <MainLayout
-              isAuthenticated={isAuthenticated}
-              onLogout={handleLogout}
-              currentLanguage={currentLanguage}
-              setCurrentLanguage={setCurrentLanguage}
-            >
-              <TraceabilityPage />
-            </MainLayout>
-          }
+          element={<Navigate to="/" replace />}
         />
 
         <Route
           path="/traceconnect"
           element={
             isAuthenticated ? (
+              userRole === "supplier" ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
               <TraceConnect />
+              )
             ) : (
               <Navigate to="/login" replace />
             )
@@ -284,14 +331,20 @@ function AppRoutes() {
         <Route
           path="/dashboard"
           element={
-            isAuthenticated && userRole === "farmer" ? (
+            isAuthenticated &&
+            (userRole === "farmer" || userRole === "supplier") ? (
               <MainLayout
                 isAuthenticated={isAuthenticated}
                 onLogout={handleLogout}
+                onTraceabilityClick={handleTraceabilityAccess}
                 currentLanguage={currentLanguage}
                 setCurrentLanguage={setCurrentLanguage}
               >
-                <Dashboard currentLanguage={currentLanguage} />
+                {userRole === "supplier" ? (
+                  <SupplierDashboard currentLanguage={currentLanguage} />
+                ) : (
+                  <Dashboard currentLanguage={currentLanguage} />
+                )}
               </MainLayout>
             ) : (
               <Navigate to="/login" />
@@ -307,6 +360,7 @@ function AppRoutes() {
               <MainLayout
                 isAuthenticated={isAuthenticated}
                 onLogout={handleLogout}
+                onTraceabilityClick={handleTraceabilityAccess}
                 currentLanguage={currentLanguage}
                 setCurrentLanguage={setCurrentLanguage}
               >
@@ -333,6 +387,7 @@ function AppRoutes() {
             <MainLayout
               isAuthenticated={isAuthenticated}
               onLogout={handleLogout}
+              onTraceabilityClick={handleTraceabilityAccess}
               currentLanguage={currentLanguage}
               setCurrentLanguage={setCurrentLanguage}
             >
@@ -349,6 +404,7 @@ function AppRoutes() {
               <MainLayout
                 isAuthenticated={isAuthenticated}
                 onLogout={handleLogout}
+                onTraceabilityClick={handleTraceabilityAccess}
                 currentLanguage={currentLanguage}
                 setCurrentLanguage={setCurrentLanguage}
               >
