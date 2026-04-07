@@ -1,7 +1,7 @@
 ﻿import { useState, useRef, useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import "./AddFarmModal.css";
+import "../styles/AddFarmModal.css";
 import * as turf from "@turf/turf";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";

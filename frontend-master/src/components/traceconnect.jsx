@@ -6,7 +6,7 @@ import {
   FiCalendar, FiDroplet, FiVideo, FiCamera, FiCheck,
   FiX, FiMail, FiShield, FiStar, FiTrendingUp, FiGrid
 } from "react-icons/fi";
-import "./traceconnect.css";
+import "../styles/traceconnect.css";
 import { getApiUrl, traceabilityApi } from "../api/traceabilityApi";
 
 const AuthContext = createContext(null);

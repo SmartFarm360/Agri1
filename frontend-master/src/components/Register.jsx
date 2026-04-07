@@ -18,7 +18,7 @@ import {
 } from "react-icons/fi";
 import { getApiUrl } from "../api/traceabilityApi";
 import { translations } from "../utils/translations";
-import "./Register.css";
+import "../styles/Register.css";
 import navLogo from "../assets/Maati AI.jpg";
 
 const API_URL = getApiUrl();

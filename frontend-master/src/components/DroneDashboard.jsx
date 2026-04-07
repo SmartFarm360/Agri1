@@ -1,6 +1,6 @@
 import React from "react";
 import { translations } from "../utils/translations";
-import "./DroneDashboard.css";
+import "../styles/DroneDashboard.css";
 
 const DroneDashboard = ({ currentLanguage = "en" }) => {
   // Fallback to English if currentLanguage is undefined or invalid

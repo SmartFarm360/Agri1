@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import maatiLogo from "../assets/Maati AI.jpg";
-import "./TraceabilityPage.css";
+import "../styles/TraceabilityPage.css";
 
 const yieldData = [
   { name: "W1", yield: 400 },
@@ -32,6 +32,7 @@ export default function TraceabilityPage({
   embedded = false,
   onStartMonitoring,
   onGoToDashboard,
+  centerDashboardButton = false,
 }) {
   const scrollToDemo = () => {
     const videoSection = document.getElementById("ta-video-section");
@@ -70,23 +71,26 @@ export default function TraceabilityPage({
               production. Monitor crop health, field activity, and supply chain
               with total transparency.
             </p>
-            <div className="ta-hero-btns">
-              {onStartMonitoring ? (
-                <button
-                  className="ta-btn-black ta-btn-lg ta-btn-link"
-                  type="button"
-                  onClick={onStartMonitoring}
-                >
-                  Start Monitoring <ArrowRight size={18} />
-                </button>
-              ) : (
-                <Link
-                  className="ta-btn-black ta-btn-lg ta-btn-link"
-                  to="/traceconnect"
-                >
-                  Start Monitoring <ArrowRight size={18} />
-                </Link>
-              )}
+            <div
+              className={`ta-hero-btns${centerDashboardButton ? " dashboard-only" : ""}`}
+            >
+              {!centerDashboardButton &&
+                (onStartMonitoring ? (
+                  <button
+                    className="ta-btn-black ta-btn-lg ta-btn-link"
+                    type="button"
+                    onClick={onStartMonitoring}
+                  >
+                    Start Monitoring <ArrowRight size={18} />
+                  </button>
+                ) : (
+                  <Link
+                    className="ta-btn-black ta-btn-lg ta-btn-link"
+                    to="/traceconnect"
+                  >
+                    Start Monitoring <ArrowRight size={18} />
+                  </Link>
+                ))}
               {onGoToDashboard ? (
                 <button
                   className="ta-btn-outline ta-btn-lg"

@@ -16,7 +16,7 @@ import {
   FiSend,
   FiMoreHorizontal,
 } from "react-icons/fi"
-import "./Farm Blog.css"
+import "../styles/Farm Blog.css"
 
 
 const FarmerBlog = () => {

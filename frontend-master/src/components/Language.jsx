@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import "./Language.css";
+import "../styles/Language.css";
 
 const languages = [
   { code: "en", name: "English" },

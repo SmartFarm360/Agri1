@@ -2,7 +2,7 @@
 
 import { useNavigate } from "react-router-dom"
 import { Lock, User, UserPlus } from "lucide-react"
-import "./LoginPrompt.css"
+import "../styles/LoginPrompt.css"
 
 const LoginPrompt = ({
   title = "Authentication Required",

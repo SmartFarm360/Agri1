@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import "./Help.css"
+import "../styles/Help.css"
 
 const Help = () => {
   const [expandedFAQ, setExpandedFAQ] = useState(null)

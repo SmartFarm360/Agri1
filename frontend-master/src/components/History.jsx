@@ -17,7 +17,7 @@ import {
   Eye,
   MoreHorizontal,
 } from "lucide-react";
-import "./History.css";
+import "../styles/History.css";
 
 // Mock translations for demo (no network dependency)
 const translations = {

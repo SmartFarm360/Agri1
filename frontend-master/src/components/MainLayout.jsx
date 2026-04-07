@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import navLogo from "../assets/Maati AI.jpg";
-import "./MainLayout.css";
+import "../styles/MainLayout.css";
 
 const baseText = {
   home: "Home",

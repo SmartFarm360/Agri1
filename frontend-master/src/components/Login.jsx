@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { translations } from "../utils/translations";
-import "./Login.css";
+import "../styles/Login.css";
 import navLogo from "../assets/Maati AI.jpg";
 
 const Login = ({ onLogin, currentLanguage }) => {

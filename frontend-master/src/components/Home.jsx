@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom"
 import { translations } from "../utils/translations"
 import TraceabilityPage from "./TraceabilityPage"
-import "./Home.css"
+import "../styles/Home.css"
 import drone2 from "/src/assets/drone2.jpg"
 
 const Home = ({
@@ -12,6 +12,11 @@ const Home = ({
 }) => {
   const navigate = useNavigate()
   const t = translations?.[currentLanguage] ?? translations["en"]
+  const currentUserRole =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("userRole") || ""
+      : ""
+  const isSupplierUser = currentUserRole === "supplier"
 
   const handleGetStarted = () => {
     navigate("/about")
@@ -141,8 +146,9 @@ const Home = ({
 
       <TraceabilityPage
         embedded
-        onStartMonitoring={onTraceabilityClick}
+        onStartMonitoring={isSupplierUser ? undefined : onTraceabilityClick}
         onGoToDashboard={onGoToDashboard}
+        centerDashboardButton={isSupplierUser}
       />
     </div>
   )

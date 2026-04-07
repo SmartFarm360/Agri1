@@ -11,7 +11,7 @@ import {
   FiUsers,
 } from "react-icons/fi";
 import { traceabilityApi } from "../api/traceabilityApi";
-import "./SupplierDashboard.css";
+import "../styles/SupplierDashboard.css";
 
 const formatDate = (value) => {
   if (!value) return "Not available";

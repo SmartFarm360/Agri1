@@ -217,6 +217,11 @@ body.traceability-page-active .footer {
   gap: 16px;
 }
 
+.ta-hero-btns.dashboard-only {
+  width: min(100%, 640px);
+  justify-content: center;
+}
+
 .ta-hero-visual {
   flex: 1;
 }

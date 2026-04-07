@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import { FiCheckCircle, FiEdit2, FiLock, FiMail, FiSave, FiUser, FiX } from "react-icons/fi"
 import { translations } from "../utils/translations"
-import "./Profile.css"
+import "../styles/Profile.css"
 
 const Profile = ({ currentLanguage }) => {
   const t = translations[currentLanguage] || translations.en

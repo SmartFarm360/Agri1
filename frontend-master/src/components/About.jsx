@@ -1,5 +1,5 @@
 import { translations } from "../utils/translations"
-import "./About.css"
+import "../styles/About.css"
 import Farmer_Image from "../assets/Farmer_Image.jpg" // adjust path as needed
 import logo from "../assets/Maati AI.jpg"
 
