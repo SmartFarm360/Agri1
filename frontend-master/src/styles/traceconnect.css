@@ -1638,6 +1638,37 @@ body.traceconnect-body {
   font-weight: 700;
 }
 
+.tc-root .dashboard-active-select-wrap {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tc-root .dashboard-active-select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  outline: none;
+}
+
+.tc-root .dashboard-active-select option {
+  color: #0f172a;
+}
+
+.tc-root .dashboard-active-meta {
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .tc-root .stat-card {
   background: var(--card);
   border: 1px solid var(--line);

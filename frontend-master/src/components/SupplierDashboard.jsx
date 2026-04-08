@@ -111,8 +111,9 @@ const SupplierDashboard = () => {
     return haystack.includes(normalizedQuery);
   });
 
-  const availableCount = traces.filter((trace) => !trace.assignedPatchId).length;
-  const batchedCount = traces.length - availableCount;
+  const batchedCount = traces.filter(
+    (trace) => trace.hasPacking && Boolean(trace.assignedPatchId),
+  ).length;
   const uniqueGrowers = new Set(
     traces.map((trace) => trace.growerUserId).filter(Boolean),
   ).size;
@@ -167,8 +168,8 @@ const SupplierDashboard = () => {
             <FiPackage />
           </span>
           <div>
-            <h3>{formatNumber(availableCount)}</h3>
-            <p>Available packings</p>
+            <h3>{formatNumber(traces.length)}</h3>
+            <p>Nearby grower traces</p>
           </div>
         </article>
 
@@ -260,7 +261,10 @@ const SupplierDashboard = () => {
             const isAvailable = !trace.assignedPatchId;
 
             return (
-              <article key={trace.packingId} className="supplier-trace-card-dashboard">
+              <article
+                key={trace.traceId || trace.packingId || trace.plantationId}
+                className="supplier-trace-card-dashboard"
+              >
                 <div className="supplier-trace-header">
                   <div>
                     <div className="supplier-trace-kicker">
@@ -289,11 +293,11 @@ const SupplierDashboard = () => {
                   </div>
                   <div className="supplier-meta-item">
                     <span>Packages</span>
-                    <strong>{formatNumber(trace.numPackages)}</strong>
+                    <strong>{trace.hasPacking ? formatNumber(trace.numPackages) : "Pending"}</strong>
                   </div>
                   <div className="supplier-meta-item">
                     <span>Net Weight</span>
-                    <strong>{formatNumber(trace.netWeight)} kg</strong>
+                    <strong>{trace.hasPacking ? `${formatNumber(trace.netWeight)} kg` : "Pending"}</strong>
                   </div>
                 </div>
 
@@ -321,7 +325,7 @@ const SupplierDashboard = () => {
                     <FiPackage />
                     <div>
                       <span>Packing Date</span>
-                      <strong>{formatDate(trace.packingDate)}</strong>
+                      <strong>{trace.hasPacking ? formatDate(trace.packingDate) : "Pending"}</strong>
                     </div>
                   </div>
                 </div>
@@ -331,7 +335,7 @@ const SupplierDashboard = () => {
                     Warehouse: {trace.warehouseName || "Not assigned"}
                   </div>
                   <div className="supplier-footer-chip">
-                    Status: {isAvailable ? "Ready for sourcing" : "Already linked"}
+                    Status: {!trace.hasPacking ? "Nearby grower, packing pending" : isAvailable ? "Ready for sourcing" : "Already linked"}
                   </div>
                 </div>
               </article>

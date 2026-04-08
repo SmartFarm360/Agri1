@@ -328,6 +328,38 @@ function formatDateTime(date) {
   return `${weekday}, ${day}/${month}/${year}, ${hour}:${minute}:${second} ${dayPeriod}`;
 }
 
+function getFarmLocationLabel(farm) {
+  if (!farm) return "";
+
+  const namedLocation = String(farm.farm_location || farm.location || "").trim();
+  if (namedLocation) return namedLocation;
+  return "";
+}
+
+function formatReverseLocationName(payload) {
+  const address = payload?.raw?.address || {};
+  const primary =
+    address.village ||
+    address.town ||
+    address.city ||
+    address.hamlet ||
+    address.suburb ||
+    address.county ||
+    "";
+  const secondary = address.state_district || address.district || "";
+  const state = address.state || "";
+
+  const parts = [primary, secondary, state]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  if (parts.length) {
+    return Array.from(new Set(parts)).join(", ");
+  }
+
+  return String(payload?.display_name || "").trim();
+}
+
 function drawRoundedRect(ctx, x, y, width, height, radius) {
   const r = Math.min(radius, width / 2, height / 2);
   ctx.beginPath();
@@ -559,8 +591,16 @@ function DataProvider({ children }) {
 
       if (cancelled) return;
       setFarms(myFarms || []);
-      const defaultFarmId = myFarms?.[0]?.farm_id;
-      setSelectedFarmId((prev) => (prev === null || prev === undefined) ? (Number(defaultFarmId) || null) : prev);
+      const defaultFarmId = Number(myFarms?.[0]?.farm_id) || null;
+      setSelectedFarmId((prev) => {
+        const prevId = Number(prev);
+        const hasPrev = (myFarms || []).some(
+          (farm) => Number(farm?.farm_id) === prevId,
+        );
+
+        if (hasPrev) return prevId;
+        return defaultFarmId;
+      });
       setPlantations((pl || []).map(fromDbPlantation));
       setCrops((cr || []).map(fromDbCrop));
       setMonitoring((mon || []).map(fromDbMonitoring));
@@ -1119,16 +1159,78 @@ function StatCard({ icon, label, value, color }) {
 
 function GrowerDashboard({ navigate, toast }) {
   const { user } = useAuth();
-  const { plantations, crops, harvests, packings, addPlantation, delPlantation, backendError, farms, selectedFarmId } = useData();
+  const {
+    plantations,
+    crops,
+    harvests,
+    packings,
+    addPlantation,
+    delPlantation,
+    backendError,
+    farms,
+    selectedFarmId,
+    setSelectedFarmId,
+  } = useData();
   const { confirm, dialog } = useConfirm();
   const [form, setForm] = useState({ type: "crop", name: "", location: "" });
+  const [resolvedFarmLocation, setResolvedFarmLocation] = useState("");
   const mine = plantations;
   const mineIds = mine.map((p) => p.id);
   const totalHarvested = harvests.filter((h) => mineIds.includes(h.plantationId)).reduce((s, h) => s + (h.accepted || 0), 0);
-  const activeFarmName =
-    (farms.find((farm) => Number(farm?.farm_id) === Number(selectedFarmId))?.farm_name) ||
-    farms[0]?.farm_name ||
-    "Farm";
+  const selectedFarm =
+    farms.find((farm) => Number(farm?.farm_id) === Number(selectedFarmId)) ||
+    farms[0] ||
+    null;
+  const activeFarmName = selectedFarm?.farm_name || "Farm";
+  const baseFarmLocation = getFarmLocationLabel(selectedFarm);
+  const activeFarmLocation = baseFarmLocation || resolvedFarmLocation;
+  const activeFarmIndex = selectedFarm
+    ? farms.findIndex((farm) => Number(farm?.farm_id) === Number(selectedFarm?.farm_id)) + 1
+    : 0;
+  const registeredFarmLabel = `${farms.length} registered farm${farms.length === 1 ? "" : "s"}`;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (baseFarmLocation) {
+      setResolvedFarmLocation("");
+      return undefined;
+    }
+
+    const latitude = Number(selectedFarm?.latitude);
+    const longitude = Number(selectedFarm?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setResolvedFarmLocation("");
+      return undefined;
+    }
+
+    fetch(
+      `${API_URL}/api/location/reverse?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`,
+      { credentials: "include" }
+    )
+      .then((res) => res.json().catch(() => null))
+      .then((payload) => {
+        if (cancelled) return;
+        const locationName = formatReverseLocationName(payload);
+        setResolvedFarmLocation(locationName);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setResolvedFarmLocation("");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [baseFarmLocation, selectedFarm?.farm_id, selectedFarm?.latitude, selectedFarm?.longitude]);
+
+  useEffect(() => {
+    setForm((prev) => {
+      const nextLocation = activeFarmLocation || "";
+      if (prev.location === nextLocation) return prev;
+      return { ...prev, location: nextLocation };
+    });
+  }, [activeFarmLocation]);
 
   const create = async () => {
     if (!form.name || !form.location) {
@@ -1138,7 +1240,7 @@ function GrowerDashboard({ navigate, toast }) {
     try {
       await addPlantation({ ...form, status: "Active" });
       stabilizeTraceabilityViewport(() => {
-        setForm({ type: "crop", name: "", location: "" });
+        setForm({ type: "crop", name: "", location: activeFarmLocation || "" });
         toast("Plantation created successfully!", "success");
       });
     } catch (e) {
@@ -1172,10 +1274,31 @@ function GrowerDashboard({ navigate, toast }) {
         {farms.length > 0 && (
           <div className="dashboard-active-farm">
             <div className="dashboard-active-label">Active Farm</div>
-            <div className="dashboard-active-name">
-              <FiMapPin />
-              <span>#{selectedFarmId} ({activeFarmName})</span>
-            </div>
+            {farms.length > 1 ? (
+              <div className="dashboard-active-select-wrap">
+                <FiMapPin />
+                <select
+                  className="dashboard-active-select"
+                  value={selectedFarm ? Number(selectedFarm.farm_id) : ""}
+                  onChange={(e) => setSelectedFarmId(Number(e.target.value) || null)}
+                >
+                  {farms.map((farm, index) => (
+                    <option key={farm.farm_id} value={farm.farm_id}>
+                      {`Farm ${index + 1} (${farm.farm_name || "Unnamed Farm"})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="dashboard-active-name">
+                <FiMapPin />
+                <span>{`Farm ${activeFarmIndex || 1} (${activeFarmName})`}</span>
+              </div>
+            )}
+            <div className="dashboard-active-meta">{registeredFarmLabel}</div>
+            {activeFarmLocation && (
+              <div className="dashboard-active-meta">{activeFarmLocation}</div>
+            )}
           </div>
         )}
       </div>
@@ -1203,7 +1326,12 @@ function GrowerDashboard({ navigate, toast }) {
           </div>
           <div className="field-wrap">
             <label className="field-label">Location</label>
-            <input className="input" placeholder="e.g. Pune, Maharashtra" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
+            <input
+              className="input"
+              placeholder="Auto-filled from selected farm"
+              value={form.location}
+              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+            />
           </div>
           <div className="field-wrap field-btn-wrap">
             <button className="btn btn-primary" onClick={create}><FiPlus /> Create</button>
@@ -2194,6 +2322,7 @@ function SupplierDashboard({ navigate, toast }) {
   const traces = supplierTraceState.traces;
   const available = traces.filter(
     (trace) =>
+      trace.hasPacking &&
       !trace.assignedPatchId &&
       !minePackingIds.includes(trace.packingId),
   );
@@ -2406,6 +2535,7 @@ function SupplierDashboard({ navigate, toast }) {
               <div className="supplier-trace-grid">
                 {traces.map((trace) => {
                   const isSelected = selected.includes(trace.packingId);
+                  const isPackingReady = Boolean(trace.hasPacking && trace.packingId);
                   const myBatch = mine.find((batch) =>
                     batch.packingIds?.includes(trace.packingId),
                   );
@@ -2425,7 +2555,7 @@ function SupplierDashboard({ navigate, toast }) {
 
                   return (
                     <div
-                      key={trace.packingId}
+                      key={trace.traceId || trace.packingId || trace.plantationId}
                       className={`supplier-trace-card ${isSelected ? "selected" : ""}`}
                     >
                       <div className="supplier-trace-top">
@@ -2477,7 +2607,7 @@ function SupplierDashboard({ navigate, toast }) {
                         <div>
                           <span>Packages</span>
                           <strong>
-                            {trace.numPackages} x {trace.packingSize || "-"}
+                            {isPackingReady ? `${trace.numPackages} x ${trace.packingSize || "-"}` : "Packing pending"}
                           </strong>
                         </div>
                         <div>
@@ -2493,7 +2623,7 @@ function SupplierDashboard({ navigate, toast }) {
                         </span>
                         <span>
                           <FiCalendar />
-                          Packed {trace.packingDate || "N/A"}
+                          Packed {trace.packingDate || "Pending"}
                         </span>
                       </div>
 
@@ -2520,6 +2650,10 @@ function SupplierDashboard({ navigate, toast }) {
                         ) : trace.assignedPatchId ? (
                           <button className="btn btn-ghost" disabled>
                             Already assigned
+                          </button>
+                        ) : !isPackingReady ? (
+                          <button className="btn btn-ghost" disabled>
+                            Packing pending
                           </button>
                         ) : (
                           <button

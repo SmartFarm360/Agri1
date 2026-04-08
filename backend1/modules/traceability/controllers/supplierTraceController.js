@@ -87,6 +87,29 @@ function normalize(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function normalizePincode(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function compactParts(parts = []) {
+  return parts
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+}
+
+function buildTraceLocationText(trace) {
+  return compactParts([
+    trace.originLocation,
+    trace.plantationLocation,
+    trace.packingCity,
+    trace.packingState,
+    trace.packingPincode,
+    trace.warehouseName,
+  ])
+    .join(" | ")
+    .toLowerCase();
+}
+
 function buildAreaLabel(area) {
   return [
     area?.village,
@@ -102,44 +125,41 @@ function buildAreaLabel(area) {
 function getMatchedAreaLabel(trace, operatingAreas) {
   if (!Array.isArray(operatingAreas) || operatingAreas.length === 0) return "";
 
-  const exactFields = new Set([
-    normalize(trace.packingPincode),
-  ]);
-
-  const fuzzyFields = [
-    trace.packingCity,
-    trace.packingState,
-    trace.originLocation,
-    trace.plantationLocation,
-    trace.farmName,
-  ]
-    .map(normalize)
-    .filter(Boolean);
+  const traceText = buildTraceLocationText(trace);
+  const tracePincode = normalizePincode(trace.packingPincode);
+  const traceState = normalize(trace.packingState);
 
   for (const area of operatingAreas) {
-    const pincode = normalize(area?.pincode);
-    if (pincode && exactFields.has(pincode)) {
+    const pincode = normalizePincode(area?.pincode);
+    const village = normalize(area?.village);
+    const district = normalize(area?.district);
+    const state = normalize(area?.state);
+
+    if (pincode && tracePincode && pincode === tracePincode) {
       return buildAreaLabel(area);
     }
 
-    const searchTerms = [area?.village, area?.district, area?.state]
-      .map(normalize)
-      .filter(Boolean);
-
     if (
-      searchTerms.length > 0 &&
-      searchTerms.every((term) =>
-        fuzzyFields.some((fieldValue) => fieldValue.includes(term)),
-      )
+      village &&
+      traceText.includes(village) &&
+      (!district || traceText.includes(district)) &&
+      (!state || traceText.includes(state))
     ) {
       return buildAreaLabel(area);
     }
 
     if (
-      searchTerms.length > 0 &&
-      searchTerms.some((term) =>
-        fuzzyFields.some((fieldValue) => fieldValue.includes(term)),
-      )
+      district &&
+      state &&
+      traceText.includes(district) &&
+      (traceText.includes(state) || traceState === state)
+    ) {
+      return buildAreaLabel(area);
+    }
+
+    if (
+      state &&
+      (traceText.includes(state) || traceState === state)
     ) {
       return buildAreaLabel(area);
     }
@@ -162,7 +182,7 @@ exports.list = async (req, res) => {
       : "'Grower'";
     const operatingAreas = await getSupplierOperatingAreas(req.user.user_id);
 
-    const result = await db.query(`
+    const packedResult = await db.query(`
       SELECT
         pk.id AS packing_id,
         pk.packing_date,
@@ -221,7 +241,66 @@ exports.list = async (req, res) => {
       ORDER BY pk.created_at DESC NULLS LAST, pk.id DESC
     `);
 
-    let traces = result.rows.map((row) => {
+    const pendingResult = await db.query(`
+      SELECT
+        NULL::integer AS packing_id,
+        NULL::date AS packing_date,
+        NULL::integer AS number_of_packages,
+        NULL::numeric AS net_weight,
+        NULL::text AS packing_size,
+        NULL::text AS warehouse_name,
+        NULL::text AS city,
+        NULL::text AS state,
+        NULL::text AS pincode,
+        NULL::text AS country,
+        NULL::timestamp AS packing_created_at,
+        pl.id AS plantation_id,
+        pl.name AS plantation_name,
+        pl.location_description,
+        pl.status AS plantation_status,
+        pl.area_hectares,
+        pl.created_at AS plantation_created_at,
+        f.farm_id,
+        f.farm_name,
+        f.farm_location,
+        u.user_id AS grower_user_id,
+        ${growerNameExpr} AS grower_name,
+        fp.farm_location AS registered_farm_location,
+        fp.land_size AS registered_land_size,
+        fp.crop_type AS registered_crop_type,
+        NULL::integer AS harvest_id,
+        NULL::date AS harvest_date,
+        NULL::numeric AS accepted_quantity,
+        NULL::numeric AS rejected_quantity,
+        NULL::numeric AS total_quantity,
+        NULL::text AS harvest_unit,
+        crop_latest.id AS crop_id,
+        crop_latest.crop_name,
+        crop_latest.crop_variety,
+        crop_latest.sowing_date,
+        crop_latest.expected_harvest_date,
+        ''::text AS assigned_patch_id
+      FROM plantations pl
+      INNER JOIN users u ON u.user_id = pl.user_id
+      LEFT JOIN farms f ON f.farm_id = pl.farm_id
+      LEFT JOIN farmer_profiles fp ON fp.user_id = pl.user_id
+      LEFT JOIN LATERAL (
+        SELECT c.id, c.crop_name, c.crop_variety, c.sowing_date, c.expected_harvest_date
+        FROM crops c
+        WHERE c.plantation_id = pl.id
+        ORDER BY c.created_at DESC NULLS LAST, c.id DESC
+        LIMIT 1
+      ) crop_latest ON TRUE
+      WHERE LOWER(COALESCE(u.role, '')) = 'farmer'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM packings pk
+          WHERE pk.plantation_id = pl.id
+        )
+      ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC
+    `);
+
+    let traces = [...packedResult.rows, ...pendingResult.rows].map((row) => {
       const originLocation =
         row.registered_farm_location ||
         row.farm_location ||
@@ -229,7 +308,16 @@ exports.list = async (req, res) => {
         [row.city, row.state, row.pincode].filter(Boolean).join(", ");
 
       return {
-        packingId: Number(row.packing_id),
+        traceId:
+          row.packing_id === null || row.packing_id === undefined
+            ? `plantation-${Number(row.plantation_id)}`
+            : `packing-${Number(row.packing_id)}`,
+        packingId:
+          row.packing_id === null || row.packing_id === undefined
+            ? null
+            : Number(row.packing_id),
+        hasPacking:
+          row.packing_id !== null && row.packing_id !== undefined,
         plantationId: Number(row.plantation_id),
         farmId: row.farm_id === null || row.farm_id === undefined ? null : Number(row.farm_id),
         growerUserId: Number(row.grower_user_id),
