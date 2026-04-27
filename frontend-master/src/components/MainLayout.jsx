@@ -127,7 +127,7 @@ const MainLayout = ({
         <div className="nav-left">
           <div className="product-name">
             <img src={navLogo} alt="Maati AI logo" className="navbar-logo" />
-            <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
+            <Link to="/" className="brand-link">
               <h3 id="smart_name">Maati AI</h3>
             </Link>
           </div>

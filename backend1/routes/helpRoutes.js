@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const HelpFeedback = require("../models/HelpFeedback");
+const { ensureMongoConnection } = require("../config/mongo");
 // const authMiddleware = require("../middleware/authMiddleware"); // optional
+
+router.use(ensureMongoConnection);
 
 // POST /api/help/feedback
 router.post("/feedback", async (req, res) => {

@@ -125,6 +125,13 @@
 .location-item:hover {
   background: #f0fdf4;
 }
+
+.location-dropdown-status {
+  padding: 10px 12px;
+  color: #4b5563;
+  font-size: 13px;
+}
+
 .modal-close-btn {
   position: absolute;
   top: 10px;

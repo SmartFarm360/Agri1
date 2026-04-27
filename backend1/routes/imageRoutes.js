@@ -2,9 +2,12 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const authMiddleware = require('../middleware/authMiddleware');
+const { ensureMongoConnection } = require('../config/mongo');
 const { cropImageUpload, landDocumentUpload, uploadToBackblaze } = require('../middleware/backBlazeUpload');
 const { uploadImage, getImages } = require('../controllers/imageController');
 const Farmer = require('../models/Farmer'); // Assuming you're still storing some farmer data in MongoDB
+
+router.use(ensureMongoConnection);
 
 // ✅ Upload Crop Image
 router.post('/upload', authMiddleware, cropImageUpload.single('image'), async (req, res) => {

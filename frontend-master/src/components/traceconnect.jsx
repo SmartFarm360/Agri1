@@ -1217,7 +1217,7 @@ function GrowerDashboard({ navigate, toast }) {
           <p>No plantations yet. Create your first one above.</p>
         </div>
       ) : (
-        <div className="card-grid">
+        <div className="card-grid plantation-card-grid">
           {mine.map((p) => (
             <div key={p.id} className="plantation-card">
               <div className="plantation-card-top">
@@ -1267,7 +1267,7 @@ function PlantationsPage({ navigate, toast }) {
       {mine.length === 0 ? (
         <div className="empty-state"><div className="empty-icon"><FiGrid /></div><p>No plantations yet.</p></div>
       ) : (
-        <div className="card-grid">
+        <div className="card-grid plantation-card-grid">
           {mine.map((p) => (
             <div key={p.id} className="plantation-card">
               <div className="plantation-card-top">
@@ -1317,14 +1317,6 @@ function PlantationDetail({ plantationId, toast }) {
   const totalStages = names.length;
   const progressPercent = Math.round((completedStages / totalStages) * 100);
   const allStagesComplete = completedStages === totalStages;
-  const stageImages = pImgs.filter((x) => x.imageUrl);
-  const stageGroups = stageImages.reduce((acc, img) => {
-    const key = img.stage || "Other";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(img);
-    return acc;
-  }, {});
-
   const openStep = (i) => {
     if (!unlocked[i]) {
       toast(`Complete ${names[i - 1]} first`, "error");
@@ -1347,27 +1339,6 @@ function PlantationDetail({ plantationId, toast }) {
         </div>
       </div>
 
-      {stageImages.length > 0 && (
-        <div className="card">
-          <h3>Stage-wise Photos</h3>
-          {Object.keys(stageGroups).map((stageKey) => (
-            <div key={stageKey} className="gallery-group">
-              <h4>{stageKey}</h4>
-              <div className="tc-photo-grid">
-                {stageGroups[stageKey].map((img) => (
-                  <a key={img.id} className="tc-photo" href={img.imageUrl} target="_blank" rel="noreferrer">
-                    <img src={img.imageUrl} alt={`${stageKey} ${img.name}`} />
-                    <div className="tc-photo-meta">
-                      <div className="tc-photo-title">{img.name}</div>
-                      <div className="tc-photo-sub">{img.date}</div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
       <div className={`stage-progress-card ${allStagesComplete ? "complete" : ""}`}>
         <div className="stage-progress-head">
           <div>
@@ -1482,7 +1453,7 @@ function PlantationDetail({ plantationId, toast }) {
         </div>
       )}
 
-      {done[4] && (
+      {step === 4 && allStagesComplete && (
         <div className="card video-card">
           <div className="video-card-left">
             <div className="video-icon"><FiVideo /></div>
@@ -1959,8 +1930,7 @@ function VerificationStep({ pVer, addVerification, delVerification, pCrops, conf
               <option value="no">âŒ Not Approved</option>
             </select>
           </div>
-          <div className="field-wrap field-btn-wrap btn-row">
-            <button className="btn btn-outline"><FiCamera /> Capture Certificate</button>
+          <div className="field-wrap field-btn-wrap">
             <button className="btn btn-primary" onClick={add}><FiPlus /> Add</button>
           </div>
         </div>
@@ -2759,7 +2729,7 @@ function ProfilePage() {
   const minePackings = packings.filter((p) => mineIds.includes(p.plantationId));
   const mineBatches = batches.filter((b) => b.supplierId === user?.id);
   const mineImages = processImages.filter((i) => mineIds.includes(i.plantationId));
-  const stages = ["Crops", "Monitoring", "Verification", "Harvest", "Packing", "Certificate"];
+  const stages = ["Crops", "Monitoring", "Verification", "Harvest", "Packing"];
 
   const removeImage = async (id) => { const ok = await confirm("Delete this entry?"); if (!ok) return; delProcessImage(id); };
 
@@ -2815,11 +2785,26 @@ function ProfilePage() {
             return (
               <div key={stage} className="gallery-group">
                 <div className="gallery-stage-label">{stage}</div>
-                <div className="record-list">
+                <div className="record-list process-entry-list">
                   {list.map((img) => (
-                    <div key={img.id} className="record-row">
-                      <span className="record-text"><FiCamera /> {img.name} <span className="muted">({img.date})</span></span>
-                      <button className="icon-btn danger" onClick={() => removeImage(img.id)}><FiTrash2 /></button>
+                    <div key={img.id} className="process-entry-card">
+                      <div className="process-entry-main">
+                        {img.imageUrl && <img className="tc-thumb process-entry-thumb" src={img.imageUrl} alt={`${stage} ${img.name}`} />}
+                        <div className="process-entry-copy">
+                          <div className="process-entry-title">{img.name}</div>
+                          <div className="process-entry-date">{img.date}</div>
+                        </div>
+                      </div>
+                      <div className="process-entry-actions">
+                        {img.imageUrl && (
+                          <a className="process-entry-link" href={img.imageUrl} target="_blank" rel="noreferrer">
+                            View
+                          </a>
+                        )}
+                        <button className="process-entry-delete" onClick={() => removeImage(img.id)} type="button">
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

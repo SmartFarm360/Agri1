@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const Blog = require('../models/Blog');
 const authMiddleware = require('../middleware/authMiddleware');
+const { ensureMongoConnection } = require('../config/mongo');
+
+router.use(ensureMongoConnection);
 
 // Middleware to check if user is admin
 const adminOnly = (req, res, next) => {

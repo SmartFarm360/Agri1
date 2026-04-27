@@ -46,6 +46,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const [locationQuery, setLocationQuery] = useState("");
   const [locationResults, setLocationResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [boundaryPoints, setBoundaryPoints] = useState([]);
   const [areaUnit, setAreaUnit] = useState("hectares");
   const [movingPointIndex, setMovingPointIndex] = useState(null);
@@ -56,6 +57,12 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
   const boundaryMarkersRef = useRef([]);
   const movingPointIndexRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const locationSearchTimerRef = useRef(null);
+  const locationSearchAbortRef = useRef(null);
+  const locationSearchRequestIdRef = useRef(0);
+  const locationCacheRef = useRef(new Map());
+  const selectedLocationMarkerRef = useRef(null);
+  const skipLocationSearchRef = useRef(false);
 
   const hideToast = () => {
     if (toastTimerRef.current) {
@@ -185,6 +192,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     if (leafletMapRef.current) {
       leafletMapRef.current.remove();
       leafletMapRef.current = null;
+      selectedLocationMarkerRef.current = null;
     }
 
     const lat = Number(formData.latitude) || 20.5937;
@@ -246,6 +254,7 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
+        selectedLocationMarkerRef.current = null;
       }
     };
   }, [isOpen, formData.latitude, formData.longitude]);
@@ -267,8 +276,53 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
       }
+
+      if (locationSearchTimerRef.current) {
+        clearTimeout(locationSearchTimerRef.current);
+      }
+
+      if (locationSearchAbortRef.current) {
+        locationSearchAbortRef.current.abort();
+      }
     };
   }, []);
+
+  useEffect(() => {
+    const trimmedQuery = locationQuery.trim();
+
+    if (skipLocationSearchRef.current) {
+      skipLocationSearchRef.current = false;
+      return;
+    }
+
+    if (locationSearchTimerRef.current) {
+      clearTimeout(locationSearchTimerRef.current);
+      locationSearchTimerRef.current = null;
+    }
+
+    if (locationSearchAbortRef.current) {
+      locationSearchAbortRef.current.abort();
+      locationSearchAbortRef.current = null;
+    }
+
+    if (trimmedQuery.length < 2) {
+      setLocationLoading(false);
+      setLocationResults([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    locationSearchTimerRef.current = setTimeout(() => {
+      searchLocation(trimmedQuery);
+    }, 300);
+
+    return () => {
+      if (locationSearchTimerRef.current) {
+        clearTimeout(locationSearchTimerRef.current);
+        locationSearchTimerRef.current = null;
+      }
+    };
+  }, [locationQuery]);
 
   if (!isOpen) return null;
 
@@ -280,41 +334,144 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
     }));
   };
 
+  const formatLocationLabel = (...parts) =>
+    [...new Set(parts.filter(Boolean).map((part) => String(part).trim()))].join(", ");
+
+  const buildRankedLocationResults = (query, nominatimResults = [], photonResults = []) => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+    const mergedResults = new Map();
+
+    const addResult = (place, sourcePriority) => {
+      if (
+        !Number.isFinite(place?.lat) ||
+        !Number.isFinite(place?.lon) ||
+        !place?.display_name
+      ) {
+        return;
+      }
+
+      const key = `${place.lat.toFixed(5)}:${place.lon.toFixed(5)}:${place.display_name.toLowerCase()}`;
+      const label = place.display_name.toLowerCase();
+      let score = sourcePriority;
+
+      if (label.startsWith(normalizedQuery)) score += 120;
+      if (label.includes(normalizedQuery)) score += 80;
+
+      const matchedTokens = queryTokens.filter((token) => label.includes(token)).length;
+      score += matchedTokens * 20;
+
+      if (place.kind === "village" || place.kind === "hamlet" || place.kind === "suburb") {
+        score += 18;
+      }
+
+      if (place.kind === "town" || place.kind === "city") {
+        score += 12;
+      }
+
+      if (place.countryCode === "in" || place.country?.toLowerCase() === "india") {
+        score += 30;
+      }
+
+      const existing = mergedResults.get(key);
+      if (!existing || score > existing.score) {
+        mergedResults.set(key, {
+          ...place,
+          score,
+        });
+      }
+    };
+
+    nominatimResults.forEach((place) => addResult(place, 120));
+    photonResults.forEach((place) => addResult(place, 80));
+
+    return [...mergedResults.values()]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map(({ score, ...place }) => place);
+  };
+
   const searchLocation = async (query) => {
-    if (!query || query.length < 3) {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (normalizedQuery.length < 2) {
+      setLocationLoading(false);
       setLocationResults([]);
       setShowDropdown(false);
       return;
     }
 
-    try {
-      const res = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`,
-      );
+    const cachedResults = locationCacheRef.current.get(normalizedQuery);
+    if (cachedResults) {
+      setLocationLoading(false);
+      setLocationResults(cachedResults);
+      setShowDropdown(true);
+      return;
+    }
 
-      if (!res.ok) {
-        throw new Error("Location lookup failed.");
+    const controller = new AbortController();
+    const requestId = locationSearchRequestIdRef.current + 1;
+    locationSearchRequestIdRef.current = requestId;
+    locationSearchAbortRef.current = controller;
+    setLocationLoading(true);
+    setShowDropdown(true);
+
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const [nominatimResponse, photonResponse] = await Promise.allSettled([
+        fetch(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=in&dedupe=1&q=${encodedQuery}`,
+          {
+            signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+            },
+          },
+        ),
+        fetch(
+          `https://photon.komoot.io/api/?q=${encodedQuery}&limit=6&lang=en`,
+          {
+            signal: controller.signal,
+          },
+        ),
+      ]);
+
+      const nominatimData =
+        nominatimResponse.status === "fulfilled" && nominatimResponse.value.ok
+          ? await nominatimResponse.value.json()
+          : [];
+
+      const photonData =
+        photonResponse.status === "fulfilled" && photonResponse.value.ok
+          ? await photonResponse.value.json()
+          : { features: [] };
+
+      if (locationSearchRequestIdRef.current !== requestId) {
+        return;
       }
 
-      const data = await res.json();
-      const mappedResults = Array.isArray(data?.features)
-        ? data.features
-            .map((feature) => {
-              const lat = Number(feature?.geometry?.coordinates?.[1]);
-              const lon = Number(feature?.geometry?.coordinates?.[0]);
-
-              const display_name = [
-                feature?.properties?.name,
-                feature?.properties?.city ||
-                  feature?.properties?.district ||
-                  feature?.properties?.state,
-                feature?.properties?.country,
-              ]
-                .filter(Boolean)
-                .join(", ");
-
-              return { lat, lon, display_name };
-            })
+      const mappedNominatimResults = Array.isArray(nominatimData)
+        ? nominatimData
+            .map((place) => ({
+              lat: Number(place?.lat),
+              lon: Number(place?.lon),
+              display_name: formatLocationLabel(
+                place?.name,
+                place?.address?.village ||
+                  place?.address?.hamlet ||
+                  place?.address?.suburb ||
+                  place?.address?.town ||
+                  place?.address?.city,
+                place?.address?.county ||
+                  place?.address?.state_district ||
+                  place?.address?.district,
+                place?.address?.state,
+                place?.address?.country,
+              ),
+              kind: place?.addresstype || place?.type,
+              country: place?.address?.country,
+              countryCode: place?.address?.country_code,
+            }))
             .filter(
               (place) =>
                 Number.isFinite(place.lat) &&
@@ -323,12 +480,52 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
             )
         : [];
 
-      setLocationResults(mappedResults);
-      setShowDropdown(mappedResults.length > 0);
+      const mappedPhotonResults = Array.isArray(photonData?.features)
+        ? photonData.features
+            .map((feature) => ({
+              lat: Number(feature?.geometry?.coordinates?.[1]),
+              lon: Number(feature?.geometry?.coordinates?.[0]),
+              display_name: formatLocationLabel(
+                feature?.properties?.name,
+                feature?.properties?.district ||
+                  feature?.properties?.city ||
+                  feature?.properties?.county,
+                feature?.properties?.state,
+                feature?.properties?.country,
+              ),
+              kind: feature?.properties?.type,
+              country: feature?.properties?.country,
+              countryCode: feature?.properties?.countrycode,
+            }))
+            .filter(
+              (place) =>
+                Number.isFinite(place.lat) &&
+                Number.isFinite(place.lon) &&
+                place.display_name,
+            )
+        : [];
+
+      const mergedResults = buildRankedLocationResults(
+        query,
+        mappedNominatimResults,
+        mappedPhotonResults,
+      );
+
+      locationCacheRef.current.set(normalizedQuery, mergedResults);
+      setLocationResults(mergedResults);
+      setShowDropdown(true);
     } catch (err) {
+      if (err.name === "AbortError") {
+        return;
+      }
+
       setLocationResults([]);
       setShowDropdown(false);
       console.error("Location search error:", err);
+    } finally {
+      if (locationSearchRequestIdRef.current === requestId) {
+        setLocationLoading(false);
+      }
     }
   };
 
@@ -400,15 +597,21 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
 
     // MOVE MAP to selected location immediately
     if (leafletMapRef.current) {
-      leafletMapRef.current.setView([lat, lng], 18);
+      if (selectedLocationMarkerRef.current) {
+        leafletMapRef.current.removeLayer(selectedLocationMarkerRef.current);
+      }
 
-      // optional: add marker at selected location
-      L.marker([lat, lng]).addTo(leafletMapRef.current);
+      leafletMapRef.current.setView([lat, lng], 18);
+      selectedLocationMarkerRef.current = L.marker([lat, lng]).addTo(
+        leafletMapRef.current,
+      );
     }
 
+    skipLocationSearchRef.current = true;
     setLocationQuery(place.display_name);
     setLocationResults([]);
     setShowDropdown(false);
+    setLocationLoading(false);
   };
 
   const handleDeleteBoundaryPoint = (index) => {
@@ -584,21 +787,31 @@ const AddFarmModal = ({ isOpen, onClose, onFarmAdded }) => {
               value={locationQuery}
               onChange={(e) => {
                 setLocationQuery(e.target.value);
-                searchLocation(e.target.value);
+              }}
+              onFocus={() => {
+                if (locationQuery.trim().length >= 2) {
+                  setShowDropdown(true);
+                }
               }}
             />
 
-            {showDropdown && locationResults.length > 0 && (
+            {showDropdown && (
               <div className="location-dropdown">
-                {locationResults.map((place, index) => (
-                  <div
-                    key={index}
-                    className="location-item"
-                    onClick={() => handleLocationSelect(place)}
-                  >
-                    {place.display_name}
-                  </div>
-                ))}
+                {locationLoading ? (
+                  <div className="location-dropdown-status">Searching locations...</div>
+                ) : locationResults.length > 0 ? (
+                  locationResults.map((place, index) => (
+                    <div
+                      key={`${place.lat}-${place.lon}-${index}`}
+                      className="location-item"
+                      onClick={() => handleLocationSelect(place)}
+                    >
+                      {place.display_name}
+                    </div>
+                  ))
+                ) : (
+                  <div className="location-dropdown-status">No matching locations found.</div>
+                )}
               </div>
             )}
           </div>

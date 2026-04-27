@@ -1,6 +1,6 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const connectDB = require("./config/mongo");
+const { connectDB } = require("./config/mongo");
 const path = require("path");
 const cors = require("cors");
 const axios = require("axios");

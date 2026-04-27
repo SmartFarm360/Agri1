@@ -57,13 +57,15 @@ body.dashboard-modal-open .navbar {
   color: #8b5a2b;
   margin: 0;
   line-height: 1;
+  font-size: 2rem;
+  font-weight: 800;
 }
 
 .product-name {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.7rem;
+  font-size: 1.85rem;
   font-weight: 800;
   color: #8b5a2b;
   white-space: nowrap;
@@ -72,6 +74,28 @@ body.dashboard-modal-open .navbar {
   letter-spacing: 0.5px;
   line-height: 1;
   min-height: 42px;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  background: transparent !important;
+  outline: none;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.brand-link:hover,
+.brand-link:focus,
+.brand-link:active,
+.brand-link:visited {
+  color: inherit;
+  text-decoration: none;
+  background: transparent !important;
+  outline: none;
+  box-shadow: none;
 }
 
 .nav-right {
@@ -304,8 +328,12 @@ body.dashboard-modal-open .navbar {
   }
 
   .product-name {
-    font-size: 1.2rem;
+    font-size: 1.35rem;
     min-height: 36px;
+  }
+
+  #smart_name {
+    font-size: 1.55rem;
   }
 
   .navbar-logo {
